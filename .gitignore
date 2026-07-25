@@ -1,0 +1,39 @@
+# .gitignore
+
+# Dependencies
+node_modules/
+.pnpm-store/
+yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+.DS_Store
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Firebase
+firebase-debug.log
+.firebase/
+*.firebase
+
+# Coverage
+coverage/
+*.lcov
+
+# Temporary files
+tmp/
+temp/
