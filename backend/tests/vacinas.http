@@ -1,0 +1,22 @@
+### Health Check
+
+GET http://localhost:3001
+
+###
+
+GET http://localhost:3001/vacinas
+
+### Popular Regras
+
+POST http://localhost:3001/regras/seed
+
+###
+
+### Listar Regras
+
+GET http://localhost:3001/regras
+
+###
+
+
+GET http://localhost:3001/regras/3

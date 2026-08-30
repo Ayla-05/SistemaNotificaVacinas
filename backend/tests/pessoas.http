@@ -1,0 +1,80 @@
+### Health Check
+
+GET http://localhost:3001
+
+###
+
+### Listar Vacinas
+
+GET http://localhost:3001/vacinas
+
+###
+
+### Listar Pessoas
+
+GET http://localhost:3001/pessoas
+
+###
+
+### Criar Pessoa - Teste
+
+POST http://localhost:3001/pessoas
+Content-Type: application/json
+
+{
+  "nome": "Tadeu da Silva",
+  "email": "silva.tadeu@gmail.com",
+  "telefone": "11999999999",
+  "data_nascimento": "1995-01-01",
+  "cep": "07093170",
+  "logradouro": "Rua Exemplo",
+  "numero": "123",
+  "complemento": "Apto 45",
+  "bairro": "Centro",
+  "cidade": "Guarulhos",
+  "estado": "SP",
+  "receber_email": 1,
+  "receber_whatsapp": 1,
+  "gestante": 0,
+  "trabalhador_saude": 1,
+  "indigena": 0,
+  "imunocomprometido": 0
+}
+
+###
+
+### Buscar Pessoa ID 1
+
+GET http://localhost:3001/pessoas/1
+
+###
+
+### Buscar Pessoa ID 999
+
+GET http://localhost:3001/pessoas/999
+
+###
+
+### Cadastrar Hepatite B na Carteira
+
+POST http://localhost:3001/carteira
+Content-Type: application/json
+
+{
+  "pessoa_id": 1,
+  "vacina_id": 3,
+  "quantidade_doses": 3
+}
+
+###
+
+### Cadastrar COVID na Carteira
+
+POST http://localhost:3001/carteira
+Content-Type: application/json
+
+{
+  "pessoa_id": 1,
+  "vacina_id": 15,
+  "quantidade_doses": 4
+}

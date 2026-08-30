@@ -1,0 +1,3 @@
+### Consultar Carteira
+
+GET http://localhost:3001/carteira/1

@@ -1,0 +1,9 @@
+### Popular calendário
+
+POST http://localhost:3001/calendario/seed
+
+###
+
+### Consultar calendário
+
+GET http://localhost:3001/calendario

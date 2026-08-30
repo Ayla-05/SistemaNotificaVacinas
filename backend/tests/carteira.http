@@ -1,0 +1,23 @@
+### Registrar Hepatite B
+
+POST http://localhost:3001/carteira
+Content-Type: application/json
+
+{
+  "pessoa_id": 1,
+  "vacina_id": 3,
+  "quantidade_doses": 3
+}
+
+###
+
+### Registrar Covid
+
+POST http://localhost:3001/carteira
+Content-Type: application/json
+
+{
+  "pessoa_id": 1,
+  "vacina_id": 15,
+  "quantidade_doses": 4
+}
