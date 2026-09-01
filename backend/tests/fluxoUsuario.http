@@ -1,0 +1,242 @@
+##################################################
+# SISTEMA NOTIFICA VACINAS
+# TESTE COMPLETO DE FLUXO
+##################################################
+
+@baseUrl = http://localhost:3000
+
+##################################################
+# HEALTH CHECK
+##################################################
+
+GET {{baseUrl}}
+
+###
+
+##################################################
+# CRIAR USUÁRIO
+##################################################
+
+POST {{baseUrl}}/usuarios
+Content-Type: application/json
+
+{
+  "nome": "Admin Sistema Notifica Vacinas",
+  "email": "admin@notifica.com",
+  "senha": "123456",
+  "perfil": "ADMIN"
+}
+
+###
+
+##################################################
+# LISTAR USUÁRIOS
+##################################################
+
+GET {{baseUrl}}/usuarios
+
+###
+
+##################################################
+# BUSCAR USUÁRIO
+##################################################
+
+GET {{baseUrl}}/usuarios/1
+
+###
+
+##################################################
+# ATUALIZAR USUÁRIO
+##################################################
+
+PUT {{baseUrl}}/usuarios/1
+Content-Type: application/json
+
+{
+  "nome": "Ayla Rossi",
+  "email": "ayla@email.com"
+}
+
+###
+
+##################################################
+# ALTERAR PERFIL
+##################################################
+
+PATCH {{baseUrl}}/usuarios/1/perfil
+Content-Type: application/json
+
+{
+  "perfil": "ADMIN"
+}
+
+###
+
+##################################################
+# CRIAR PESSOA
+##################################################
+
+POST {{baseUrl}}/pessoas
+Content-Type: application/json
+
+{
+  "usuario_id": 1,
+  "nome": "Ayla Pedroga Rossi",
+  "data_nascimento": "1990-01-01",
+  "email": "ayla@email.com",
+  "telefone": "11999999999",
+  "receber_email": 1,
+  "receber_whatsapp": 1
+}
+
+###
+
+##################################################
+# LISTAR PESSOAS
+##################################################
+
+GET {{baseUrl}}/pessoas
+
+###
+
+##################################################
+# BUSCAR PESSOA
+##################################################
+
+GET {{baseUrl}}/pessoas/1
+
+###
+
+##################################################
+# LISTAR PESSOAS DO USUÁRIO
+##################################################
+
+GET {{baseUrl}}/pessoas/usuario/1
+
+###
+
+##################################################
+# LISTAR VACINAS
+##################################################
+
+GET {{baseUrl}}/vacinas
+
+###
+
+##################################################
+# BUSCAR VACINA
+##################################################
+
+GET {{baseUrl}}/vacinas/1
+
+###
+
+##################################################
+# BUSCAR VACINA POR CÓDIGO
+##################################################
+
+GET {{baseUrl}}/vacinas/codigo/BCG
+
+###
+
+##################################################
+# BUSCAR VACINA POR NOME
+##################################################
+
+GET {{baseUrl}}/vacinas/nome/BCG
+
+###
+
+##################################################
+# LISTAR CALENDÁRIO
+##################################################
+
+GET {{baseUrl}}/calendario
+
+###
+
+##################################################
+# LISTAR REGRAS VACINAIS
+##################################################
+
+GET {{baseUrl}}/regras-vacinais
+
+###
+
+##################################################
+# LISTAR AGENDAMENTOS
+##################################################
+
+GET {{baseUrl}}/agendamentos
+
+###
+
+##################################################
+# REGISTRAR VACINA
+##################################################
+
+POST {{baseUrl}}/carteira/registro
+Content-Type: application/json
+
+{
+  "pessoaId": 1,
+  "vacinaId": 1,
+  "dataAplicacao": "2026-09-01",
+  "observacao": "Teste"
+}
+
+###
+
+##################################################
+# CONSULTAR CARTEIRA
+##################################################
+
+GET {{baseUrl}}/carteira/pessoa/1
+
+###
+
+##################################################
+# REGISTRAR DOSE
+##################################################
+
+POST {{baseUrl}}/carteira/dose
+Content-Type: application/json
+
+{
+  "registroId": 1,
+  "numeroDose": 1,
+  "dataAplicacao": "2026-09-01"
+}
+
+###
+
+##################################################
+# AGENDAR VACINA
+##################################################
+
+POST {{baseUrl}}/agendamentos
+Content-Type: application/json
+
+{
+  "pessoaId": 1,
+  "vacinaId": 2,
+  "numeroDose": 2,
+  "dataPrevista": "2026-12-01",
+  "observacao": "Retorno"
+}
+
+###
+
+##################################################
+# LISTAR AGENDAMENTOS DA PESSOA
+##################################################
+
+GET {{baseUrl}}/agendamentos/pessoa/1
+
+###
+
+##################################################
+# CONTAR AGENDAMENTOS
+##################################################
+
+GET {{baseUrl}}/agendamentos/pessoa/1/total
