@@ -1,5 +1,13 @@
+import bcrypt from "bcryptjs";
+
 import { PerfilUsuario } from "../enums/perfilUsuario";
 import * as usuarioRepository from "../repositories/usuarioRepository";
+
+/*
+Custo do hash bcrypt. 12 é um bom equilíbrio
+entre segurança e tempo de resposta em 2026.
+*/
+const SALT_ROUNDS = 12;
 
 /*
 ==================================================
@@ -137,6 +145,12 @@ export class UsuarioService {
       );
     }
 
+    if (senha.length < 8) {
+      throw new Error(
+        "A senha deve ter no mínimo 8 caracteres."
+      );
+    }
+
     const usuarioExistente =
       await usuarioRepository.buscarUsuarioPorEmail(
         email
@@ -157,10 +171,22 @@ export class UsuarioService {
       );
     }
 
+    /*
+    A senha nunca é gravada em texto puro.
+    O hash é gerado aqui, na camada de
+    regras de negócio, e o repository só
+    enxerga o valor já protegido.
+    */
+    const senhaCriptografada =
+      await bcrypt.hash(
+        senha,
+        SALT_ROUNDS
+      );
+
     return await usuarioRepository.criarUsuario(
       nome,
       email,
-      senha,
+      senhaCriptografada,
       perfil
     );
 
@@ -227,9 +253,15 @@ export class UsuarioService {
       );
     }
 
+    const senhaCriptografada =
+      await bcrypt.hash(
+        senha,
+        SALT_ROUNDS
+      );
+
     return await usuarioRepository.atualizarSenhaUsuario(
       id,
-      senha
+      senhaCriptografada
     );
 
   }

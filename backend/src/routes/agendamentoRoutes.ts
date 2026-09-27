@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { AgendamentoController } from "../controllers/agendamentoController";
+import { pessoaPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 ==================================================
@@ -45,6 +46,7 @@ GET /agendamentos/pessoa/:pessoaId
 */
 router.get(
   "/pessoa/:pessoaId",
+  pessoaPertenceAoUsuario,
   AgendamentoController.listarPorPessoa
 );
 

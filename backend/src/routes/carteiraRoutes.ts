@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { CarteiraController } from "../controllers/carteiraController";
+import { pessoaPertenceAoUsuario, pessoaDoCorpoPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 ==================================================
@@ -20,6 +21,7 @@ GET /carteira/pessoa/:pessoaId
 */
 router.get(
   "/pessoa/:pessoaId",
+  pessoaPertenceAoUsuario,
   CarteiraController.listarCarteiraPessoa
 );
 
@@ -32,7 +34,21 @@ POST /carteira/registro
 */
 router.post(
   "/registro",
+  pessoaDoCorpoPertenceAoUsuario,
   CarteiraController.registrarVacina
+);
+
+/*
+==================================================
+CONFIRMAR LEITURA DO SCAN (CLAUDE VISION)
+==================================================
+
+POST /carteira/confirmar-scan
+*/
+router.post(
+  "/confirmar-scan",
+  pessoaDoCorpoPertenceAoUsuario,
+  CarteiraController.confirmarScan
 );
 
 /*
