@@ -107,17 +107,39 @@ MIDDLEWARES GLOBAIS
 /*
 Permite acesso do frontend.
 
-Restrito à origem configurada em FRONTEND_URL
-(e não "*"), com credentials habilitado, pois
-o cookie de sessão (httpOnly) precisa trafegar
-entre domínios diferentes em desenvolvimento
-(frontend na 5173, backend na 3000).
+Em produção, restrito exatamente à origem
+configurada em FRONTEND_URL. Em desenvolvimento
+(sem NODE_ENV=production), aceita qualquer porta
+em localhost/127.0.0.1 — o Vite muda de porta
+sozinho (5173, 5174...) quando a anterior já
+está ocupada, e travar numa porta fixa só causa
+"Failed to fetch" sem motivo aparente.
+
+"credentials: true" porque o cookie de sessão
+(httpOnly) precisa trafegar entre origens
+diferentes (frontend numa porta, backend noutra).
 */
+const ORIGEM_LOCALHOST =
+  /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
+
 app.use(
   cors({
     origin:
-      process.env.FRONTEND_URL ||
-      "http://localhost:5173",
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_URL
+        : (origin, callback) => {
+
+            const permitido =
+              !origin ||
+              ORIGEM_LOCALHOST.test(origin) ||
+              origin === process.env.FRONTEND_URL;
+
+            callback(
+              null,
+              permitido
+            );
+
+          },
     credentials: true
   })
 );
