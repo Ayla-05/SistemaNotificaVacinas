@@ -260,6 +260,122 @@ export class CarteiraService {
 
   /*
   ==================================================
+  CONFIRMAR LEITURA DO SCAN (CLAUDE VISION)
+  ==================================================
+
+  Recebe os dados já revisados pelo usuário na tela
+  de Scan e grava o registro/dose correspondente.
+
+  Localiza a vacina pelo nome lido na carteirinha
+  (comparação sem diferenciar maiúsculas/acentos de
+  caixa, já que a IA nem sempre devolve o nome
+  exatamente como está cadastrado) e reaproveita o
+  registro vacinal existente, se já houver um.
+  */
+  static async confirmarRegistroViaScan(
+    pessoaId: number,
+    dados: {
+      vacina: string;
+      dose?: string;
+      dataAplicacao?: string | null;
+      lote?: string | null;
+      localAplicacao?: string | null;
+    }
+  ) {
+
+    const pessoa =
+      await pessoaRepository.buscarPessoaPorId(
+        pessoaId
+      );
+
+    if (!pessoa) {
+      throw new Error(
+        "Pessoa não encontrada."
+      );
+    }
+
+    const vacinasAtivas =
+      await vacinaRepository.listarVacinasAtivas() as any[];
+
+    const nomeLido =
+      dados.vacina
+        ?.trim()
+        .toLowerCase();
+
+    const vacina =
+      vacinasAtivas.find(
+        (v) =>
+          v.nome.trim().toLowerCase() ===
+          nomeLido
+      ) ??
+      vacinasAtivas.find(
+        (v) =>
+          v.nome.trim().toLowerCase()
+            .includes(nomeLido) ||
+          nomeLido.includes(
+            v.nome.trim().toLowerCase()
+          )
+      );
+
+    if (!vacina) {
+
+      throw new Error(
+        `Não encontramos "${dados.vacina}" no calendário de vacinas do sistema. ` +
+        "Confira o nome e tente novamente."
+      );
+
+    }
+
+    let registro =
+      await registroVacinacaoRepository
+        .buscarRegistroPessoaVacina(
+          pessoaId,
+          vacina.id
+        );
+
+    let registroId: number;
+
+    if (registro) {
+      registroId = registro.id;
+    } else {
+      registroId =
+        await registroVacinacaoRepository
+          .criarRegistroVacinacao(
+            pessoaId,
+            vacina.id
+          );
+    }
+
+    const dosesExistentes =
+      await doseVacinaRepository.contarDoses(
+        registroId
+      );
+
+    const doseId =
+      await doseVacinaRepository.registrarDose(
+        registroId,
+        dosesExistentes + 1,
+        dados.dose || "Não especificada",
+        {
+          dataAplicacao: dados.dataAplicacao,
+          lote: dados.lote,
+          observacao:
+            dados.localAplicacao
+              ? `Aplicada em: ${dados.localAplicacao}`
+              : null
+        }
+      );
+
+    return {
+      registroId,
+      doseId,
+      vacina: vacina.nome
+    };
+
+  }
+
+  /*
+  ==================================================
   REMOVER REGISTRO VACINAL
   ==================================================
 

@@ -1,6 +1,7 @@
 import { obterFaixaEtaria } from "../utils/faixaEtaria";
 
 import * as pessoaRepository from "../repositories/pessoaRepository";
+import * as vacinaRepository from "../repositories/vacinaRepository";
 import * as calendarioVacinalRepository from "../repositories/calendarioVacinalRepository";
 import * as regraVacinalRepository from "../repositories/regraVacinalRepository";
 import * as registroVacinacaoRepository from "../repositories/registroVacinacaoRepository";
@@ -349,6 +350,128 @@ export class VacinalService {
     }
 
     return resultado;
+
+  }
+
+  /*
+  ==================================================
+  OBTER RESUMO VACINAL DA PESSOA
+  ==================================================
+
+  Junta pessoa, faixa etária, vacinas em dia
+  e vacinas pendentes num único payload,
+  já com o nome da vacina (e não só o id),
+  pronto para ser consumido pela tela
+  de Dashboard do frontend.
+  */
+  static async obterResumoPessoa(
+    pessoaId: number
+  ) {
+
+    const pessoa =
+      await pessoaRepository.buscarPessoaPorId(
+        pessoaId
+      );
+
+    if (!pessoa) {
+      throw new Error(
+        "Pessoa não encontrada."
+      );
+    }
+
+    const idade =
+      this.calcularIdade(
+        pessoa.data_nascimento
+      );
+
+    const faixaEtaria =
+      obterFaixaEtaria(
+        idade
+      );
+
+    const [
+      pendenciasBrutas,
+      emDiaBruto
+    ] = await Promise.all([
+      this.calcularPendencias(pessoaId),
+      this.calcularVacinasEmDia(pessoaId)
+    ]);
+
+    const pendentes = await Promise.all(
+      pendenciasBrutas.map(
+        async (item: any) => {
+
+          const vacina =
+            await vacinaRepository
+              .buscarVacinaPorId(
+                item.vacina_id
+              );
+
+          return {
+
+            vacina:
+              (vacina as any)?.nome ??
+              "Vacina não identificada",
+
+            tomadas:
+              item.doses_registradas,
+
+            necessarias:
+              item.doses_necessarias,
+
+            faltam:
+              item.faltam
+
+          };
+
+        }
+      )
+    );
+
+    const emDia = await Promise.all(
+      emDiaBruto.map(
+        async (item: any) => {
+
+          const vacina =
+            await vacinaRepository
+              .buscarVacinaPorId(
+                item.vacina_id
+              );
+
+          return {
+
+            vacina:
+              (vacina as any)?.nome ??
+              "Vacina não identificada",
+
+            tomadas:
+              item.doses,
+
+            necessarias:
+              item.doses
+
+          };
+
+        }
+      )
+    );
+
+    return {
+
+      pessoa:
+        pessoa.nome,
+
+      faixa_etaria:
+        faixaEtaria,
+
+      idade,
+
+      em_dia:
+        emDia,
+
+      pendentes
+
+    };
 
   }
 

@@ -6,10 +6,11 @@ import {
   Syringe,
   X
 } from "lucide-react";
-
-const API_URL = "http://localhost:3001";
+import { obterAgendamentos } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function Calendario() {
+  const { pessoaAtiva } = useAuth();
   const [agendamentos, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
@@ -17,15 +18,15 @@ export default function Calendario() {
   const [mesAtual, setMesAtual] = useState(new Date());
 
   useEffect(() => {
+    if (!pessoaAtiva) {
+      setLoading(false);
+      return;
+    }
+
     async function carregar() {
       try {
-        const response = await fetch(
-          `${API_URL}/agendamentos/1`
-        );
-
-        const json = await response.json();
-
-        setAgendamentos(json);
+        const lista = await obterAgendamentos(pessoaAtiva.id);
+        setAgendamentos(lista);
       } catch (erro) {
         console.error(erro);
       } finally {
@@ -34,7 +35,7 @@ export default function Calendario() {
     }
 
     carregar();
-  }, []);
+  }, [pessoaAtiva]);
 
   const nomesMeses = [
     "Janeiro",
@@ -216,7 +217,7 @@ export default function Calendario() {
               if (!dia) {
                 return (
                   <div
-                    key={index}
+                    key={`vazio-${index}`}
                     className="h-28"
                   />
                 );
@@ -228,7 +229,7 @@ export default function Calendario() {
               return (
 
                 <div
-                  key={dia}
+                  key={`dia-${dia}`}
                   className="min-h-[120px] bg-slate-50 border border-slate-200 rounded-2xl p-2"
                 >
 

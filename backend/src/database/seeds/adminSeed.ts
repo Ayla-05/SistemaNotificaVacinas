@@ -1,3 +1,6 @@
+import { UsuarioService }
+  from "../../services/usuarioService";
+
 import * as usuarioRepository
   from "../../repositories/usuarioRepository";
 
@@ -33,13 +36,17 @@ export async function executarAdminSeed() {
 
   }
 
-  await usuarioRepository
-    .criarUsuario(
-      "Administrador",
-      email,
-      "admin123",
-      PerfilUsuario.ADMIN
-    );
+  /*
+  Passa pelo UsuarioService (não pelo
+  repository direto) para que a senha
+  seja armazenada com hash bcrypt.
+  */
+  await UsuarioService.criar(
+    "Administrador",
+    email,
+    "admin123",
+    PerfilUsuario.ADMIN
+  );
 
   console.log(
     "Administrador criado com sucesso."

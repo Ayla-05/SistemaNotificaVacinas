@@ -51,6 +51,9 @@ import * as regrasSeedModule
 import * as adminSeedModule
   from "./seeds/adminSeed";
 
+import * as pessoaSeedModule
+  from "./seeds/pessoaSeed";
+
 const executarVacinasSeed =
   (vacinasSeedModule as any).executarVacinasSeed;
 
@@ -69,6 +72,10 @@ const executarRegrasSeed =
 const executarAdminSeed =
   (adminSeedModule as any)
     .executarAdminSeed;
+
+const executarPessoaSeed =
+  (pessoaSeedModule as any)
+    .executarPessoaSeed;
 
 export async function configurarBanco() {
 
@@ -134,6 +141,8 @@ export async function configurarBanco() {
   await executarRegrasSeed();
 
   await executarAdminSeed();
+
+  await executarPessoaSeed();
 
   console.log(
     "Configuração concluída."

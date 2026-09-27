@@ -167,6 +167,70 @@ export class CarteiraController {
 
   /*
   ==================================================
+  CONFIRMAR LEITURA DO SCAN (CLAUDE VISION)
+  ==================================================
+
+  POST /carteira/confirmar-scan
+
+  Body:
+  {
+    "pessoaId": 1,
+    "vacina": "Febre Amarela",
+    "dose": "Dose única",
+    "dataAplicacao": "2026-05-15",
+    "lote": "FA2026-X99",
+    "localAplicacao": "UBS Vila Fátima"
+  }
+  */
+  static async confirmarScan(
+    req: Request,
+    res: Response
+  ) {
+
+    try {
+
+      const {
+        pessoaId,
+        vacina,
+        dose,
+        dataAplicacao,
+        lote,
+        localAplicacao
+      } = req.body;
+
+      const resultado =
+        await CarteiraService.confirmarRegistroViaScan(
+          Number(pessoaId),
+          {
+            vacina,
+            dose,
+            dataAplicacao,
+            lote,
+            localAplicacao
+          }
+        );
+
+      return res.status(201).json({
+
+        mensagem:
+          "Registro salvo na carteira com sucesso.",
+
+        ...resultado
+
+      });
+
+    } catch (error: any) {
+
+      return res.status(400).json({
+        erro: error.message
+      });
+
+    }
+
+  }
+
+  /*
+  ==================================================
   LISTAR DOSES
   ==================================================
 

@@ -97,7 +97,7 @@ export function listarAgendamentosPessoa(
 
         v.codigo,
 
-        v.nome
+        v.nome AS vacina
 
       FROM agendamentos_vacina av
 
