@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { AuthService } from "../services/authService";
 import { UsuarioService } from "../services/usuarioService";
 import { PessoaService } from "../services/pessoaService";
+import { NotificacaoService } from "../services/notificacaoService";
 import { PerfilUsuario } from "../enums/perfilUsuario";
 import * as usuarioRepository from "../repositories/usuarioRepository";
 
@@ -112,6 +113,17 @@ export class AuthController {
         email,
         data_nascimento: dataNascimento
       });
+
+      /*
+      Não bloqueia o cadastro se o e-mail falhar
+      (Gmail fora do ar, credencial errada, etc):
+      o EmailService já nunca lança erro, mas o
+      await é feito à parte por clareza de intenção.
+      */
+      NotificacaoService.notificarBoasVindas(
+        email,
+        nome
+      );
 
       const {
         token,

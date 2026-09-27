@@ -16,6 +16,9 @@ import cookieParser from "cookie-parser";
 import { configurarBanco }
   from "./database/configurarBanco";
 
+import { iniciarJobDeNotificacoes }
+  from "./jobs/notificacaoJob";
+
 import { autenticar, exigirAdmin }
   from "./middlewares/authMiddleware";
 
@@ -367,6 +370,15 @@ async function iniciarServidor() {
     ----------------------------------
     */
     await configurarBanco();
+
+    /*
+    ----------------------------------
+    AGENDA NOTIFICAÇÕES DIÁRIAS
+    ----------------------------------
+
+    Vacinas pendentes + agendamentos próximos.
+    */
+    iniciarJobDeNotificacoes();
 
     /*
     ----------------------------------
