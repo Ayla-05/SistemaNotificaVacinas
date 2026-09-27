@@ -60,7 +60,7 @@ function obterTransportador() {
 
 const REMETENTE =
   process.env.EMAIL_FROM ||
-  `ImuniTrack <${process.env.EMAIL_USER}>`;
+  `Notifica Vacinas <${process.env.EMAIL_USER}>`;
 
 export class EmailService {
 
@@ -142,10 +142,10 @@ export class EmailService {
 
     return this.enviar(
       destinatario,
-      "Bem-vindo(a) ao ImuniTrack!",
+      "Bem-vindo(a) ao Notifica Vacinas!",
       modeloBase(`
         <h2>Olá, ${nome}!</h2>
-        <p>Sua conta no ImuniTrack foi criada com sucesso.</p>
+        <p>Sua conta no Notifica Vacinas foi criada com sucesso.</p>
         <p>Agora você pode acompanhar sua carteira de vacinação,
         ver quais doses estão em dia ou pendentes, e escanear
         carteirinhas físicas para atualizar seu histórico automaticamente.</p>
@@ -247,13 +247,13 @@ function modeloBase(conteudo: string): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #059669, #0284c7); padding: 20px; border-radius: 12px 12px 0 0;">
-        <span style="color: white; font-size: 18px; font-weight: bold;">ImuniTrack</span>
+        <span style="color: white; font-size: 18px; font-weight: bold;">Notifica Vacinas</span>
       </div>
       <div style="border: 1px solid #e2e8f0; border-top: none; padding: 24px; border-radius: 0 0 12px 12px; color: #1e293b;">
         ${conteudo}
       </div>
       <p style="color: #94a3b8; font-size: 12px; margin-top: 16px;">
-        Este é um e-mail automático do ImuniTrack. Não é necessário responder.
+        Este é um e-mail automático do Notifica Vacinas. Não é necessário responder.
       </p>
     </div>
   `;

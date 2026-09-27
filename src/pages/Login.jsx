@@ -61,7 +61,7 @@ export default function Login() {
           <div className="icon-chip w-14 h-14 mb-3 shadow-md shadow-emerald-900/10">
             <ShieldCheck className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-wide">ImuniTrack</h1>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-wide">Notifica Vacinas</h1>
           <p className="text-sm text-slate-500 mt-1">Sua carteira de vacinação, sempre em dia.</p>
         </div>
 

@@ -50,7 +50,7 @@ export default function AppLayout() {
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-slate-800 text-lg tracking-wide">ImuniTrack</h1>
+              <h1 className="font-bold text-slate-800 text-lg tracking-wide">Notifica Vacinas</h1>
               <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">Cidadão</p>
             </div>
           </div>
