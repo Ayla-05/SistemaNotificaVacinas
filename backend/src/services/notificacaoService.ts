@@ -125,7 +125,7 @@ export class NotificacaoService {
 
       await SmsService.enviar(
         pessoa.telefone,
-        `ImuniTrack: ${nomeVacina} (${dose}) registrada na carteira de ${pessoa.nome}.`
+        `Notifica Vacinas: ${nomeVacina} (${dose}) registrada na carteira de ${pessoa.nome}.`
       );
 
     }
