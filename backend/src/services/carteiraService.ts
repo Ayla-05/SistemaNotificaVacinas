@@ -2,6 +2,7 @@ import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as vacinaRepository from "../repositories/vacinaRepository";
 import * as registroVacinacaoRepository from "../repositories/registroVacinacaoRepository";
 import * as doseVacinaRepository from "../repositories/doseVacinaRepository";
+import { NotificacaoService } from "./notificacaoService";
 
 /*
 ==================================================
@@ -157,12 +158,30 @@ export class CarteiraService {
       );
     }
 
-    return await doseVacinaRepository
-      .registrarDose(
-        registroVacinacaoId,
-        numeroDose,
-        tipo
+    const doseId =
+      await doseVacinaRepository
+        .registrarDose(
+          registroVacinacaoId,
+          numeroDose,
+          tipo
+        );
+
+    /*
+    Dispara em segundo plano (não bloqueia a resposta
+    da API nem falha o registro se o e-mail não sair).
+    */
+    const vacina =
+      await vacinaRepository.buscarVacinaPorId(
+        registro.vacina_id
       );
+
+    NotificacaoService.notificarRegistroDose(
+      registro.pessoa_id,
+      (vacina as any)?.nome ?? "Vacina",
+      tipo
+    );
+
+    return doseId;
 
   }
 
@@ -365,6 +384,12 @@ export class CarteiraService {
               : null
         }
       );
+
+    NotificacaoService.notificarRegistroDose(
+      pessoaId,
+      vacina.nome,
+      dados.dose || "Não especificada"
+    );
 
     return {
       registroId,
