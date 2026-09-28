@@ -6,31 +6,61 @@ import {
   logout as apiLogout,
   registrar as apiRegistrar,
   obterUsuarioAtual,
-  obterPessoasDoUsuario
+  obterPessoasDoUsuario,
+  obterDependentes
 } from '../services/api';
 
 const AuthContext = createContext(null);
 
+/** Normaliza um registro de dependente (pessoa_id) para o mesmo formato de uma pessoa titular (id). */
+function normalizarDependente(dependente) {
+  return {
+    id: dependente.pessoa_id,
+    nome: dependente.nome,
+    data_nascimento: dependente.data_nascimento,
+    email: dependente.email,
+    telefone: dependente.telefone,
+    parentesco: dependente.parentesco
+  };
+}
+
 /**
  * Provider de Autenticação
  *
- * Fonte da verdade sobre "quem está logado". Ao montar, verifica se já
- * existe uma sessão válida (cookie httpOnly) chamando /auth/me; se sim,
- * carrega também a(s) pessoa(s) vinculadas à conta (hoje só o titular,
- * já que o vínculo de dependentes ainda não tem UI própria).
+ * Fonte da verdade sobre "quem está logado" e sobre qual pessoa
+ * (titular ou dependente) está sendo visualizada no momento.
+ *
+ * Ao montar, verifica se já existe uma sessão válida (cookie httpOnly)
+ * chamando /auth/me; se sim, carrega o titular da conta e a lista de
+ * dependentes vinculados a ele, formando a lista de pessoas que podem
+ * ser selecionadas no cabeçalho.
  */
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
-  const [pessoaAtiva, setPessoaAtiva] = useState(null);
+  const [pessoas, setPessoas] = useState([]);
+  const [pessoaAtiva, setPessoaAtivaState] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
-  async function carregarPessoas(usuarioLogado) {
+  async function carregarPessoas(usuarioLogado, manterPessoaAtivaId) {
     try {
-      const pessoas = await obterPessoasDoUsuario(usuarioLogado.id);
-      setPessoaAtiva(pessoas?.[0] ?? null);
+      const titulares = await obterPessoasDoUsuario(usuarioLogado.id);
+      const titular = titulares?.[0] ?? null;
+
+      let lista = titular ? [titular] : [];
+
+      if (titular) {
+        const dependentes = await obterDependentes(titular.id);
+        lista = [...lista, ...dependentes.map(normalizarDependente)];
+      }
+
+      setPessoas(lista);
+
+      const pessoaMantida = lista.find((p) => p.id === manterPessoaAtivaId);
+      setPessoaAtivaState(pessoaMantida ?? lista[0] ?? null);
     } catch (erro) {
       console.error('Falha ao carregar pessoas do usuário:', erro);
-      setPessoaAtiva(null);
+      setPessoas([]);
+      setPessoaAtivaState(null);
     }
   }
 
@@ -68,12 +98,36 @@ export function AuthProvider({ children }) {
   async function logout() {
     await apiLogout();
     setUsuario(null);
-    setPessoaAtiva(null);
+    setPessoas([]);
+    setPessoaAtivaState(null);
+  }
+
+  /** Troca qual pessoa (titular ou dependente) está sendo visualizada. */
+  function selecionarPessoa(pessoaId) {
+    const encontrada = pessoas.find((p) => p.id === pessoaId);
+    if (encontrada) setPessoaAtivaState(encontrada);
+  }
+
+  /** Rebusca titular + dependentes (após editar perfil ou add/remover dependente). */
+  async function recarregarPessoas() {
+    if (usuario) {
+      await carregarPessoas(usuario, pessoaAtiva?.id);
+    }
   }
 
   return (
     <AuthContext.Provider
-      value={{ usuario, pessoaAtiva, carregando, login, registrar, logout }}
+      value={{
+        usuario,
+        pessoas,
+        pessoaAtiva,
+        carregando,
+        login,
+        registrar,
+        logout,
+        selecionarPessoa,
+        recarregarPessoas
+      }}
     >
       {children}
     </AuthContext.Provider>

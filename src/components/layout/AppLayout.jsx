@@ -9,7 +9,11 @@ import {
   ShieldCheck,
   LogOut,
   Bell,
-  UserCircle
+  UserCircle,
+  UserCog,
+  Users,
+  ChevronDown,
+  Syringe
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -40,7 +44,7 @@ const linkInativo =
  * Estrutura: Sidebar fixa à esquerda (estilo "vidro") + Header + Conteúdo
  */
 export default function AppLayout() {
-  const { usuario, pessoaAtiva, logout } = useAuth();
+  const { usuario, pessoas, pessoaAtiva, selecionarPessoa, logout } = useAuth();
   const navigate = useNavigate();
 
   async function handleSair() {
@@ -78,6 +82,13 @@ export default function AppLayout() {
             </NavLink>
 
             <NavLink
+              to="/carteira"
+              className={({ isActive }) => `${linkBase} ${isActive ? linkAtivo : linkInativo}`}
+            >
+              <Syringe className="w-5 h-5" /> Carteira de Vacinação
+            </NavLink>
+
+            <NavLink
               to="/scan"
               className={({ isActive }) => `${linkBase} ${isActive ? linkAtivo : linkInativo}`}
             >
@@ -89,6 +100,20 @@ export default function AppLayout() {
               className={({ isActive }) => `${linkBase} ${isActive ? linkAtivo : linkInativo}`}
             >
               <Calendar className="w-5 h-5" /> Calendário Vacinal
+            </NavLink>
+
+            <NavLink
+              to="/dependentes"
+              className={({ isActive }) => `${linkBase} ${isActive ? linkAtivo : linkInativo}`}
+            >
+              <Users className="w-5 h-5" /> Dependentes
+            </NavLink>
+
+            <NavLink
+              to="/perfil"
+              className={({ isActive }) => `${linkBase} ${isActive ? linkAtivo : linkInativo}`}
+            >
+              <UserCog className="w-5 h-5" /> Meu Perfil
             </NavLink>
           </nav>
         </div>
@@ -112,15 +137,26 @@ export default function AppLayout() {
         {/* HEADER SUPERIOR (Barra de Topo, estilo vidro) */}
         <header className="h-16 shrink-0 card-glass px-6 flex items-center justify-between">
 
-          {/* Pessoa titular da carteira vacinal exibida */}
+          {/* Pessoa cuja carteira vacinal está sendo exibida (titular ou dependente) */}
           <div className="flex items-center gap-3">
             <UserCircle className="w-7 h-7 text-emerald-600" />
             <div>
               <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Carteira de:</p>
               {pessoaAtiva ? (
-                <p className="font-bold text-slate-800 text-sm">
-                  {pessoaAtiva.nome} ({calcularIdade(pessoaAtiva.data_nascimento)} anos)
-                </p>
+                <div className="relative flex items-center gap-1 cursor-pointer group">
+                  <select
+                    value={pessoaAtiva.id}
+                    onChange={(e) => selecionarPessoa(Number(e.target.value))}
+                    className="appearance-none font-bold text-slate-800 pr-6 bg-transparent focus:outline-none cursor-pointer text-sm"
+                  >
+                    {pessoas.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome} ({calcularIdade(p.data_nascimento)} anos)
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-500 absolute right-0 pointer-events-none group-hover:text-emerald-600 transition" />
+                </div>
               ) : (
                 <p className="font-semibold text-slate-400 text-sm">Nenhuma pessoa vinculada</p>
               )}

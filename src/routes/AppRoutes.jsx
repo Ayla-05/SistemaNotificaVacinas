@@ -15,6 +15,9 @@ import Login from '../pages/Login';
 import Dashboard from '../pages/Dashboard';
 import Scan from '../pages/Scan';
 import Calendario from '../pages/Calendario';
+import Carteira from '../pages/Carteira';
+import Perfil from '../pages/Perfil';
+import Dependentes from '../pages/Dependentes';
 
 /**
  * Configuração Principal de Rotas da Aplicação Web
@@ -45,8 +48,11 @@ export default function AppRoutes() {
 
               {/* Rotas do Usuário Cidadão */}
               <Route path="dashboard" element={<Dashboard />} />
+              <Route path="carteira" element={<Carteira />} />
               <Route path="scan" element={<Scan />} />
               <Route path="calendario" element={<Calendario />} />
+              <Route path="dependentes" element={<Dependentes />} />
+              <Route path="perfil" element={<Perfil />} />
 
               {/* Fallback: redireciona URLs desconhecidas para o Dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
