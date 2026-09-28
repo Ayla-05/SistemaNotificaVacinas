@@ -9,10 +9,24 @@ import {
   ShieldCheck,
   LogOut,
   Bell,
-  ChevronDown
+  UserCircle
 } from 'lucide-react';
-import { useDependente } from '../../context/DependenteContext';
 import { useAuth } from '../../context/AuthContext';
+
+/** Calcula a idade a partir da data de nascimento (AAAA-MM-DD). */
+function calcularIdade(dataNascimento) {
+  const hoje = new Date();
+  const nascimento = new Date(dataNascimento);
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+
+  const aindaNaoFezAniversario =
+    hoje.getMonth() < nascimento.getMonth() ||
+    (hoje.getMonth() === nascimento.getMonth() && hoje.getDate() < nascimento.getDate());
+
+  if (aindaNaoFezAniversario) idade--;
+
+  return idade;
+}
 
 const linkBase =
   'flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all';
@@ -26,8 +40,7 @@ const linkInativo =
  * Estrutura: Sidebar fixa à esquerda (estilo "vidro") + Header + Conteúdo
  */
 export default function AppLayout() {
-  const { dependenteAtivo, setDependenteAtivo, dependentesMock } = useDependente();
-  const { usuario, logout } = useAuth();
+  const { usuario, pessoaAtiva, logout } = useAuth();
   const navigate = useNavigate();
 
   async function handleSair() {
@@ -99,25 +112,18 @@ export default function AppLayout() {
         {/* HEADER SUPERIOR (Barra de Topo, estilo vidro) */}
         <header className="h-16 shrink-0 card-glass px-6 flex items-center justify-between">
 
-          {/* Seletor de Dependente - Troca Global */}
+          {/* Pessoa titular da carteira vacinal exibida */}
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{dependenteAtivo.avatar}</span>
+            <UserCircle className="w-7 h-7 text-emerald-600" />
             <div>
               <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Carteira de:</p>
-              <div className="relative flex items-center gap-1 cursor-pointer group">
-                <select
-                  value={dependenteAtivo.id}
-                  onChange={(e) => setDependenteAtivo(dependentesMock.find(d => d.id === e.target.value))}
-                  className="appearance-none font-bold text-slate-800 pr-6 bg-transparent focus:outline-none cursor-pointer text-sm"
-                >
-                  {dependentesMock.map((dep) => (
-                    <option key={dep.id} value={dep.id}>
-                      {dep.nome} ({dep.idade})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-slate-500 absolute right-0 pointer-events-none group-hover:text-emerald-600 transition" />
-              </div>
+              {pessoaAtiva ? (
+                <p className="font-bold text-slate-800 text-sm">
+                  {pessoaAtiva.nome} ({calcularIdade(pessoaAtiva.data_nascimento)} anos)
+                </p>
+              ) : (
+                <p className="font-semibold text-slate-400 text-sm">Nenhuma pessoa vinculada</p>
+              )}
             </div>
           </div>
 

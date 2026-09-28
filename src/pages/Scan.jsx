@@ -10,7 +10,6 @@ import {
   X,
   AlertTriangle
 } from 'lucide-react';
-import { useDependente } from '../context/DependenteContext';
 import { useAuth } from '../context/AuthContext';
 import { analisarCarteirinha, confirmarScanNaCarteira } from '../services/api';
 
@@ -20,7 +19,6 @@ import { analisarCarteirinha, confirmarScanNaCarteira } from '../services/api';
  * → Modal de Revisão → confirmação salva na carteira vacinal.
  */
 export default function Scan() {
-  const { dependenteAtivo } = useDependente();
   const { pessoaAtiva } = useAuth();
 
   const inputArquivoRef = useRef(null);
@@ -136,7 +134,7 @@ export default function Scan() {
           </span>
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Envie a foto ou PDF da carteirinha física de <strong className="text-slate-700">{dependenteAtivo.nome}</strong>.
+          Envie a foto ou PDF da carteirinha física de <strong className="text-slate-700">{pessoaAtiva?.nome ?? '—'}</strong>.
           A IA fará a leitura automática dos registros.
         </p>
       </div>
@@ -251,7 +249,7 @@ export default function Scan() {
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-emerald-800">
-                    <strong>Sucesso:</strong> 1 novo registro identificado para <strong>{dependenteAtivo.nome}</strong>.
+                    <strong>Sucesso:</strong> 1 novo registro identificado para <strong>{pessoaAtiva?.nome ?? '—'}</strong>.
                     <br />
                     <span className="text-emerald-600">Revise os campos antes de salvar.</span>
                   </p>

@@ -3,9 +3,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-// Providers de Estado Global
+// Provider de Estado Global
 import { AuthProvider } from '../context/AuthContext';
-import { DependenteProvider } from '../context/DependenteContext';
 
 // Proteção de rota
 import RotaProtegida from '../components/RotaProtegida';
@@ -26,7 +25,6 @@ export default function AppRoutes() {
     <BrowserRouter>
       {/* AuthProvider envolve tudo: /login também precisa saber se já existe sessão */}
       <AuthProvider>
-        <DependenteProvider>
           <Routes>
 
             {/* Rota pública de autenticação (sem sidebar/header) */}
@@ -55,7 +53,6 @@ export default function AppRoutes() {
 
             </Route>
           </Routes>
-        </DependenteProvider>
       </AuthProvider>
     </BrowserRouter>
   );
