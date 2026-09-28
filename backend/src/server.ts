@@ -52,6 +52,12 @@ import vacinalRoutes
 import scanRoutes
   from "./routes/scanRoutes";
 
+import dependenteRoutes
+  from "./routes/dependenteRoutes";
+
+import grupoEspecialPessoaRoutes
+  from "./routes/grupoEspecialPessoaRoutes";
+
 /*
 ==================================================
 SERVER
@@ -318,6 +324,28 @@ app.use(
   "/scan",
   autenticar,
   scanRoutes
+);
+
+/*
+==================================================
+ROTAS DE DEPENDENTES
+==================================================
+*/
+app.use(
+  "/dependentes",
+  autenticar,
+  dependenteRoutes
+);
+
+/*
+==================================================
+ROTAS DE GRUPOS ESPECIAIS
+==================================================
+*/
+app.use(
+  "/grupos-especiais",
+  autenticar,
+  grupoEspecialPessoaRoutes
 );
 
 /*
