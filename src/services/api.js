@@ -101,6 +101,115 @@ export async function obterPessoasDoUsuario(idUsuario) {
   return tratarResposta(response);
 }
 
+/**
+ * Dados completos de uma pessoa (usado na tela de Perfil).
+ */
+export async function obterPessoa(idPessoa) {
+  const response = await chamarApi(`/pessoas/${idPessoa}`);
+  return tratarResposta(response);
+}
+
+/**
+ * Atualiza os dados cadastrais de uma pessoa. Aceita atualização
+ * parcial (só os campos passados são alterados).
+ */
+export async function atualizarPessoa(idPessoa, dados) {
+  const response = await chamarApi(`/pessoas/${idPessoa}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(dados)
+  });
+
+  return tratarResposta(response);
+}
+
+/* ==================================================
+   DEPENDENTES
+   ================================================== */
+
+/**
+ * Dependentes (filhos, pais, etc) vinculados a uma pessoa responsável.
+ */
+export async function obterDependentes(idPessoaResponsavel) {
+  const response = await chamarApi(`/dependentes/pessoa/${idPessoaResponsavel}`);
+  return tratarResposta(response);
+}
+
+/**
+ * Cadastra uma nova pessoa já vinculada como dependente.
+ */
+export async function cadastrarDependente({
+  responsavelPessoaId,
+  nome,
+  data_nascimento,
+  parentesco,
+  email,
+  telefone
+}) {
+  const response = await chamarApi("/dependentes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ responsavelPessoaId, nome, data_nascimento, parentesco, email, telefone })
+  });
+
+  return tratarResposta(response);
+}
+
+/**
+ * Remove o vínculo de dependência (a pessoa em si permanece cadastrada).
+ */
+export async function removerDependente(responsavelId, dependenteId) {
+  const response = await chamarApi(`/dependentes/${responsavelId}/${dependenteId}`, {
+    method: "DELETE"
+  });
+
+  return tratarResposta(response);
+}
+
+/* ==================================================
+   GRUPOS ESPECIAIS (RISCO)
+   ================================================== */
+
+/**
+ * Catálogo de grupos especiais disponíveis (gestante, idoso, etc).
+ */
+export async function obterCatalogoGruposEspeciais() {
+  const response = await chamarApi("/grupos-especiais");
+  return tratarResposta(response);
+}
+
+/**
+ * Grupos especiais vinculados a uma pessoa.
+ */
+export async function obterGruposDaPessoa(idPessoa) {
+  const response = await chamarApi(`/grupos-especiais/pessoa/${idPessoa}`);
+  return tratarResposta(response);
+}
+
+/**
+ * Vincula a pessoa a um grupo especial.
+ */
+export async function vincularGrupoEspecial(idPessoa, grupoEspecialId) {
+  const response = await chamarApi(`/grupos-especiais/pessoa/${idPessoa}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ grupoEspecialId })
+  });
+
+  return tratarResposta(response);
+}
+
+/**
+ * Remove o vínculo da pessoa com um grupo especial.
+ */
+export async function desvincularGrupoEspecial(idPessoa, grupoEspecialId) {
+  const response = await chamarApi(`/grupos-especiais/pessoa/${idPessoa}/${grupoEspecialId}`, {
+    method: "DELETE"
+  });
+
+  return tratarResposta(response);
+}
+
 /* ==================================================
    RESUMO VACINAL / CARTEIRA / CALENDÁRIO
    ================================================== */
