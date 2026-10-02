@@ -116,7 +116,12 @@ REGISTRAR DOSE
 export function registrarDose(
   registroVacinacaoId: number,
   numeroDose: number,
-  tipo: string
+  tipo: string,
+  detalhes?: {
+    dataAplicacao?: string | null;
+    lote?: string | null;
+    observacao?: string | null;
+  }
 ): Promise<number> {
 
   return new Promise((resolve, reject) => {
@@ -126,14 +131,20 @@ export function registrarDose(
       INSERT INTO doses_vacina (
         registro_vacinacao_id,
         numero_dose,
-        tipo
+        tipo,
+        data_aplicacao,
+        lote,
+        observacao
       )
-      VALUES (?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?)
       `,
       [
         registroVacinacaoId,
         numeroDose,
-        tipo
+        tipo,
+        detalhes?.dataAplicacao ?? null,
+        detalhes?.lote ?? null,
+        detalhes?.observacao ?? null
       ],
       function (err) {
 

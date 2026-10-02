@@ -1,6 +1,36 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 
 import { PessoaController } from "../controllers/pessoaController";
+
+/*
+Garante que um usuário só liste as pessoas
+vinculadas à própria conta (evita IDOR trocando
+o :usuarioId da URL). Administradores passam livre.
+*/
+function usuarioEDonoDaConta(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+
+  const usuarioId = Number(
+    req.params.usuarioId
+  );
+
+  if (
+    req.perfilUsuario !== "ADMIN" &&
+    usuarioId !== req.usuarioId
+  ) {
+
+    return res.status(403).json({
+      erro: "Você não tem acesso a esta conta."
+    });
+
+  }
+
+  next();
+
+}
 
 /*
 ==================================================
@@ -45,6 +75,7 @@ GET /pessoas/usuario/:usuarioId
 */
 router.get(
   "/usuario/:usuarioId",
+  usuarioEDonoDaConta,
   PessoaController.listarPorUsuario
 );
 

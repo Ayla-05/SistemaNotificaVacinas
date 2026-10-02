@@ -1,12 +1,29 @@
+/*
+Carrega as variáveis do .env antes de
+qualquer outro módulo que dependa delas
+(JWT_SECRET, FRONTEND_URL, PORT, etc).
+*/
+import "dotenv/config";
+
 import express, {
   Request,
   Response
 } from "express";
 
 import cors from "cors";
+import cookieParser from "cookie-parser";
 
 import { configurarBanco }
   from "./database/configurarBanco";
+
+import { iniciarJobDeNotificacoes }
+  from "./jobs/notificacaoJob";
+
+import { autenticar, exigirAdmin }
+  from "./middlewares/authMiddleware";
+
+import authRoutes
+  from "./routes/authRoutes";
 
 import usuarioRoutes
   from "./routes/usuarioRoutes";
@@ -28,6 +45,18 @@ import regraVacinalRoutes
 
 import agendamentoRoutes
   from "./routes/agendamentoRoutes";
+
+import vacinalRoutes
+  from "./routes/vacinalRoutes";
+
+import scanRoutes
+  from "./routes/scanRoutes";
+
+import dependenteRoutes
+  from "./routes/dependenteRoutes";
+
+import grupoEspecialPessoaRoutes
+  from "./routes/grupoEspecialPessoaRoutes";
 
 /*
 ==================================================
@@ -82,17 +111,56 @@ MIDDLEWARES GLOBAIS
 */
 
 /*
-Permite acesso do frontend
+Permite acesso do frontend.
+
+Em produção, restrito exatamente à origem
+configurada em FRONTEND_URL. Em desenvolvimento
+(sem NODE_ENV=production), aceita qualquer porta
+em localhost/127.0.0.1 — o Vite muda de porta
+sozinho (5173, 5174...) quando a anterior já
+está ocupada, e travar numa porta fixa só causa
+"Failed to fetch" sem motivo aparente.
+
+"credentials: true" porque o cookie de sessão
+(httpOnly) precisa trafegar entre origens
+diferentes (frontend numa porta, backend noutra).
 */
+const ORIGEM_LOCALHOST =
+  /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
+
 app.use(
-  cors()
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_URL
+        : (origin, callback) => {
+
+            const permitido =
+              !origin ||
+              ORIGEM_LOCALHOST.test(origin) ||
+              origin === process.env.FRONTEND_URL;
+
+            callback(
+              null,
+              permitido
+            );
+
+          },
+    credentials: true
+  })
 );
 
 /*
-Permite JSON
+Permite JSON.
+
+Limite elevado para 10mb: a foto da carteirinha
+enviada ao Claude Vision viaja em base64 dentro
+do corpo da requisição.
 */
 app.use(
-  express.json()
+  express.json({
+    limit: "10mb"
+  })
 );
 
 /*
@@ -102,6 +170,13 @@ app.use(
   express.urlencoded({
     extended: true
   })
+);
+
+/*
+Lê o cookie httpOnly que carrega o token JWT
+*/
+app.use(
+  cookieParser()
 );
 
 /*
@@ -139,11 +214,23 @@ app.get(
 
 /*
 ==================================================
-ROTAS DE USUÁRIOS
+ROTAS DE AUTENTICAÇÃO (PÚBLICAS)
+==================================================
+*/
+app.use(
+  "/auth",
+  authRoutes
+);
+
+/*
+==================================================
+ROTAS DE USUÁRIOS (ADMIN)
 ==================================================
 */
 app.use(
   "/usuarios",
+  autenticar,
+  exigirAdmin,
   usuarioRoutes
 );
 
@@ -154,6 +241,7 @@ ROTAS DE PESSOAS
 */
 app.use(
   "/pessoas",
+  autenticar,
   pessoaRoutes
 );
 
@@ -161,6 +249,10 @@ app.use(
 ==================================================
 ROTAS DE VACINAS
 ==================================================
+
+Lista de vacinas é informação pública do
+sistema (não é dado pessoal), por isso
+não exige login.
 */
 app.use(
   "/vacinas",
@@ -174,6 +266,7 @@ ROTAS DE CARTEIRA VACINAL
 */
 app.use(
   "/carteira",
+  autenticar,
   carteiraRoutes
 );
 
@@ -184,16 +277,19 @@ ROTAS DE CALENDÁRIO VACINAL
 */
 app.use(
   "/calendario",
+  autenticar,
   calendarioRoutes
 );
 
 /*
 ==================================================
-ROTAS DE REGRAS VACINAIS
+ROTAS DE REGRAS VACINAIS (ADMIN)
 ==================================================
 */
 app.use(
   "/regras-vacinais",
+  autenticar,
+  exigirAdmin,
   regraVacinalRoutes
 );
 
@@ -204,7 +300,52 @@ ROTAS DE AGENDAMENTOS
 */
 app.use(
   "/agendamentos",
+  autenticar,
   agendamentoRoutes
+);
+
+/*
+==================================================
+ROTAS DE PENDÊNCIAS (RESUMO VACINAL)
+==================================================
+*/
+app.use(
+  "/pendencias",
+  autenticar,
+  vacinalRoutes
+);
+
+/*
+==================================================
+ROTAS DE SCAN (CLAUDE VISION)
+==================================================
+*/
+app.use(
+  "/scan",
+  autenticar,
+  scanRoutes
+);
+
+/*
+==================================================
+ROTAS DE DEPENDENTES
+==================================================
+*/
+app.use(
+  "/dependentes",
+  autenticar,
+  dependenteRoutes
+);
+
+/*
+==================================================
+ROTAS DE GRUPOS ESPECIAIS
+==================================================
+*/
+app.use(
+  "/grupos-especiais",
+  autenticar,
+  grupoEspecialPessoaRoutes
 );
 
 /*
@@ -257,10 +398,37 @@ async function iniciarServidor() {
 
     /*
     ----------------------------------
+    VALIDA VARIÁVEIS DE AMBIENTE
+    ----------------------------------
+
+    O sistema não sobe sem um segredo
+    de assinatura de sessão configurado.
+    */
+    if (!process.env.JWT_SECRET) {
+
+      throw new Error(
+        "JWT_SECRET não definido no .env. " +
+        "Defina uma string longa e aleatória " +
+        "antes de iniciar o servidor."
+      );
+
+    }
+
+    /*
+    ----------------------------------
     CONFIGURA BANCO
     ----------------------------------
     */
     await configurarBanco();
+
+    /*
+    ----------------------------------
+    AGENDA NOTIFICAÇÕES DIÁRIAS
+    ----------------------------------
+
+    Vacinas pendentes + agendamentos próximos.
+    */
+    iniciarJobDeNotificacoes();
 
     /*
     ----------------------------------

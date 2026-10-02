@@ -6,32 +6,35 @@ import {
   MapPin,
   UserCircle
 } from "lucide-react";
-
-const API_URL = "http://localhost:3001";
+import { obterPendencias } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
+  const { pessoaAtiva } = useAuth();
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(null);
 
   useEffect(() => {
+    if (!pessoaAtiva) {
+      setLoading(false);
+      return;
+    }
+
     async function carregar() {
       try {
-        const response = await fetch(
-          `${API_URL}/pendencias/1`
-        );
-
-        const json = await response.json();
-
-        setDados(json);
+        const resumo = await obterPendencias(pessoaAtiva.id);
+        setDados(resumo);
       } catch (erro) {
         console.error(erro);
+        setErro(erro.message);
       } finally {
         setLoading(false);
       }
     }
 
     carregar();
-  }, []);
+  }, [pessoaAtiva]);
 
   if (loading) {
     return (
@@ -50,7 +53,9 @@ export default function Dashboard() {
   if (!dados) {
     return (
       <div className="card">
-        Erro ao carregar dados.
+        {erro
+          ? `Erro ao carregar dados: ${erro}`
+          : "Nenhuma pessoa vinculada à sua conta ainda."}
       </div>
     );
   }
@@ -71,7 +76,7 @@ export default function Dashboard() {
 
       {/* HERO */}
 
-      <div className="bg-gradient-to-r from-green-700 via-green-600 to-emerald-500 rounded-3xl p-8 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-500 to-sky-500 rounded-3xl p-8 text-white shadow-xl">
 
         <div className="flex flex-col lg:flex-row justify-between gap-8">
 

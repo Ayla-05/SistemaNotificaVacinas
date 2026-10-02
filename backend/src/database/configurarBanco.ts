@@ -51,6 +51,7 @@ import * as regrasSeedModule
 import * as adminSeedModule
   from "./seeds/adminSeed";
 
+
 const executarVacinasSeed =
   (vacinasSeedModule as any).executarVacinasSeed;
 

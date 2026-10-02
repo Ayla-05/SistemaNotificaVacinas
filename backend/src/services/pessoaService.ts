@@ -227,9 +227,21 @@ export class PessoaService {
       );
     }
 
+    /*
+    atualizarPessoa faz UPDATE de todas as colunas
+    de uma vez - por isso mesclamos com o registro
+    atual antes de salvar. Sem isso, um PUT parcial
+    (ex.: só trocando o telefone) apagaria os demais
+    campos que não vieram no corpo da requisição.
+    */
+    const dadosCompletos = {
+      ...pessoa,
+      ...dados
+    };
+
     return await pessoaRepository.atualizarPessoa(
       id,
-      dados
+      dadosCompletos
     );
 
   }
