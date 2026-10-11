@@ -136,7 +136,8 @@ export function criarUsuario(
   nome: string,
   email: string,
   senha: string,
-  perfil: string = "USUARIO"
+  perfil: string = "USUARIO",
+  emailVerificado: boolean = false
 ): Promise<number> {
 
   return new Promise((resolve, reject) => {
@@ -147,15 +148,17 @@ export function criarUsuario(
         nome,
         email,
         senha,
-        perfil
+        perfil,
+        email_verificado
       )
-      VALUES (?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?)
       `,
       [
         nome,
         email,
         senha,
-        perfil
+        perfil,
+        emailVerificado ? 1 : 0
       ],
       function (err) {
 
@@ -165,6 +168,90 @@ export function criarUsuario(
         }
 
         resolve(this.lastID);
+
+      }
+    );
+
+  });
+
+}
+
+/*
+==================================================
+DEFINIR CÓDIGO DE VERIFICAÇÃO DE E-MAIL
+==================================================
+
+Usado no cadastro e no reenvio de código.
+*/
+export function definirCodigoVerificacao(
+  id: number,
+  codigo: string,
+  expiraEm: string
+): Promise<number> {
+
+  return new Promise((resolve, reject) => {
+
+    db.run(
+      `
+      UPDATE usuarios
+      SET
+        codigo_verificacao = ?,
+        codigo_verificacao_expira = ?
+      WHERE id = ?
+      `,
+      [
+        codigo,
+        expiraEm,
+        id
+      ],
+      function (err) {
+
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(this.changes);
+
+      }
+    );
+
+  });
+
+}
+
+/*
+==================================================
+CONFIRMAR E-MAIL
+==================================================
+
+Marca o e-mail como verificado e limpa o código
+(não pode mais ser reutilizado depois de confirmado).
+*/
+export function confirmarEmailUsuario(
+  id: number
+): Promise<number> {
+
+  return new Promise((resolve, reject) => {
+
+    db.run(
+      `
+      UPDATE usuarios
+      SET
+        email_verificado = 1,
+        codigo_verificacao = NULL,
+        codigo_verificacao_expira = NULL
+      WHERE id = ?
+      `,
+      [id],
+      function (err) {
+
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(this.changes);
 
       }
     );

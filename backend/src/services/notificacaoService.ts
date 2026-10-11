@@ -74,12 +74,33 @@ export class NotificacaoService {
   */
   static async notificarBoasVindas(
     email: string,
-    nome: string
+    nome: string,
+    codigoVerificacao: string
   ) {
 
     return EmailService.enviarBoasVindas(
       email,
-      nome
+      nome,
+      codigoVerificacao
+    );
+
+  }
+
+  /*
+  ==================================================
+  1b. REENVIO DE CÓDIGO DE VERIFICAÇÃO
+  ==================================================
+  */
+  static async notificarCodigoVerificacao(
+    email: string,
+    nome: string,
+    codigoVerificacao: string
+  ) {
+
+    return EmailService.enviarCodigoVerificacao(
+      email,
+      nome,
+      codigoVerificacao
     );
 
   }

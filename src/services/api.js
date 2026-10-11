@@ -16,7 +16,10 @@ async function tratarResposta(response) {
   const dados = await response.json();
 
   if (!response.ok) {
-    throw new Error(dados.erro || "Erro ao comunicar com o servidor.");
+    const erro = new Error(dados.erro || "Erro ao comunicar com o servidor.");
+    // Repassa campos extras do corpo (ex.: precisaVerificar, email) para quem chamou.
+    Object.assign(erro, dados);
+    throw erro;
   }
 
   return dados;
@@ -48,6 +51,34 @@ export async function registrar({ nome, email, senha, dataNascimento }) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ nome, email, senha, dataNascimento })
+  });
+
+  return tratarResposta(response);
+}
+
+/**
+ * Confirma o e-mail com o código de 6 dígitos recebido
+ * no cadastro (ou reenviado). Se válido, já devolve o
+ * usuário autenticado e define o cookie de sessão.
+ */
+export async function confirmarEmail({ email, codigo }) {
+  const response = await chamarApi("/auth/confirmar-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, codigo })
+  });
+
+  return tratarResposta(response);
+}
+
+/**
+ * Reenvia o código de confirmação para o e-mail informado.
+ */
+export async function reenviarCodigo(email) {
+  const response = await chamarApi("/auth/reenviar-codigo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
   });
 
   return tratarResposta(response);

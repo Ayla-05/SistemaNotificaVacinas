@@ -36,12 +36,180 @@ const JWT_SECRET =
 
 const JWT_EXPIRA_EM = "8h";
 
+/* Código de verificação válido por 15 minutos. */
+const MINUTOS_VALIDADE_CODIGO = 15;
+
 export interface TokenPayload {
   usuarioId: number;
   perfil: string;
 }
 
+/*
+Erro usado para sinalizar, de forma reconhecível pelo
+controller, que a senha confere mas o e-mail ainda não
+foi confirmado (o controller devolve um corpo diferente
+nesse caso, para o frontend saber pra onde redirecionar).
+*/
+export class EmailNaoVerificadoError extends Error {
+  constructor() {
+    super("E-mail ainda não confirmado.");
+    this.name = "EmailNaoVerificadoError";
+  }
+}
+
 export class AuthService {
+
+  /*
+  ==================================================
+  GERAR CÓDIGO DE VERIFICAÇÃO
+  ==================================================
+
+  Código numérico de 6 dígitos, válido por
+  MINUTOS_VALIDADE_CODIGO minutos.
+  */
+  static gerarCodigoVerificacao(): {
+    codigo: string;
+    expiraEm: string;
+  } {
+
+    const codigo = String(
+      Math.floor(100000 + Math.random() * 900000)
+    );
+
+    const expiraEm = new Date(
+      Date.now() + MINUTOS_VALIDADE_CODIGO * 60 * 1000
+    ).toISOString();
+
+    return { codigo, expiraEm };
+
+  }
+
+  /*
+  ==================================================
+  CONFIRMAR E-MAIL
+  ==================================================
+
+  Confere o código informado contra o que está salvo
+  para aquele e-mail e, se válido e dentro da validade,
+  marca o e-mail como verificado e já devolve uma sessão
+  (token + usuário), poupando um segundo login manual.
+  */
+  static async confirmarEmail(
+    email: string,
+    codigo: string
+  ) {
+
+    if (!email?.trim() || !codigo?.trim()) {
+      throw new Error(
+        "E-mail e código são obrigatórios."
+      );
+    }
+
+    const usuario =
+      await usuarioRepository.buscarUsuarioPorEmail(
+        email
+      );
+
+    if (!usuario) {
+      throw new Error(
+        "Usuário não encontrado."
+      );
+    }
+
+    if (usuario.email_verificado) {
+      throw new Error(
+        "Este e-mail já foi confirmado."
+      );
+    }
+
+    if (!usuario.codigo_verificacao) {
+      throw new Error(
+        "Nenhum código pendente — solicite o reenvio."
+      );
+    }
+
+    const expirado =
+      !usuario.codigo_verificacao_expira ||
+      new Date(usuario.codigo_verificacao_expira).getTime() < Date.now();
+
+    if (expirado) {
+      throw new Error(
+        "Código expirado — solicite o reenvio."
+      );
+    }
+
+    if (
+      String(codigo).trim() !==
+      String(usuario.codigo_verificacao).trim()
+    ) {
+      throw new Error(
+        "Código incorreto."
+      );
+    }
+
+    await usuarioRepository.confirmarEmailUsuario(
+      usuario.id
+    );
+
+    const token =
+      this.gerarToken({
+        usuarioId: usuario.id,
+        perfil: usuario.perfil
+      });
+
+    return {
+      token,
+      usuario: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        perfil: usuario.perfil
+      }
+    };
+
+  }
+
+  /*
+  ==================================================
+  REENVIAR CÓDIGO DE VERIFICAÇÃO
+  ==================================================
+  */
+  static async gerarNovoCodigoParaReenvio(
+    email: string
+  ) {
+
+    const usuario =
+      await usuarioRepository.buscarUsuarioPorEmail(
+        email
+      );
+
+    if (!usuario) {
+      throw new Error(
+        "Usuário não encontrado."
+      );
+    }
+
+    if (usuario.email_verificado) {
+      throw new Error(
+        "Este e-mail já foi confirmado."
+      );
+    }
+
+    const { codigo, expiraEm } =
+      this.gerarCodigoVerificacao();
+
+    await usuarioRepository.definirCodigoVerificacao(
+      usuario.id,
+      codigo,
+      expiraEm
+    );
+
+    return {
+      nome: usuario.nome,
+      codigo
+    };
+
+  }
 
   /*
   ==================================================
@@ -98,6 +266,15 @@ export class AuthService {
       throw new Error(
         credenciaisInvalidas
       );
+    }
+
+    /*
+    Só revela a pendência de verificação depois de
+    confirmar a senha (evita que alguém sem a senha
+    descubra se aquele e-mail já está verificado ou não).
+    */
+    if (!usuario.email_verificado) {
+      throw new EmailNaoVerificadoError();
     }
 
     const token =

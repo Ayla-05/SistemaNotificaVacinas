@@ -124,7 +124,8 @@ export class UsuarioService {
     email: string,
     senha: string,
     perfil: PerfilUsuario =
-      PerfilUsuario.USUARIO
+      PerfilUsuario.USUARIO,
+    emailVerificado: boolean = false
   ) {
 
     if (!nome?.trim()) {
@@ -187,7 +188,8 @@ export class UsuarioService {
       nome,
       email,
       senhaCriptografada,
-      perfil
+      perfil,
+      emailVerificado
     );
 
   }

@@ -137,18 +137,56 @@ export class EmailService {
   */
   static async enviarBoasVindas(
     destinatario: string,
-    nome: string
+    nome: string,
+    codigoVerificacao: string
   ) {
 
     return this.enviar(
       destinatario,
-      "Bem-vindo(a) ao Notifica Vacinas!",
+      "Confirme seu e-mail — Notifica Vacinas",
       modeloBase(`
         <h2>Olá, ${nome}!</h2>
         <p>Sua conta no Notifica Vacinas foi criada com sucesso.</p>
-        <p>Agora você pode acompanhar sua carteira de vacinação,
-        ver quais doses estão em dia ou pendentes, e escanear
-        carteirinhas físicas para atualizar seu histórico automaticamente.</p>
+        <p>Antes de começar, confirme seu e-mail digitando o código abaixo
+        na tela de verificação:</p>
+        <div style="text-align: center; margin: 20px 0;">
+          <span style="display: inline-block; background: #f0fdfa; border: 2px solid #059669; color: #065f46; font-size: 28px; font-weight: bold; letter-spacing: 6px; padding: 12px 24px; border-radius: 12px;">
+            ${codigoVerificacao}
+          </span>
+        </div>
+        <p style="color: #64748b; font-size: 13px;">Esse código é válido por 15 minutos.
+        Se você não criou essa conta, pode ignorar este e-mail.</p>
+        <p>Depois de confirmar, você poderá acompanhar sua carteira de vacinação,
+        ver quais doses estão em dia ou pendentes, e escanear carteirinhas
+        físicas para atualizar seu histórico automaticamente.</p>
+      `)
+    );
+
+  }
+
+  /*
+  ==================================================
+  REENVIO DE CÓDIGO DE VERIFICAÇÃO
+  ==================================================
+  */
+  static async enviarCodigoVerificacao(
+    destinatario: string,
+    nome: string,
+    codigoVerificacao: string
+  ) {
+
+    return this.enviar(
+      destinatario,
+      "Seu novo código de confirmação — Notifica Vacinas",
+      modeloBase(`
+        <h2>Olá, ${nome}!</h2>
+        <p>Aqui está seu novo código de confirmação:</p>
+        <div style="text-align: center; margin: 20px 0;">
+          <span style="display: inline-block; background: #f0fdfa; border: 2px solid #059669; color: #065f46; font-size: 28px; font-weight: bold; letter-spacing: 6px; padding: 12px 24px; border-radius: 12px;">
+            ${codigoVerificacao}
+          </span>
+        </div>
+        <p style="color: #64748b; font-size: 13px;">Esse código é válido por 15 minutos.</p>
       `)
     );
 

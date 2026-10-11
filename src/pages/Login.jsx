@@ -42,10 +42,14 @@ export default function Login() {
         await login(form.email, form.senha);
         navigate('/dashboard');
       } else {
-        await registrar(form);
-        navigate('/completar-cadastro');
+        const resultado = await registrar(form);
+        navigate('/confirmar-email', { state: { email: resultado.email } });
       }
     } catch (erroCapturado) {
+      if (erroCapturado.precisaVerificar) {
+        navigate('/confirmar-email', { state: { email: erroCapturado.email || form.email } });
+        return;
+      }
       setErro(erroCapturado.message);
     } finally {
       setCarregando(false);
