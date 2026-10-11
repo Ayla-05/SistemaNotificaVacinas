@@ -40,11 +40,11 @@ export default function Login() {
     try {
       if (modo === 'login') {
         await login(form.email, form.senha);
+        navigate('/dashboard');
       } else {
         await registrar(form);
+        navigate('/completar-cadastro');
       }
-
-      navigate('/dashboard');
     } catch (erroCapturado) {
       setErro(erroCapturado.message);
     } finally {
