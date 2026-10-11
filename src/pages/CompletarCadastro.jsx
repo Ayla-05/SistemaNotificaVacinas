@@ -150,6 +150,7 @@ export default function CompletarCadastro() {
   const [salvandoVacina, setSalvandoVacina] = useState(false);
   const [vacinaSalva, setVacinaSalva] = useState(false);
   const [erroVacina, setErroVacina] = useState('');
+  const [resetDose, setResetDose] = useState(0); // força o SeletorDose a reiniciar após salvar
 
   function abrirCadastroManual() {
     setErroVacina('');
@@ -169,6 +170,7 @@ export default function CompletarCadastro() {
       await confirmarScanNaCarteira({ pessoaId: pessoaAtiva.id, ...formVacina });
       setVacinaSalva(true);
       setFormVacina(VACINA_VAZIA);
+      setResetDose((atual) => atual + 1);
     } catch (erroCapturado) {
       setErroVacina(erroCapturado.message);
     } finally {
@@ -448,7 +450,7 @@ export default function CompletarCadastro() {
                   </label>
                   <label className="block">
                     <span className="text-xs font-semibold text-slate-600 mb-1.5 block">Dose</span>
-                    <SeletorDose required value={formVacina.dose} onChange={(dose) => setFormVacina({ ...formVacina, dose })} />
+                    <SeletorDose key={resetDose} required value={formVacina.dose} onChange={(dose) => setFormVacina({ ...formVacina, dose })} />
                   </label>
                   <label className="block">
                     <span className="text-xs font-semibold text-slate-600 mb-1.5 block">Data da aplicação</span>
