@@ -40,6 +40,43 @@ function chamarApi(caminho, opcoes = {}) {
 }
 
 /* ==================================================
+   ENDEREÇO (ViaCEP)
+   ================================================== */
+
+/**
+ * Busca logradouro/bairro/cidade/estado a partir do CEP,
+ * usando a API pública e gratuita do ViaCEP (não passa pelo
+ * nosso backend). Retorna null se o CEP for inválido/não
+ * encontrado, em vez de lançar erro — é um preenchimento
+ * automático "de cortesia", nunca deve travar o formulário.
+ */
+export async function buscarEnderecoPorCep(cep) {
+  const cepLimpo = (cep || "").replace(/\D/g, "");
+
+  if (cepLimpo.length !== 8) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+    const dados = await response.json();
+
+    if (!response.ok || dados.erro) {
+      return null;
+    }
+
+    return {
+      logradouro: dados.logradouro || "",
+      bairro: dados.bairro || "",
+      cidade: dados.localidade || "",
+      estado: dados.uf || ""
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* ==================================================
    AUTENTICAÇÃO
    ================================================== */
 
@@ -79,6 +116,19 @@ export async function reenviarCodigo(email) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email })
+  });
+
+  return tratarResposta(response);
+}
+
+/**
+ * Avisa o backend que o onboarding pós-cadastro terminou
+ * (preenchido ou pulado), disparando o e-mail de boas-vindas
+ * definitivo. Requer sessão ativa (chamar depois do login/confirmarEmail).
+ */
+export async function concluirCadastro() {
+  const response = await chamarApi("/auth/concluir-cadastro", {
+    method: "POST"
   });
 
   return tratarResposta(response);

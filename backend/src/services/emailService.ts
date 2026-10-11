@@ -171,6 +171,43 @@ export class EmailService {
 
   /*
   ==================================================
+  CADASTRO CONCLUÍDO (fim do onboarding)
+  ==================================================
+
+  Disparado quando a pessoa termina (ou pula) o
+  onboarding pós-cadastro, em /completar-cadastro —
+  diferente do e-mail de boas-vindas, que já foi
+  enviado antes, junto com o código de verificação.
+  */
+  static async enviarCadastroConcluido(
+    destinatario: string,
+    nome: string
+  ) {
+
+    return this.enviar(
+      destinatario,
+      "Tudo pronto! Seja bem-vindo(a) ao Notifica Vacinas",
+      modeloBase(`
+        <h2>Oba, ${nome}! Seu cadastro está completo 🎉</h2>
+        <p>Muito obrigado por confiar no <strong>Notifica Vacinas</strong> para
+        cuidar da sua carteira de vacinação (e da da sua família, se for o caso).</p>
+        <p>A partir de agora você pode:</p>
+        <ul>
+          <li>Acompanhar, no painel inicial, quais vacinas estão em dia e quais estão pendentes;</li>
+          <li>Registrar novas doses manualmente ou enviando uma foto da carteirinha física, com leitura automática por inteligência artificial;</li>
+          <li>Cadastrar dependentes (filhos, pais, etc.) e gerenciar a carteira de cada um;</li>
+          <li>Receber, por e-mail, alertas de vacinas em atraso e lembretes de agendamentos próximos.</li>
+        </ul>
+        <p>Qualquer vacina pendente que aparecer no seu painel, procure a unidade de
+        saúde mais próxima para regularizar — estamos aqui só para ajudar você a não perder o prazo.</p>
+        <p style="margin-top: 20px;">Seja bem-vindo(a)! 💙</p>
+      `)
+    );
+
+  }
+
+  /*
+  ==================================================
   REENVIO DE CÓDIGO DE VERIFICAÇÃO
   ==================================================
   */

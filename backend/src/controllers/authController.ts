@@ -6,6 +6,7 @@ import { PessoaService } from "../services/pessoaService";
 import { NotificacaoService } from "../services/notificacaoService";
 import { PerfilUsuario } from "../enums/perfilUsuario";
 import * as usuarioRepository from "../repositories/usuarioRepository";
+import * as pessoaRepository from "../repositories/pessoaRepository";
 
 /*
 ==================================================
@@ -143,19 +144,7 @@ export class AuthController {
 
       return res.status(201).json({
         precisaVerificar: true,
-        email,
-        /*
-        Fora de produção, devolve o código também na
-        resposta — útil pra testar o fluxo sem depender
-        do e-mail chegar (provedores de teste, como o
-        Resend sem domínio verificado, só entregam pro
-        próprio e-mail da conta). NUNCA habilitar isso
-        em produção: viraria um jeito de confirmar
-        qualquer conta sem acesso ao e-mail de verdade.
-        */
-        ...(process.env.NODE_ENV !== "production" && {
-          codigoDev: codigo
-        })
+        email
       });
 
     } catch (error: any) {
@@ -257,10 +246,7 @@ export class AuthController {
       );
 
       return res.status(200).json({
-        mensagem: "Código reenviado.",
-        ...(process.env.NODE_ENV !== "production" && {
-          codigoDev: codigo
-        })
+        mensagem: "Código reenviado."
       });
 
     } catch (error: any) {
@@ -391,6 +377,77 @@ export class AuthController {
         nome: usuario.nome,
         email: usuario.email,
         perfil: usuario.perfil
+      });
+
+    } catch (error: any) {
+
+      return res.status(400).json({
+        erro: error.message
+      });
+
+    }
+
+  }
+
+  /*
+  ==================================================
+  CONCLUIR CADASTRO (fim do onboarding)
+  ==================================================
+
+  POST /auth/concluir-cadastro
+
+  Chamada pelo front-end ao final da tela
+  /completar-cadastro (em qualquer saída: preencheu
+  tudo, ou pulou alguma etapa). Dispara o e-mail de
+  boas-vindas definitivo, diferente do que já foi
+  mandado no cadastro junto com o código de verificação.
+
+  Requer autenticação (authMiddleware).
+  */
+  static async concluirCadastro(
+    req: Request,
+    res: Response
+  ) {
+
+    try {
+
+      const usuario =
+        await usuarioRepository.buscarUsuarioPorId(
+          req.usuarioId as number
+        );
+
+      if (!usuario) {
+
+        return res.status(401).json({
+          erro: "Não autenticado."
+        });
+
+      }
+
+      const pessoas =
+        await pessoaRepository.listarPessoasPorUsuario(
+          usuario.id
+        );
+
+      const titular = pessoas[0];
+
+      const emailDestino =
+        titular?.email || usuario.email;
+
+      const nomeDestino =
+        titular?.nome || usuario.nome;
+
+      /*
+      Não bloqueia a resposta se o e-mail falhar
+      (mesma lógica dos outros disparos deste controller).
+      */
+      NotificacaoService.notificarCadastroConcluido(
+        emailDestino,
+        nomeDestino
+      );
+
+      return res.status(200).json({
+        mensagem: "Cadastro concluído."
       });
 
     } catch (error: any) {

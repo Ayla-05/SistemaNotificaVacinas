@@ -27,7 +27,9 @@ import {
   obterVacinas,
   analisarCarteirinha,
   confirmarScanNaCarteira,
-  cadastrarDependente
+  cadastrarDependente,
+  concluirCadastro,
+  buscarEnderecoPorCep
 } from '../services/api';
 
 const DADOS_VAZIOS = {
@@ -67,6 +69,17 @@ export default function CompletarCadastro() {
   const { pessoaAtiva, recarregarPessoas } = useAuth();
   const navigate = useNavigate();
 
+  /*
+   * Avisa o backend que o onboarding terminou (preenchido ou
+   * pulado), disparando o e-mail de boas-vindas definitivo, e
+   * só então segue pro Dashboard. Não trava a navegação se o
+   * e-mail falhar — é só um aviso, a conta já está pronta.
+   */
+  function finalizarOnboarding() {
+    concluirCadastro().catch(() => {});
+    navigate('/dashboard');
+  }
+
   const [etapa, setEtapa] = useState('dados'); // 'dados' | 'carteirinha' | 'manual' | 'upload'
   const [dono, setDono] = useState('titular'); // 'titular' | 'dependente' — de quem é a carteirinha sendo cadastrada
 
@@ -76,6 +89,7 @@ export default function CompletarCadastro() {
   const [gruposSelecionados, setGruposSelecionados] = useState([]);
   const [salvandoDados, setSalvandoDados] = useState(false);
   const [erroDados, setErroDados] = useState('');
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
   React.useEffect(() => {
     obterCatalogoGruposEspeciais().then(setCatalogoGrupos).catch(() => {});
@@ -83,6 +97,27 @@ export default function CompletarCadastro() {
 
   function atualizarCampo(campo, valor) {
     setForm((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  /*
+   * Ao digitar um CEP completo (8 dígitos), busca e
+   * autopreenche logradouro/bairro/cidade/estado. Falha
+   * silenciosamente (CEP inválido, API fora do ar) — é só
+   * uma conveniência, a pessoa sempre pode preencher à mão.
+   */
+  async function atualizarCep(valor) {
+    atualizarCampo('cep', valor);
+
+    const cepLimpo = valor.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+
+    setBuscandoCep(true);
+    const endereco = await buscarEnderecoPorCep(cepLimpo);
+    setBuscandoCep(false);
+
+    if (endereco) {
+      setForm((atual) => ({ ...atual, ...endereco }));
+    }
   }
 
   function alternarGrupo(grupoId) {
@@ -286,7 +321,19 @@ export default function CompletarCadastro() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <Campo label="CEP">
-                    <input type="text" value={form.cep} onChange={(e) => atualizarCampo('cep', e.target.value)} className="campo-input" />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={form.cep}
+                        onChange={(e) => atualizarCep(e.target.value)}
+                        maxLength={9}
+                        placeholder="00000-000"
+                        className="campo-input"
+                      />
+                      {buscandoCep && (
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                      )}
+                    </div>
                   </Campo>
                   <Campo label="Logradouro" className="sm:col-span-2">
                     <input type="text" value={form.logradouro} onChange={(e) => atualizarCampo('logradouro', e.target.value)} className="campo-input" />
@@ -324,7 +371,7 @@ export default function CompletarCadastro() {
               {erroDados && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{erroDados}</p>}
 
               <div className="flex items-center justify-between">
-                <button type="button" onClick={() => navigate('/dashboard')} className="text-sm font-semibold text-slate-400 hover:text-slate-600 transition">
+                <button type="button" onClick={finalizarOnboarding} className="text-sm font-semibold text-slate-400 hover:text-slate-600 transition">
                   Pular, fazer isso depois
                 </button>
                 <button type="submit" disabled={salvandoDados} className="btn-primary flex items-center gap-2 disabled:opacity-60">
@@ -368,7 +415,7 @@ export default function CompletarCadastro() {
               </div>
 
               <div className="text-center pt-2">
-                <button onClick={() => navigate('/dashboard')} className="text-sm font-semibold text-slate-400 hover:text-slate-600 transition flex items-center gap-1.5 mx-auto">
+                <button onClick={finalizarOnboarding} className="text-sm font-semibold text-slate-400 hover:text-slate-600 transition flex items-center gap-1.5 mx-auto">
                   <Clock className="w-3.5 h-3.5" /> Prefiro fazer isso depois
                 </button>
               </div>
@@ -418,7 +465,7 @@ export default function CompletarCadastro() {
                     <button type="submit" disabled={salvandoVacina} className="btn-primary flex items-center gap-2 disabled:opacity-60">
                       {salvandoVacina && <Loader2 className="w-4 h-4 animate-spin" />} Salvar vacina
                     </button>
-                    <button type="button" onClick={() => navigate('/dashboard')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition">Concluir</button>
+                    <button type="button" onClick={finalizarOnboarding} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition">Concluir</button>
                   </div>
                 </div>
               </form>
@@ -452,7 +499,7 @@ export default function CompletarCadastro() {
                     <button onClick={() => abrirUpload(dono)} className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 text-sm font-semibold hover:bg-slate-50 transition">
                       Anexar outra carteirinha
                     </button>
-                    <button onClick={() => navigate('/dashboard')} className="btn-primary">Concluir</button>
+                    <button onClick={finalizarOnboarding} className="btn-primary">Concluir</button>
                   </div>
                 </div>
               ) : (
