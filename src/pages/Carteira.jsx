@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Syringe, PlusCircle, Loader2, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import SeletorDose from '../components/SeletorDose';
 import { obterCarteira, obterVacinas, confirmarScanNaCarteira } from '../services/api';
 
 const FORM_VAZIO = { vacina: '', dose: '', dataAplicacao: '', lote: '', localAplicacao: '' };
@@ -139,14 +140,7 @@ export default function Carteira() {
 
             <label className="block">
               <span className="text-xs font-semibold text-slate-600 mb-1.5 block">Dose</span>
-              <input
-                type="text"
-                required
-                placeholder="Ex.: 1ª dose, Dose única, Reforço"
-                value={form.dose}
-                onChange={(e) => setForm({ ...form, dose: e.target.value })}
-                className="campo-input"
-              />
+              <SeletorDose required value={form.dose} onChange={(dose) => setForm({ ...form, dose })} />
             </label>
 
             <label className="block">

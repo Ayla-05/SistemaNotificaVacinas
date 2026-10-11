@@ -20,6 +20,7 @@ import {
   IdCard
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import SeletorDose from '../components/SeletorDose';
 import {
   atualizarPessoa,
   obterCatalogoGruposEspeciais,
@@ -447,7 +448,7 @@ export default function CompletarCadastro() {
                   </label>
                   <label className="block">
                     <span className="text-xs font-semibold text-slate-600 mb-1.5 block">Dose</span>
-                    <input type="text" required placeholder="Ex.: 1ª dose, Dose única, Reforço" value={formVacina.dose} onChange={(e) => setFormVacina({ ...formVacina, dose: e.target.value })} className="campo-input" />
+                    <SeletorDose required value={formVacina.dose} onChange={(dose) => setFormVacina({ ...formVacina, dose })} />
                   </label>
                   <label className="block">
                     <span className="text-xs font-semibold text-slate-600 mb-1.5 block">Data da aplicação</span>
