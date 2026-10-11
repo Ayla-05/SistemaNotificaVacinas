@@ -12,6 +12,7 @@ import RotaProtegida from '../components/RotaProtegida';
 // Layout e Páginas
 import AppLayout from '../components/layout/AppLayout';
 import Login from '../pages/Login';
+import CompletarCadastro from '../pages/CompletarCadastro';
 import Dashboard from '../pages/Dashboard';
 import Scan from '../pages/Scan';
 import Calendario from '../pages/Calendario';
@@ -32,6 +33,16 @@ export default function AppRoutes() {
 
             {/* Rota pública de autenticação (sem sidebar/header) */}
             <Route path="/login" element={<Login />} />
+
+            {/* Onboarding pós-cadastro (protegida, mas sem sidebar/header) */}
+            <Route
+              path="/completar-cadastro"
+              element={
+                <RotaProtegida>
+                  <CompletarCadastro />
+                </RotaProtegida>
+              }
+            />
 
             {/* Rota Pai com o Layout Base (Sidebar + Header), protegida por login */}
             <Route

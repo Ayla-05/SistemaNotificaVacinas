@@ -44,12 +44,16 @@ export interface DadosExtraidosCarteirinha {
   dataAplicacao: string | null;
   lote: string | null;
   localAplicacao: string | null;
+  nomeTitular: string | null;
+  dataNascimentoTitular: string | null;
 }
 
 const PROMPT_EXTRACAO = `
 Você está analisando a foto de uma carteirinha de vacinação
 brasileira. Extraia os dados do registro de vacina mais
-recente e visível na imagem.
+recente e visível na imagem, além dos dados de identificação
+do titular da carteirinha (geralmente no cabeçalho do
+documento: nome e data de nascimento).
 
 Responda APENAS com um JSON válido, sem nenhum texto antes
 ou depois, no formato exato:
@@ -59,7 +63,9 @@ ou depois, no formato exato:
   "dose": "ex: 1ª dose, Dose única, Reforço",
   "dataAplicacao": "AAAA-MM-DD ou null se não for legível",
   "lote": "número do lote ou null se não for legível",
-  "localAplicacao": "nome da unidade de saúde ou null"
+  "localAplicacao": "nome da unidade de saúde ou null",
+  "nomeTitular": "nome completo da pessoa dona da carteirinha, ou null se não for legível",
+  "dataNascimentoTitular": "AAAA-MM-DD ou null se não for legível"
 }
 
 Se a imagem não for uma carteirinha de vacinação ou não for
@@ -176,7 +182,9 @@ export class ClaudeVisionService {
       dose: dados.dose ?? "Não identificada",
       dataAplicacao: dados.dataAplicacao ?? null,
       lote: dados.lote ?? null,
-      localAplicacao: dados.localAplicacao ?? null
+      localAplicacao: dados.localAplicacao ?? null,
+      nomeTitular: dados.nomeTitular ?? null,
+      dataNascimentoTitular: dados.dataNascimentoTitular ?? null
     };
 
   }
