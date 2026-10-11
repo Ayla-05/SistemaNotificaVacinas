@@ -365,15 +365,33 @@ export class CarteiraService {
           );
     }
 
-    const dosesExistentes =
-      await doseVacinaRepository.contarDoses(
+    const maiorDoseExistente =
+      await doseVacinaRepository.obterMaiorNumeroDose(
         registroId
       );
+
+    /*
+    Se a pessoa já registra a vacina direto como, por
+    exemplo, "3ª dose" (sem ter registrado a 1ª e a 2ª
+    individualmente antes), entende que as doses
+    anteriores também já foram tomadas — não numera
+    esse único registro sempre como a próxima
+    sequencial (maiorDoseExistente + 1).
+    */
+    const numeroDeclarado =
+      Number(
+        dados.dose?.match(/\d+/)?.[0]
+      );
+
+    const numeroDose =
+      numeroDeclarado > maiorDoseExistente
+        ? numeroDeclarado
+        : maiorDoseExistente + 1;
 
     const doseId =
       await doseVacinaRepository.registrarDose(
         registroId,
-        dosesExistentes + 1,
+        numeroDose,
         dados.dose || "Não especificada",
         {
           dataAplicacao: dados.dataAplicacao,

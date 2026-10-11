@@ -270,3 +270,44 @@ export function contarDoses(
   });
 
 }
+
+/*
+==================================================
+MAIOR NÚMERO DE DOSE REGISTRADO
+==================================================
+
+Diferente de contarDoses (quantas linhas existem),
+isso reflete quantas doses a pessoa efetivamente já
+tomou segundo o que foi declarado: se a pessoa já
+registra a vacina direto como "3ª dose" (sem ter
+registrado a 1ª e a 2ª individualmente antes), esse
+único registro já conta como 3 doses cumpridas.
+*/
+export function obterMaiorNumeroDose(
+  registroVacinacaoId: number
+): Promise<number> {
+
+  return new Promise((resolve, reject) => {
+
+    db.get(
+      `
+      SELECT MAX(numero_dose) AS maior
+      FROM doses_vacina
+      WHERE registro_vacinacao_id = ?
+      `,
+      [registroVacinacaoId],
+      (err, row: any) => {
+
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(row?.maior ?? 0);
+
+      }
+    );
+
+  });
+
+}
