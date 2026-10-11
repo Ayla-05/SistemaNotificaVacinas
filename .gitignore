@@ -37,3 +37,7 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Banco de dados local (SQLite) - cada ambiente tem o seu
+*.db
+*.db-journal
