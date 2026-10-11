@@ -427,6 +427,15 @@ EXECUTAR CALENDÁRIO SEED
 */
 export async function executarCalendarioSeed() {
 
+  /*
+  Remove duplicatas que já tenham sido inseridas em
+  execuções anteriores (este seed, antes desta correção,
+  rodava sempre a cada subida do servidor, sem checar se
+  já existia).
+  */
+  await calendarioVacinalRepository
+    .removerDuplicatas();
+
   for (
     const item
     of calendarioVacinalPadrao
@@ -442,6 +451,17 @@ export async function executarCalendarioSeed() {
       (vacina as any)?.id;
 
     if (!vacinaId) {
+      continue;
+    }
+
+    const jaExiste =
+      await calendarioVacinalRepository
+        .buscarPorVacinaEFaixa(
+          vacinaId,
+          item.faixa_etaria
+        );
+
+    if (jaExiste) {
       continue;
     }
 

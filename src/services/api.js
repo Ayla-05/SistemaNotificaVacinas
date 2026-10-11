@@ -364,6 +364,27 @@ export async function obterAgendamentos(idPessoa) {
   return tratarResposta(response);
 }
 
+/**
+ * Cria um novo agendamento manual (data prevista para aplicação de uma dose).
+ */
+export async function criarAgendamento({ pessoaId, vacinaId, numeroDose, dataPrevista, observacao }) {
+  const response = await chamarApi('/agendamentos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pessoaId, vacinaId, numeroDose, dataPrevista, observacao })
+  });
+
+  return tratarResposta(response);
+}
+
+/**
+ * Remove um agendamento.
+ */
+export async function removerAgendamento(id) {
+  const response = await chamarApi(`/agendamentos/${id}`, { method: 'DELETE' });
+  return tratarResposta(response);
+}
+
 /* ==================================================
    SCAN (CLAUDE VISION)
    ================================================== */

@@ -171,6 +171,86 @@ export function listarPorVacina(
 
 /*
 ==================================================
+BUSCAR POR VACINA + FAIXA ETÁRIA
+==================================================
+
+Usado pelo seed para não duplicar um registro que
+já existe.
+*/
+export function buscarPorVacinaEFaixa(
+  vacinaId: number,
+  faixaEtaria: string
+): Promise<CalendarioVacinal | undefined> {
+
+  return new Promise((resolve, reject) => {
+
+    db.get(
+      `
+      SELECT *
+      FROM calendario_vacinal
+      WHERE vacina_id = ?
+        AND faixa_etaria = ?
+      `,
+      [vacinaId, faixaEtaria],
+      (
+        err,
+        row: CalendarioVacinal
+      ) => {
+
+        if (err) {
+          return reject(err);
+        }
+
+        resolve(row);
+
+      }
+    );
+
+  });
+
+}
+
+/*
+==================================================
+REMOVER DUPLICATAS
+==================================================
+
+Mantém só o registro de menor id para cada par
+(vacina_id, faixa_etaria) e apaga os demais — limpa
+duplicatas inseridas antes da checagem de existência
+ter sido adicionada ao seed.
+*/
+export function removerDuplicatas(): Promise<number> {
+
+  return new Promise((resolve, reject) => {
+
+    db.run(
+      `
+      DELETE FROM calendario_vacinal
+      WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM calendario_vacinal
+        GROUP BY vacina_id, faixa_etaria
+      )
+      `,
+      [],
+      function (err) {
+
+        if (err) {
+          return reject(err);
+        }
+
+        resolve(this.changes);
+
+      }
+    );
+
+  });
+
+}
+
+/*
+==================================================
 CRIAR REGISTRO NO CALENDÁRIO
 ==================================================
 */

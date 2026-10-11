@@ -4,38 +4,109 @@ import {
   ChevronRight,
   CalendarDays,
   Syringe,
-  X
+  X,
+  PlusCircle,
+  Trash2,
+  Loader2
 } from "lucide-react";
-import { obterAgendamentos } from "../services/api";
+import { obterAgendamentos, criarAgendamento, removerAgendamento, obterVacinas } from "../services/api";
+import SeletorDose from "../components/SeletorDose";
 import { useAuth } from "../context/AuthContext";
+
+const FORM_VAZIO = { vacinaId: "", dose: "", dataPrevista: "", observacao: "" };
 
 export default function Calendario() {
   const { pessoaAtiva } = useAuth();
   const [agendamentos, setAgendamentos] = useState([]);
+  const [vacinasDisponiveis, setVacinasDisponiveis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [form, setForm] = useState(FORM_VAZIO);
+  const [salvando, setSalvando] = useState(false);
+  const [removendo, setRemovendo] = useState(false);
+  const [erroForm, setErroForm] = useState("");
 
   const [mesAtual, setMesAtual] = useState(new Date());
 
-  useEffect(() => {
+  async function carregar() {
     if (!pessoaAtiva) {
       setLoading(false);
       return;
     }
 
-    async function carregar() {
-      try {
-        const lista = await obterAgendamentos(pessoaAtiva.id);
-        setAgendamentos(lista);
-      } catch (erro) {
-        console.error(erro);
-      } finally {
-        setLoading(false);
-      }
+    try {
+      const lista = await obterAgendamentos(pessoaAtiva.id);
+      setAgendamentos(lista);
+    } catch (erro) {
+      console.error(erro);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pessoaAtiva]);
+
+  function abrirForm() {
+    setErroForm("");
+    setForm(FORM_VAZIO);
+    if (vacinasDisponiveis.length === 0) {
+      obterVacinas().then(setVacinasDisponiveis).catch(() => {});
+    }
+    setMostrarForm(true);
+  }
+
+  async function handleSalvarAgendamento(e) {
+    e.preventDefault();
+    setErroForm("");
+
+    const numeroDose =
+      form.dose === 'Dose única'
+        ? 1
+        : Number(form.dose.match(/\d+/)?.[0]);
+
+    if (!numeroDose) {
+      setErroForm('Escolha uma dose numerada (ex.: "1ª dose") ou "Dose única" para agendar. "Reforço" não tem um número fixo — use "Outra quantidade de doses" e informe o número.');
+      return;
     }
 
-    carregar();
-  }, [pessoaAtiva]);
+    setSalvando(true);
+
+    try {
+      await criarAgendamento({
+        pessoaId: pessoaAtiva.id,
+        vacinaId: Number(form.vacinaId),
+        numeroDose,
+        dataPrevista: form.dataPrevista,
+        observacao: form.observacao || undefined
+      });
+
+      setMostrarForm(false);
+      setForm(FORM_VAZIO);
+      await carregar();
+    } catch (erroCapturado) {
+      setErroForm(erroCapturado.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function handleRemoverAgendamento() {
+    setRemovendo(true);
+
+    try {
+      await removerAgendamento(eventoSelecionado.id);
+      setEventoSelecionado(null);
+      await carregar();
+    } catch (erro) {
+      console.error(erro);
+    } finally {
+      setRemovendo(false);
+    }
+  }
 
   const nomesMeses = [
     "Janeiro",
@@ -142,18 +213,90 @@ export default function Calendario() {
 
       {/* HEADER */}
 
-      <div>
+      <div className="flex items-center justify-between gap-4">
 
-        <h1 className="text-4xl font-bold text-slate-800">
-          Calendário Vacinal
-        </h1>
+        <div>
 
-        <p className="text-slate-500 mt-1">
-          Datas previstas para aplicação
-          das próximas doses.
-        </p>
+          <h1 className="text-4xl font-bold text-slate-800">
+            Calendário Vacinal
+          </h1>
+
+          <p className="text-slate-500 mt-1">
+            Datas previstas para aplicação
+            das próximas doses.
+          </p>
+
+        </div>
+
+        <button onClick={abrirForm} className="btn-primary flex items-center gap-2 flex-shrink-0">
+          <PlusCircle className="w-4 h-4" /> Novo agendamento
+        </button>
 
       </div>
+
+      {/* FORMULÁRIO DE NOVO AGENDAMENTO */}
+
+      {mostrarForm && (
+        <form onSubmit={handleSalvarAgendamento} className="card space-y-4">
+          <h2 className="font-bold text-lg flex items-center gap-2">
+            <CalendarDays className="w-5 h-5 text-emerald-600" /> Agendar aplicação de dose
+          </h2>
+
+          {erroForm && (
+            <p className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{erroForm}</p>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="block">
+              <span className="text-xs font-semibold text-slate-600 mb-1.5 block">Vacina</span>
+              <select
+                required
+                value={form.vacinaId}
+                onChange={(e) => setForm({ ...form, vacinaId: e.target.value })}
+                className="campo-input"
+              >
+                <option value="">Selecione</option>
+                {vacinasDisponiveis.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-semibold text-slate-600 mb-1.5 block">Dose</span>
+              <SeletorDose value={form.dose} onChange={(dose) => setForm({ ...form, dose })} />
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-semibold text-slate-600 mb-1.5 block">Data prevista</span>
+              <input
+                type="date"
+                required
+                value={form.dataPrevista}
+                onChange={(e) => setForm({ ...form, dataPrevista: e.target.value })}
+                className="campo-input"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-semibold text-slate-600 mb-1.5 block">Observação (opcional)</span>
+              <input
+                type="text"
+                value={form.observacao}
+                onChange={(e) => setForm({ ...form, observacao: e.target.value })}
+                className="campo-input"
+              />
+            </label>
+          </div>
+
+          <div className="flex gap-3">
+            <button type="submit" disabled={salvando} className="btn-primary flex items-center gap-2 disabled:opacity-60">
+              {salvando && <Loader2 className="w-4 h-4 animate-spin" />} Salvar agendamento
+            </button>
+            <button type="button" onClick={() => setMostrarForm(false)} className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 text-sm font-semibold hover:bg-slate-50 transition">
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* CARD PRINCIPAL */}
 
@@ -387,6 +530,15 @@ export default function Calendario() {
               </div>
 
             </div>
+
+            <button
+              onClick={handleRemoverAgendamento}
+              disabled={removendo}
+              className="mt-5 w-full flex items-center justify-center gap-2 px-4 py-2 border border-rose-200 text-rose-600 rounded-xl text-sm font-semibold hover:bg-rose-50 transition disabled:opacity-60"
+            >
+              {removendo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Remover agendamento
+            </button>
 
           </div>
 
