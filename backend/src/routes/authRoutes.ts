@@ -121,4 +121,17 @@ router.get(
   AuthController.me
 );
 
+/*
+==================================================
+CONCLUIR CADASTRO (fim do onboarding)
+==================================================
+
+POST /auth/concluir-cadastro
+*/
+router.post(
+  "/concluir-cadastro",
+  autenticar,
+  AuthController.concluirCadastro
+);
+
 export default router;

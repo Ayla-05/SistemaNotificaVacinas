@@ -88,6 +88,26 @@ export class NotificacaoService {
 
   /*
   ==================================================
+  1c. CADASTRO CONCLUÍDO (fim do onboarding)
+  ==================================================
+
+  Disparado em POST /auth/concluir-cadastro, quando a
+  pessoa termina (ou pula) a tela de onboarding.
+  */
+  static async notificarCadastroConcluido(
+    email: string,
+    nome: string
+  ) {
+
+    return EmailService.enviarCadastroConcluido(
+      email,
+      nome
+    );
+
+  }
+
+  /*
+  ==================================================
   1b. REENVIO DE CÓDIGO DE VERIFICAÇÃO
   ==================================================
   */

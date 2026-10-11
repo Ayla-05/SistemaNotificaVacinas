@@ -1,7 +1,7 @@
 // src/pages/Perfil.jsx
 
 import React, { useEffect, useState } from 'react';
-import { UserCog, Save, ShieldAlert, Check } from 'lucide-react';
+import { UserCog, Save, ShieldAlert, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   obterPessoa,
@@ -9,7 +9,8 @@ import {
   obterCatalogoGruposEspeciais,
   obterGruposDaPessoa,
   vincularGrupoEspecial,
-  desvincularGrupoEspecial
+  desvincularGrupoEspecial,
+  buscarEnderecoPorCep
 } from '../services/api';
 
 const CAMPOS_VAZIOS = {
@@ -41,6 +42,7 @@ export default function Perfil() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState(false);
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
   useEffect(() => {
     if (!pessoaAtiva) {
@@ -71,6 +73,27 @@ export default function Perfil() {
 
   function atualizarCampo(campo, valor) {
     setForm((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  /*
+   * Ao digitar um CEP completo (8 dígitos), busca e
+   * autopreenche logradouro/bairro/cidade/estado. Falha
+   * silenciosamente (CEP inválido, API fora do ar) — é só
+   * uma conveniência, a pessoa sempre pode preencher à mão.
+   */
+  async function atualizarCep(valor) {
+    atualizarCampo('cep', valor);
+
+    const cepLimpo = valor.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+
+    setBuscandoCep(true);
+    const endereco = await buscarEnderecoPorCep(cepLimpo);
+    setBuscandoCep(false);
+
+    if (endereco) {
+      setForm((atual) => ({ ...atual, ...endereco }));
+    }
   }
 
   async function alternarGrupo(grupoId) {
@@ -194,7 +217,19 @@ export default function Perfil() {
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-3">Endereço</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Campo label="CEP">
-              <input type="text" value={form.cep ?? ''} onChange={(e) => atualizarCampo('cep', e.target.value)} className="campo-input" />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={form.cep ?? ''}
+                  onChange={(e) => atualizarCep(e.target.value)}
+                  maxLength={9}
+                  placeholder="00000-000"
+                  className="campo-input"
+                />
+                {buscandoCep && (
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                )}
+              </div>
             </Campo>
             <Campo label="Logradouro" className="sm:col-span-2">
               <input type="text" value={form.logradouro ?? ''} onChange={(e) => atualizarCampo('logradouro', e.target.value)} className="campo-input" />

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MailCheck, Loader2, RotateCw, FlaskConical } from 'lucide-react';
+import { MailCheck, Loader2, RotateCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const TAMANHO_CODIGO = 6;
@@ -21,14 +21,6 @@ export default function ConfirmarEmail() {
   const location = useLocation();
 
   const email = location.state?.email;
-
-  /*
-   * Só vem preenchido fora de produção (ver authController.ts):
-   * mostra o código na tela pra testar sem depender do e-mail
-   * chegar (útil com provedores de teste, como o Mailgun
-   * sandbox, que só entrega pra destinatários autorizados).
-   */
-  const [codigoDev, setCodigoDev] = useState(location.state?.codigoDev || '');
 
   const [digitos, setDigitos] = useState(Array(TAMANHO_CODIGO).fill(''));
   const [carregando, setCarregando] = useState(false);
@@ -112,8 +104,7 @@ export default function ConfirmarEmail() {
     setReenviando(true);
 
     try {
-      const resultado = await reenviarCodigo(email);
-      setCodigoDev(resultado?.codigoDev || '');
+      await reenviarCodigo(email);
       setMensagemReenvio('Novo código enviado para o seu e-mail.');
       setCooldown(SEGUNDOS_COOLDOWN_REENVIO);
       setDigitos(Array(TAMANHO_CODIGO).fill(''));
@@ -140,15 +131,6 @@ export default function ConfirmarEmail() {
             Enviamos um código de 6 dígitos para <strong className="text-slate-700">{email}</strong>.
           </p>
         </div>
-
-        {codigoDev && (
-          <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
-            <FlaskConical className="w-4 h-4 flex-shrink-0" />
-            <span>
-              <strong>Modo dev:</strong> código <strong className="tracking-widest">{codigoDev}</strong> (sem depender do e-mail chegar)
-            </span>
-          </div>
-        )}
 
         <div className="card-glass p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
