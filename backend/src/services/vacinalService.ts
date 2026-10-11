@@ -256,7 +256,7 @@ export class VacinalService {
 
       const dosesRegistradas =
         await doseVacinaRepository
-          .contarDoses(
+          .obterMaiorNumeroDose(
             vacinaPessoa.id
           );
 
@@ -329,7 +329,7 @@ export class VacinalService {
 
       const doses =
         await doseVacinaRepository
-          .contarDoses(
+          .obterMaiorNumeroDose(
             vacinaPessoa.id
           );
 
