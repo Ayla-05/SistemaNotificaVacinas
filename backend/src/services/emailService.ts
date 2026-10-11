@@ -25,14 +25,21 @@ Dependências:
 
 - nodemailer
 - EMAIL_USER / EMAIL_APP_PASSWORD (variáveis de ambiente)
+- EMAIL_SERVICE (opcional — ver abaixo)
 */
 
 /*
-Usa uma conta Gmail comum + "senha de app" (não é a senha
+Usa uma conta de e-mail comum + "senha de app" (não é a senha
 normal da conta — precisa ter a verificação em duas etapas
-ativada e gerar uma em myaccount.google.com/apppasswords).
-Gratuito, mas com limite de envio diário do Gmail (~500/dia),
-o que é mais que suficiente para o volume desse sistema.
+ativada e gerar uma senha de app específica no provedor).
+Gratuito, com limite de envio diário do provedor, o que é
+mais que suficiente para o volume desse sistema.
+
+Por padrão assume Gmail, mas aceita qualquer serviço que o
+Nodemailer reconheça nativamente (ex.: "yahoo", "outlook365",
+"hotmail") via a variável EMAIL_SERVICE no .env — cada um
+desses provedores também exige gerar uma "senha de app"
+própria nas configurações de segurança da conta.
 */
 let transportador: Transporter | null = null;
 
@@ -47,7 +54,7 @@ function obterTransportador() {
   }
 
   transportador = nodemailer.createTransport({
-    service: "gmail",
+    service: process.env.EMAIL_SERVICE || "gmail",
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_APP_PASSWORD
