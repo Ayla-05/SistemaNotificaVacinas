@@ -1,4 +1,5 @@
 import nodemailer, { Transporter } from "nodemailer";
+import { Resend } from "resend";
 
 /*
 ==================================================
@@ -7,10 +8,12 @@ EMAIL SERVICE
 
 Responsabilidades:
 
-- Configurar o transporte SMTP (Gmail)
+- Configurar o transporte de e-mail (Resend, com
+  SMTP via Gmail/Yahoo/etc como alternativa)
 - Montar e enviar os e-mails do sistema
-  (boas-vindas, confirmação de dose,
-  vacina pendente, lembrete de agendamento)
+  (boas-vindas com código de confirmação,
+  confirmação de dose, vacina pendente,
+  lembrete de agendamento)
 
 NÃO é responsável por:
 
@@ -23,23 +26,53 @@ NÃO é responsável por:
 
 Dependências:
 
-- nodemailer
-- EMAIL_USER / EMAIL_APP_PASSWORD (variáveis de ambiente)
-- EMAIL_SERVICE (opcional — ver abaixo)
+- resend (preferencial — ver RESEND_API_KEY)
+- nodemailer (alternativa via SMTP)
+- EMAIL_USER / EMAIL_APP_PASSWORD / EMAIL_SERVICE (se não usar Resend)
 */
 
 /*
+==================================================
+RESEND (opção preferencial)
+==================================================
+
+Serviço de envio transacional com API key — sem senha
+de app, sem verificação em duas etapas, sem SMTP. Plano
+gratuito cobre bem o volume deste sistema.
+
+Se RESEND_API_KEY estiver definida, ela tem prioridade
+sobre a configuração SMTP (Gmail/Yahoo) abaixo.
+*/
+let resend: Resend | null = null;
+
+function obterResend(): Resend | null {
+
+  if (resend) {
+    return resend;
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    return null;
+  }
+
+  resend = new Resend(process.env.RESEND_API_KEY);
+
+  return resend;
+
+}
+
+/*
+==================================================
+SMTP (alternativa — Gmail, Yahoo, etc)
+==================================================
+
 Usa uma conta de e-mail comum + "senha de app" (não é a senha
 normal da conta — precisa ter a verificação em duas etapas
 ativada e gerar uma senha de app específica no provedor).
-Gratuito, com limite de envio diário do provedor, o que é
-mais que suficiente para o volume desse sistema.
 
 Por padrão assume Gmail, mas aceita qualquer serviço que o
 Nodemailer reconheça nativamente (ex.: "yahoo", "outlook365",
-"hotmail") via a variável EMAIL_SERVICE no .env — cada um
-desses provedores também exige gerar uma "senha de app"
-própria nas configurações de segurança da conta.
+"hotmail") via a variável EMAIL_SERVICE no .env.
 */
 let transportador: Transporter | null = null;
 
@@ -65,9 +98,17 @@ function obterTransportador() {
 
 }
 
+/*
+Remetente: com Resend, sem domínio próprio verificado,
+só é aceito o endereço de testes "onboarding@resend.dev"
+(ou um domínio que você tenha verificado no painel deles).
+Com SMTP, usa o próprio EMAIL_USER.
+*/
 const REMETENTE =
   process.env.EMAIL_FROM ||
-  `Notifica Vacinas <${process.env.EMAIL_USER}>`;
+  (process.env.RESEND_API_KEY
+    ? "Notifica Vacinas <onboarding@resend.dev>"
+    : `Notifica Vacinas <${process.env.EMAIL_USER}>`);
 
 export class EmailService {
 
@@ -86,26 +127,71 @@ export class EmailService {
     corpoHtml: string
   ): Promise<{ enviado: boolean; motivo?: string }> {
 
-    const smtp = obterTransportador();
-
-    if (!smtp) {
-
-      console.warn(
-        "[EmailService] EMAIL_USER/EMAIL_APP_PASSWORD não configurados — e-mail não enviado."
-      );
-
-      return {
-        enviado: false,
-        motivo: "E-mail não configurado no servidor."
-      };
-
-    }
-
     if (!destinatario) {
 
       return {
         enviado: false,
         motivo: "Destinatário sem e-mail cadastrado."
+      };
+
+    }
+
+    const api = obterResend();
+
+    if (api) {
+
+      try {
+
+        const resposta = await api.emails.send({
+          from: REMETENTE,
+          to: destinatario,
+          subject: assunto,
+          html: corpoHtml
+        });
+
+        if (resposta.error) {
+
+          console.error(
+            "[EmailService] Falha ao enviar e-mail (Resend):",
+            resposta.error.message
+          );
+
+          return {
+            enviado: false,
+            motivo: resposta.error.message
+          };
+
+        }
+
+        return { enviado: true };
+
+      } catch (erro: any) {
+
+        console.error(
+          "[EmailService] Falha ao enviar e-mail (Resend):",
+          erro.message
+        );
+
+        return {
+          enviado: false,
+          motivo: erro.message
+        };
+
+      }
+
+    }
+
+    const smtp = obterTransportador();
+
+    if (!smtp) {
+
+      console.warn(
+        "[EmailService] Nenhum provedor de e-mail configurado (RESEND_API_KEY ou EMAIL_USER/EMAIL_APP_PASSWORD) — e-mail não enviado."
+      );
+
+      return {
+        enviado: false,
+        motivo: "E-mail não configurado no servidor."
       };
 
     }
@@ -124,7 +210,7 @@ export class EmailService {
     } catch (erro: any) {
 
       console.error(
-        "[EmailService] Falha ao enviar e-mail:",
+        "[EmailService] Falha ao enviar e-mail (SMTP):",
         erro.message
       );
 
