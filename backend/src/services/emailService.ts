@@ -1,4 +1,4 @@
-import axios from "axios";
+import nodemailer, { Transporter } from "nodemailer";
 
 /*
 ==================================================
@@ -7,7 +7,7 @@ EMAIL SERVICE
 
 Responsabilidades:
 
-- Configurar o transporte de e-mail (Mailgun)
+- Configurar o transporte SMTP (Gmail)
 - Montar e enviar os e-mails do sistema
   (boas-vindas com código de confirmação,
   confirmação de dose, vacina pendente,
@@ -24,47 +24,48 @@ NÃO é responsável por:
 
 Dependências:
 
-- axios
-- MAILGUN_API_KEY / MAILGUN_DOMAIN (variáveis de ambiente)
+- nodemailer
+- EMAIL_USER / EMAIL_APP_PASSWORD (variáveis de ambiente)
+- EMAIL_SERVICE (opcional — ver abaixo)
 */
 
 /*
-==================================================
-MAILGUN
-==================================================
+Usa uma conta de e-mail comum + "senha de app" (não é a senha
+normal da conta — precisa ter a verificação em duas etapas
+ativada e gerar uma senha de app específica no provedor:
+https://myaccount.google.com/apppasswords para Gmail).
 
-Serviço de envio transacional com API key — sem senha
-de app, sem verificação em duas etapas, sem SMTP. No
-plano sandbox (gratuito, sem domínio verificado), só
-entrega para destinatários autorizados manualmente no
-painel do Mailgun (Sending -> Authorized Recipients).
+Por padrão assume Gmail, mas aceita qualquer serviço que o
+Nodemailer reconheça nativamente (ex.: "yahoo", "outlook365",
+"hotmail") via a variável EMAIL_SERVICE no .env.
 */
-function obterConfigMailgun() {
+let transportador: Transporter | null = null;
 
-  if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
+function obterTransportador() {
+
+  if (transportador) {
+    return transportador;
+  }
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
     return null;
   }
 
-  return {
-    apiKey: process.env.MAILGUN_API_KEY,
-    dominio: process.env.MAILGUN_DOMAIN,
-    baseUrl: process.env.MAILGUN_BASE_URL || "https://api.mailgun.net"
-  };
+  transportador = nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE || "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_APP_PASSWORD
+    }
+  });
+
+  return transportador;
 
 }
 
-/*
-Remetente padrão (sobrescrito por EMAIL_FROM se definida).
-No plano sandbox do Mailgun, precisa ser
-postmaster@<domínio-sandbox>.
-*/
-const configMailgun = obterConfigMailgun();
-
 const REMETENTE =
   process.env.EMAIL_FROM ||
-  (configMailgun
-    ? `Notifica Vacinas <postmaster@${configMailgun.dominio}>`
-    : "Notifica Vacinas <postmaster@exemplo.com>");
+  `Notifica Vacinas <${process.env.EMAIL_USER}>`;
 
 export class EmailService {
 
@@ -92,10 +93,12 @@ export class EmailService {
 
     }
 
-    if (!configMailgun) {
+    const smtp = obterTransportador();
+
+    if (!smtp) {
 
       console.warn(
-        "[EmailService] MAILGUN_API_KEY/MAILGUN_DOMAIN não configurados — e-mail não enviado."
+        "[EmailService] EMAIL_USER/EMAIL_APP_PASSWORD não configurados — e-mail não enviado."
       );
 
       return {
@@ -107,33 +110,25 @@ export class EmailService {
 
     try {
 
-      const corpo = new URLSearchParams();
-      corpo.append("from", REMETENTE);
-      corpo.append("to", destinatario);
-      corpo.append("subject", assunto);
-      corpo.append("html", corpoHtml);
-
-      await axios.post(
-        `${configMailgun.baseUrl}/v3/${configMailgun.dominio}/messages`,
-        corpo,
-        { auth: { username: "api", password: configMailgun.apiKey } }
-      );
+      await smtp.sendMail({
+        from: REMETENTE,
+        to: destinatario,
+        subject: assunto,
+        html: corpoHtml
+      });
 
       return { enviado: true };
 
     } catch (erro: any) {
 
-      const motivo =
-        erro.response?.data?.message || erro.message;
-
       console.error(
-        "[EmailService] Falha ao enviar e-mail (Mailgun):",
-        motivo
+        "[EmailService] Falha ao enviar e-mail:",
+        erro.message
       );
 
       return {
         enviado: false,
-        motivo
+        motivo: erro.message
       };
 
     }
