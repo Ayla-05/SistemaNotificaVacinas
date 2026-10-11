@@ -43,7 +43,7 @@ export default function Login() {
         navigate('/dashboard');
       } else {
         const resultado = await registrar(form);
-        navigate('/confirmar-email', { state: { email: resultado.email } });
+        navigate('/confirmar-email', { state: { email: resultado.email, codigoDev: resultado.codigoDev } });
       }
     } catch (erroCapturado) {
       if (erroCapturado.precisaVerificar) {

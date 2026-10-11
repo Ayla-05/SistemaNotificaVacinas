@@ -143,7 +143,19 @@ export class AuthController {
 
       return res.status(201).json({
         precisaVerificar: true,
-        email
+        email,
+        /*
+        Fora de produção, devolve o código também na
+        resposta — útil pra testar o fluxo sem depender
+        do e-mail chegar (provedores de teste, como o
+        Resend sem domínio verificado, só entregam pro
+        próprio e-mail da conta). NUNCA habilitar isso
+        em produção: viraria um jeito de confirmar
+        qualquer conta sem acesso ao e-mail de verdade.
+        */
+        ...(process.env.NODE_ENV !== "production" && {
+          codigoDev: codigo
+        })
       });
 
     } catch (error: any) {
@@ -245,7 +257,10 @@ export class AuthController {
       );
 
       return res.status(200).json({
-        mensagem: "Código reenviado."
+        mensagem: "Código reenviado.",
+        ...(process.env.NODE_ENV !== "production" && {
+          codigoDev: codigo
+        })
       });
 
     } catch (error: any) {

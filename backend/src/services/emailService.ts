@@ -1,5 +1,4 @@
-import nodemailer, { Transporter } from "nodemailer";
-import { Resend } from "resend";
+import axios from "axios";
 
 /*
 ==================================================
@@ -8,8 +7,7 @@ EMAIL SERVICE
 
 Responsabilidades:
 
-- Configurar o transporte de e-mail (Resend, com
-  SMTP via Gmail/Yahoo/etc como alternativa)
+- Configurar o transporte de e-mail (Mailgun)
 - Montar e enviar os e-mails do sistema
   (boas-vindas com código de confirmação,
   confirmação de dose, vacina pendente,
@@ -26,89 +24,47 @@ NÃO é responsável por:
 
 Dependências:
 
-- resend (preferencial — ver RESEND_API_KEY)
-- nodemailer (alternativa via SMTP)
-- EMAIL_USER / EMAIL_APP_PASSWORD / EMAIL_SERVICE (se não usar Resend)
+- axios
+- MAILGUN_API_KEY / MAILGUN_DOMAIN (variáveis de ambiente)
 */
 
 /*
 ==================================================
-RESEND (opção preferencial)
+MAILGUN
 ==================================================
 
 Serviço de envio transacional com API key — sem senha
-de app, sem verificação em duas etapas, sem SMTP. Plano
-gratuito cobre bem o volume deste sistema.
-
-Se RESEND_API_KEY estiver definida, ela tem prioridade
-sobre a configuração SMTP (Gmail/Yahoo) abaixo.
+de app, sem verificação em duas etapas, sem SMTP. No
+plano sandbox (gratuito, sem domínio verificado), só
+entrega para destinatários autorizados manualmente no
+painel do Mailgun (Sending -> Authorized Recipients).
 */
-let resend: Resend | null = null;
+function obterConfigMailgun() {
 
-function obterResend(): Resend | null {
-
-  if (resend) {
-    return resend;
-  }
-
-  if (!process.env.RESEND_API_KEY) {
+  if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
     return null;
   }
 
-  resend = new Resend(process.env.RESEND_API_KEY);
-
-  return resend;
+  return {
+    apiKey: process.env.MAILGUN_API_KEY,
+    dominio: process.env.MAILGUN_DOMAIN,
+    baseUrl: process.env.MAILGUN_BASE_URL || "https://api.mailgun.net"
+  };
 
 }
 
 /*
-==================================================
-SMTP (alternativa — Gmail, Yahoo, etc)
-==================================================
-
-Usa uma conta de e-mail comum + "senha de app" (não é a senha
-normal da conta — precisa ter a verificação em duas etapas
-ativada e gerar uma senha de app específica no provedor).
-
-Por padrão assume Gmail, mas aceita qualquer serviço que o
-Nodemailer reconheça nativamente (ex.: "yahoo", "outlook365",
-"hotmail") via a variável EMAIL_SERVICE no .env.
+Remetente padrão (sobrescrito por EMAIL_FROM se definida).
+No plano sandbox do Mailgun, precisa ser
+postmaster@<domínio-sandbox>.
 */
-let transportador: Transporter | null = null;
+const configMailgun = obterConfigMailgun();
 
-function obterTransportador() {
-
-  if (transportador) {
-    return transportador;
-  }
-
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
-    return null;
-  }
-
-  transportador = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_APP_PASSWORD
-    }
-  });
-
-  return transportador;
-
-}
-
-/*
-Remetente: com Resend, sem domínio próprio verificado,
-só é aceito o endereço de testes "onboarding@resend.dev"
-(ou um domínio que você tenha verificado no painel deles).
-Com SMTP, usa o próprio EMAIL_USER.
-*/
 const REMETENTE =
   process.env.EMAIL_FROM ||
-  (process.env.RESEND_API_KEY
-    ? "Notifica Vacinas <onboarding@resend.dev>"
-    : `Notifica Vacinas <${process.env.EMAIL_USER}>`);
+  (configMailgun
+    ? `Notifica Vacinas <postmaster@${configMailgun.dominio}>`
+    : "Notifica Vacinas <postmaster@exemplo.com>");
 
 export class EmailService {
 
@@ -136,57 +92,10 @@ export class EmailService {
 
     }
 
-    const api = obterResend();
-
-    if (api) {
-
-      try {
-
-        const resposta = await api.emails.send({
-          from: REMETENTE,
-          to: destinatario,
-          subject: assunto,
-          html: corpoHtml
-        });
-
-        if (resposta.error) {
-
-          console.error(
-            "[EmailService] Falha ao enviar e-mail (Resend):",
-            resposta.error.message
-          );
-
-          return {
-            enviado: false,
-            motivo: resposta.error.message
-          };
-
-        }
-
-        return { enviado: true };
-
-      } catch (erro: any) {
-
-        console.error(
-          "[EmailService] Falha ao enviar e-mail (Resend):",
-          erro.message
-        );
-
-        return {
-          enviado: false,
-          motivo: erro.message
-        };
-
-      }
-
-    }
-
-    const smtp = obterTransportador();
-
-    if (!smtp) {
+    if (!configMailgun) {
 
       console.warn(
-        "[EmailService] Nenhum provedor de e-mail configurado (RESEND_API_KEY ou EMAIL_USER/EMAIL_APP_PASSWORD) — e-mail não enviado."
+        "[EmailService] MAILGUN_API_KEY/MAILGUN_DOMAIN não configurados — e-mail não enviado."
       );
 
       return {
@@ -198,25 +107,33 @@ export class EmailService {
 
     try {
 
-      await smtp.sendMail({
-        from: REMETENTE,
-        to: destinatario,
-        subject: assunto,
-        html: corpoHtml
-      });
+      const corpo = new URLSearchParams();
+      corpo.append("from", REMETENTE);
+      corpo.append("to", destinatario);
+      corpo.append("subject", assunto);
+      corpo.append("html", corpoHtml);
+
+      await axios.post(
+        `${configMailgun.baseUrl}/v3/${configMailgun.dominio}/messages`,
+        corpo,
+        { auth: { username: "api", password: configMailgun.apiKey } }
+      );
 
       return { enviado: true };
 
     } catch (erro: any) {
 
+      const motivo =
+        erro.response?.data?.message || erro.message;
+
       console.error(
-        "[EmailService] Falha ao enviar e-mail (SMTP):",
-        erro.message
+        "[EmailService] Falha ao enviar e-mail (Mailgun):",
+        motivo
       );
 
       return {
         enviado: false,
-        motivo: erro.message
+        motivo
       };
 
     }
