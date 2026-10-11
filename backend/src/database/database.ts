@@ -1,6 +1,6 @@
 import sqlite3 from "sqlite3";
 
-import { criarTabelaUsuarios } from "./tables/usuariosTable";
+import { criarTabelaUsuarios, migrarColunasVerificacaoEmail } from "./tables/usuariosTable";
 import { criarTabelaPessoas } from "./tables/pessoasTable";
 import { criarTabelaDependentes } from "./tables/dependentesTable";
 
@@ -60,6 +60,7 @@ export function inicializarBanco() {
     ==============================================
     */
     criarTabelaUsuarios(db);
+    migrarColunasVerificacaoEmail(db);
 
     /*
     ==============================================

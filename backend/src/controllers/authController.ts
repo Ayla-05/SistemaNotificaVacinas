@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 
-import { AuthService } from "../services/authService";
+import { AuthService, EmailNaoVerificadoError } from "../services/authService";
 import { UsuarioService } from "../services/usuarioService";
 import { PessoaService } from "../services/pessoaService";
 import { NotificacaoService } from "../services/notificacaoService";
@@ -115,6 +115,21 @@ export class AuthController {
       });
 
       /*
+      A conta só é utilizável (login) depois que o
+      e-mail é confirmado via código — ver
+      POST /auth/confirmar-email. Não define cookie
+      de sessão aqui.
+      */
+      const { codigo, expiraEm } =
+        AuthService.gerarCodigoVerificacao();
+
+      await usuarioRepository.definirCodigoVerificacao(
+        usuarioId,
+        codigo,
+        expiraEm
+      );
+
+      /*
       Não bloqueia o cadastro se o e-mail falhar
       (Gmail fora do ar, credencial errada, etc):
       o EmailService já nunca lança erro, mas o
@@ -122,15 +137,60 @@ export class AuthController {
       */
       NotificacaoService.notificarBoasVindas(
         email,
-        nome
+        nome,
+        codigo
       );
+
+      return res.status(201).json({
+        precisaVerificar: true,
+        email
+      });
+
+    } catch (error: any) {
+
+      return res.status(400).json({
+        erro: error.message
+      });
+
+    }
+
+  }
+
+  /*
+  ==================================================
+  CONFIRMAR E-MAIL
+  ==================================================
+
+  POST /auth/confirmar-email
+
+  Body:
+  {
+    "email": "ana@example.com",
+    "codigo": "123456"
+  }
+
+  Se o código confere e não expirou, marca o e-mail
+  como verificado e já abre a sessão (mesmo formato
+  de resposta do login).
+  */
+  static async confirmarEmail(
+    req: Request,
+    res: Response
+  ) {
+
+    try {
+
+      const {
+        email,
+        codigo
+      } = req.body;
 
       const {
         token,
         usuario
-      } = await AuthService.login(
+      } = await AuthService.confirmarEmail(
         email,
-        senha
+        codigo
       );
 
       configurarCookieToken(
@@ -138,8 +198,54 @@ export class AuthController {
         token
       );
 
-      return res.status(201).json({
+      return res.status(200).json({
         usuario
+      });
+
+    } catch (error: any) {
+
+      return res.status(400).json({
+        erro: error.message
+      });
+
+    }
+
+  }
+
+  /*
+  ==================================================
+  REENVIAR CÓDIGO DE VERIFICAÇÃO
+  ==================================================
+
+  POST /auth/reenviar-codigo
+
+  Body:
+  {
+    "email": "ana@example.com"
+  }
+  */
+  static async reenviarCodigo(
+    req: Request,
+    res: Response
+  ) {
+
+    try {
+
+      const { email } = req.body;
+
+      const { nome, codigo } =
+        await AuthService.gerarNovoCodigoParaReenvio(
+          email
+        );
+
+      NotificacaoService.notificarCodigoVerificacao(
+        email,
+        nome,
+        codigo
+      );
+
+      return res.status(200).json({
+        mensagem: "Código reenviado."
       });
 
     } catch (error: any) {
@@ -195,6 +301,16 @@ export class AuthController {
       });
 
     } catch (error: any) {
+
+      if (error instanceof EmailNaoVerificadoError) {
+
+        return res.status(403).json({
+          erro: error.message,
+          precisaVerificar: true,
+          email: req.body?.email
+        });
+
+      }
 
       return res.status(401).json({
         erro: error.message

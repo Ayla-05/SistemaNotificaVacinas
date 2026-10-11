@@ -1,6 +1,6 @@
 import { db } from "./database";
 
-import { criarTabelaUsuarios }
+import { criarTabelaUsuarios, migrarColunasVerificacaoEmail }
   from "./tables/usuariosTable";
 
 import { criarTabelaPessoas }
@@ -83,7 +83,18 @@ export async function configurarBanco() {
   ==========================================
   */
 
-  criarTabelaUsuarios(db);
+  /*
+  criarTabelaUsuarios + migrarColunasVerificacaoEmail
+  precisam rodar em sequência garantida (a migração faz
+  ALTER TABLE na tabela que o CREATE TABLE acabou de
+  criar) — sem db.serialize(), o driver sqlite3 pode
+  disparar os dois em paralelo e a migração falha com
+  "no such table" numa base nova.
+  */
+  db.serialize(() => {
+    criarTabelaUsuarios(db);
+    migrarColunasVerificacaoEmail(db);
+  });
 
   criarTabelaPessoas(db);
 

@@ -5,6 +5,8 @@ import {
   login as apiLogin,
   logout as apiLogout,
   registrar as apiRegistrar,
+  confirmarEmail as apiConfirmarEmail,
+  reenviarCodigo as apiReenviarCodigo,
   obterUsuarioAtual,
   obterPessoasDoUsuario,
   obterDependentes
@@ -88,11 +90,27 @@ export function AuthProvider({ children }) {
     return usuarioLogado;
   }
 
+  /*
+   * Cria a conta, mas NÃO abre sessão: o e-mail precisa ser
+   * confirmado primeiro (ver confirmarEmail). Devolve
+   * { precisaVerificar: true, email } para a tela de Login
+   * saber redirecionar para a tela de código.
+   */
   async function registrar(dados) {
-    const { usuario: usuarioCriado } = await apiRegistrar(dados);
-    setUsuario(usuarioCriado);
-    await carregarPessoas(usuarioCriado);
-    return usuarioCriado;
+    return apiRegistrar(dados);
+  }
+
+  /** Confirma o código de verificação e, se válido, já abre a sessão. */
+  async function confirmarEmail(email, codigo) {
+    const { usuario: usuarioLogado } = await apiConfirmarEmail({ email, codigo });
+    setUsuario(usuarioLogado);
+    await carregarPessoas(usuarioLogado);
+    return usuarioLogado;
+  }
+
+  /** Reenvia o código de verificação para o e-mail informado. */
+  async function reenviarCodigo(email) {
+    return apiReenviarCodigo(email);
   }
 
   async function logout() {
@@ -124,6 +142,8 @@ export function AuthProvider({ children }) {
         carregando,
         login,
         registrar,
+        confirmarEmail,
+        reenviarCodigo,
         logout,
         selecionarPessoa,
         recarregarPessoas

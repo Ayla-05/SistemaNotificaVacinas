@@ -29,6 +29,22 @@ const limitadorDeLogin = rateLimit({
 });
 
 /*
+Limita tentativas de código (confirmação e reenvio)
+por IP, para dificultar força bruta contra o código
+de 6 dígitos.
+*/
+const limitadorDeCodigo = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    erro:
+      "Muitas tentativas. Tente novamente em alguns minutos."
+  }
+});
+
+/*
 ==================================================
 CADASTRO PÚBLICO
 ==================================================
@@ -39,6 +55,32 @@ router.post(
   "/registrar",
   limitadorDeLogin,
   AuthController.registrar
+);
+
+/*
+==================================================
+CONFIRMAR E-MAIL
+==================================================
+
+POST /auth/confirmar-email
+*/
+router.post(
+  "/confirmar-email",
+  limitadorDeCodigo,
+  AuthController.confirmarEmail
+);
+
+/*
+==================================================
+REENVIAR CÓDIGO DE VERIFICAÇÃO
+==================================================
+
+POST /auth/reenviar-codigo
+*/
+router.post(
+  "/reenviar-codigo",
+  limitadorDeCodigo,
+  AuthController.reenviarCodigo
 );
 
 /*

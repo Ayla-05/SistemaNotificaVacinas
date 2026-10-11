@@ -65,7 +65,8 @@ export async function executarAdminSeed() {
     "Administrador",
     email,
     senha,
-    PerfilUsuario.ADMIN
+    PerfilUsuario.ADMIN,
+    true // admin nasce com e-mail já verificado
   );
 
   console.log(

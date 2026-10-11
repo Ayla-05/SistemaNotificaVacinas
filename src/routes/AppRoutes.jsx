@@ -12,6 +12,7 @@ import RotaProtegida from '../components/RotaProtegida';
 // Layout e Páginas
 import AppLayout from '../components/layout/AppLayout';
 import Login from '../pages/Login';
+import ConfirmarEmail from '../pages/ConfirmarEmail';
 import CompletarCadastro from '../pages/CompletarCadastro';
 import Dashboard from '../pages/Dashboard';
 import Scan from '../pages/Scan';
@@ -33,6 +34,9 @@ export default function AppRoutes() {
 
             {/* Rota pública de autenticação (sem sidebar/header) */}
             <Route path="/login" element={<Login />} />
+
+            {/* Confirmação de e-mail pós-cadastro (pública: ainda não há sessão nesse momento) */}
+            <Route path="/confirmar-email" element={<ConfirmarEmail />} />
 
             {/* Onboarding pós-cadastro (protegida, mas sem sidebar/header) */}
             <Route
