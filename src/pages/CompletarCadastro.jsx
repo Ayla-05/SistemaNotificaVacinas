@@ -61,7 +61,7 @@ const PASSOS = [
  * não foram pedidos no cadastro rápido.
  *
  * Etapa 2: oferece o cadastro da carteirinha de vacinação — manual ou
- * por upload com leitura via Claude Vision — do próprio titular ou de
+ * por upload com leitura por OCR (Docling) — do próprio titular ou de
  * um dependente (que é cadastrado e vinculado automaticamente a partir
  * do nome/data de nascimento lidos na carteirinha), ou a opção de
  * pular e fazer isso depois.
@@ -205,7 +205,7 @@ export default function CompletarCadastro() {
       leitor.onload = () => {
         const [cabecalho, base64] = leitor.result.split(',');
         const mediaType = cabecalho.match(/data:(.*);base64/)?.[1];
-        resolve({ base64, mediaType, previewUrl: leitor.result });
+        resolve({ base64, mediaType, previewUrl: mediaType?.startsWith('image/') ? leitor.result : null });
       };
       leitor.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
       leitor.readAsDataURL(arquivo);
@@ -393,7 +393,7 @@ export default function CompletarCadastro() {
                 </div>
                 <h2 className="text-lg font-bold text-slate-800">Já tem vacinas para registrar?</h2>
                 <p className="text-sm text-slate-500 mt-1">
-                  Informe manualmente ou envie uma foto — nossa IA lê os dados pra você. Também dá pra cadastrar a carteirinha de um dependente.
+                  Informe manualmente ou envie uma foto — o sistema lê os dados pra você. Também dá pra cadastrar a carteirinha de um dependente.
                 </p>
               </div>
 
@@ -482,7 +482,7 @@ export default function CompletarCadastro() {
                 {dono === 'dependente' ? <Users className="w-5 h-5 text-violet-600" /> : <UploadCloud className="w-5 h-5 text-sky-600" />}
                 Carteirinha {dono === 'dependente' ? 'de dependente' : 'própria'}
                 <span className="bg-sky-100 text-sky-800 text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Claude Vision
+                  <Sparkles className="w-3 h-3" /> Leitura por OCR
                 </span>
               </h2>
 
@@ -519,7 +519,7 @@ export default function CompletarCadastro() {
                   <input
                     ref={inputArquivoRef}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept="image/png,image/jpeg,image/webp,application/pdf"
                     className="hidden"
                     onChange={(e) => { processarArquivo(e.target.files?.[0]); e.target.value = ''; }}
                   />
@@ -648,7 +648,7 @@ function Stepper({ etapaAtual }) {
  * Representação visual da carteirinha, no lugar de uma lista de
  * "anexos": antes do upload é um placeholder clicável; depois, mostra
  * a foto enviada como miniatura dentro do cartão junto com o nome da
- * vacina/titular já lidos pela IA.
+ * vacina/titular já lidos pela leitura automática.
  */
 function CartaoCarteirinha({ dono, processando, dados, imagem, onClickVazio }) {
   const corBorda = dono === 'dependente' ? 'border-violet-300' : 'border-sky-300';
@@ -660,7 +660,7 @@ function CartaoCarteirinha({ dono, processando, dados, imagem, onClickVazio }) {
     return (
       <div className={`rounded-2xl border-2 ${corBorda} border-dashed p-6 flex flex-col items-center justify-center min-h-[180px] bg-white/60`}>
         <div className="w-10 h-10 border-4 border-sky-200 border-t-sky-600 rounded-full animate-spin mb-3" />
-        <p className="text-sm font-semibold text-slate-700">O Claude está lendo a carteirinha...</p>
+        <p className="text-sm font-semibold text-slate-700">Lendo a carteirinha...</p>
       </div>
     );
   }

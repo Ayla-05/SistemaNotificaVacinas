@@ -89,6 +89,10 @@ export type TipoImagem =
   | "image/png"
   | "image/webp";
 
+export type TipoArquivoCarteirinha =
+  | TipoImagem
+  | "application/pdf";
+
 export function detectarTipoImagem(
   bytes: Buffer
 ): TipoImagem | null {
@@ -123,5 +127,24 @@ export function detectarTipoImagem(
   }
 
   return null;
+
+}
+
+/*
+Igual a detectarTipoImagem, mas também aceita PDF
+(assinatura "%PDF-"), como o da carteira do Meu SUS Digital.
+*/
+export function detectarTipoArquivoCarteirinha(
+  bytes: Buffer
+): TipoArquivoCarteirinha | null {
+
+  if (
+    bytes.length >= 5 &&
+    bytes.toString("ascii", 0, 5) === "%PDF-"
+  ) {
+    return "application/pdf";
+  }
+
+  return detectarTipoImagem(bytes);
 
 }

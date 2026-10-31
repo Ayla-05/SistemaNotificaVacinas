@@ -14,8 +14,8 @@ import { useAuth } from '../context/AuthContext';
 import { analisarCarteirinha, confirmarScanNaCarteira } from '../services/api';
 
 /**
- * Página de Scan de Documentos com IA (Claude Vision)
- * Fluxo: Dropzone → upload real do arquivo → Claude Vision (backend)
+ * Página de Scan de Documentos com OCR (Docling)
+ * Fluxo: Dropzone → upload real do arquivo → OCR Docling + extração dos campos (backend)
  * → Modal de Revisão → confirmação salva na carteira vacinal.
  */
 export default function Scan() {
@@ -33,7 +33,7 @@ export default function Scan() {
   // Prévia da imagem enviada, mostrada ao lado dos dados extraídos
   const [imagemPreview, setImagemPreview] = useState(null);
 
-  // Dados extraídos pelo Claude Vision, editáveis antes de salvar
+  // Dados extraídos pelo OCR, editáveis antes de salvar
   const [extractedData, setExtractedData] = useState(null);
 
   /** Lê um File do input/drop e devolve { base64, mediaType, previewUrl }. */
@@ -46,7 +46,7 @@ export default function Scan() {
         const [cabecalho, base64] = resultado.split(',');
         const mediaType = cabecalho.match(/data:(.*);base64/)?.[1];
 
-        resolve({ base64, mediaType, previewUrl: resultado });
+        resolve({ base64, mediaType, previewUrl: mediaType?.startsWith('image/') ? resultado : null });
       };
 
       leitor.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
@@ -130,12 +130,12 @@ export default function Scan() {
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
           Escanear Carteirinha de Vacinação
           <span className="bg-sky-100 text-sky-800 text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-sky-600" /> Claude Vision
+            <Sparkles className="w-3 h-3 text-sky-600" /> Leitura por OCR
           </span>
         </h2>
         <p className="text-sm text-slate-500 mt-1">
           Envie a foto ou PDF da carteirinha física de <strong className="text-slate-700">{pessoaAtiva?.nome ?? '—'}</strong>.
-          A IA fará a leitura automática dos registros.
+          O sistema lê os registros automaticamente; confira os campos antes de salvar.
         </p>
       </div>
 
@@ -152,7 +152,7 @@ export default function Scan() {
       <input
         ref={inputArquivoRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png,image/jpeg,image/webp,application/pdf"
         className="hidden"
         onChange={handleSelecionarArquivo}
       />
@@ -176,7 +176,7 @@ export default function Scan() {
               <Sparkles className="w-6 h-6 text-sky-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-800 text-base">O Claude está analisando o documento...</h3>
+              <h3 className="font-bold text-slate-800 text-base">Lendo o documento...</h3>
               <p className="text-xs text-slate-500 mt-1">Extraindo vacina, dose, lote e data de aplicação</p>
             </div>
           </div>
@@ -210,7 +210,7 @@ export default function Scan() {
               <div>
                 <h3 className="text-lg font-bold text-slate-800">Revisão e Confirmação de Leitura</h3>
                 <p className="text-xs text-slate-500">
-                  Confirme se a IA interpretou os campos do documento impresso corretamente
+                  Confirme se a leitura automática interpretou os campos do documento impresso corretamente
                 </p>
               </div>
               <button
@@ -245,7 +245,7 @@ export default function Scan() {
 
               {/* COLUNA DIREITA: Formulário com Dados Extraídos */}
               <div className="space-y-4">
-                {/* Indicador de Sucesso da IA */}
+                {/* Indicador de sucesso da leitura */}
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-emerald-800">

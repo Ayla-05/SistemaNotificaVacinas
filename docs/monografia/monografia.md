@@ -23,7 +23,7 @@ Guarulhos, 2026
 
 # RESUMO
 
-A imunização é uma das intervenções de saúde pública com melhor relação entre custo e benefício já registradas, e o Brasil construiu, por meio do Programa Nacional de Imunizações (PNI), um dos maiores programas públicos de vacinação do mundo. Apesar disso, a última década foi marcada pela queda das coberturas vacinais, pelo retorno de doenças que estavam sob controle e por um problema cotidiano e pouco discutido: o cidadão não sabe, com precisão, quais vacinas e quais doses estão em atraso para si e para seus dependentes, pois o controle ainda depende de cadernetas de papel, frequentemente extraviadas ou ilegíveis. Este trabalho apresenta o *Notifica Vacinas*, um sistema web que permite ao usuário manter a carteira vacinal própria e a de seus dependentes, comparar essa carteira com o calendário vacinal por faixa etária e por grupo especial, e receber notificações por e-mail sobre doses pendentes e agendamentos próximos. O sistema foi desenvolvido com uma arquitetura cliente-servidor em camadas: interface em React, interface de programação (API) REST em Node.js com Express e TypeScript, persistência em SQLite e um *job* agendado para o envio das notificações. Como diferencial, a carteirinha física pode ser fotografada e seus dados são extraídos por um modelo de visão computacional, sendo sempre submetidos à confirmação do usuário antes de serem gravados. O trabalho descreve o referencial teórico, os requisitos, o projeto, a implementação, as decisões de segurança e de proteção de dados pessoais de saúde (LGPD), as limitações da versão atual e as melhorias futuras, entre as quais a integração com o Meu SUS Digital e com convênios e hospitais para atualização automática da carteira.
+A imunização é uma das intervenções de saúde pública com melhor relação entre custo e benefício já registradas, e o Brasil construiu, por meio do Programa Nacional de Imunizações (PNI), um dos maiores programas públicos de vacinação do mundo. Apesar disso, a última década foi marcada pela queda das coberturas vacinais, pelo retorno de doenças que estavam sob controle e por um problema cotidiano e pouco discutido: o cidadão não sabe, com precisão, quais vacinas e quais doses estão em atraso para si e para seus dependentes, pois o controle ainda depende de cadernetas de papel, frequentemente extraviadas ou ilegíveis. Este trabalho apresenta o *Notifica Vacinas*, um sistema web que permite ao usuário manter a carteira vacinal própria e a de seus dependentes, comparar essa carteira com o calendário vacinal por faixa etária e por grupo especial, e receber notificações por e-mail sobre doses pendentes e agendamentos próximos. O sistema foi desenvolvido com uma arquitetura cliente-servidor em camadas: interface em React, interface de programação (API) REST em Node.js com Express e TypeScript, persistência em SQLite e um *job* agendado para o envio das notificações. Como diferencial, a carteirinha física pode ser fotografada e seus dados são extraídos por reconhecimento óptico de caracteres (OCR) com a biblioteca Docling, em um serviço próprio, sendo sempre submetidos à confirmação do usuário antes de serem gravados. O trabalho descreve o referencial teórico, os requisitos, o projeto, a implementação, as decisões de segurança e de proteção de dados pessoais de saúde (LGPD), as limitações da versão atual e as melhorias futuras, entre as quais a integração com o Meu SUS Digital e com convênios e hospitais para atualização automática da carteira.
 
 **Palavras-chave:** vacinação; Programa Nacional de Imunizações; carteira vacinal; notificações; engenharia de software; LGPD.
 
@@ -31,7 +31,7 @@ A imunização é uma das intervenções de saúde pública com melhor relação
 
 # ABSTRACT
 
-Immunization is among the most cost-effective public health interventions ever recorded, and Brazil built, through its National Immunization Program (PNI), one of the largest public vaccination programs in the world. Even so, the last decade saw falling vaccination coverage, the return of diseases that were under control, and an everyday problem that receives little attention: citizens often cannot tell precisely which vaccines and doses are overdue for themselves and their dependents, because record keeping still relies on paper booklets that are lost or illegible. This work presents *Notifica Vacinas*, a web system that lets users keep their own vaccination record and that of their dependents, compare it with the vaccination schedule by age group and special group, and receive e-mail notifications about pending doses and upcoming appointments. The system follows a layered client-server architecture: a React front end, a REST API in Node.js with Express and TypeScript, SQLite persistence and a scheduled job for notifications. As a differentiator, the physical vaccination card can be photographed and its data extracted by a computer-vision model, always subject to user confirmation before being saved. The work describes the theoretical background, requirements, design, implementation, security and personal health data protection decisions (LGPD), limitations of the current version and future work, including integration with Meu SUS Digital and with health insurers and hospitals for automatic record updates.
+Immunization is among the most cost-effective public health interventions ever recorded, and Brazil built, through its National Immunization Program (PNI), one of the largest public vaccination programs in the world. Even so, the last decade saw falling vaccination coverage, the return of diseases that were under control, and an everyday problem that receives little attention: citizens often cannot tell precisely which vaccines and doses are overdue for themselves and their dependents, because record keeping still relies on paper booklets that are lost or illegible. This work presents *Notifica Vacinas*, a web system that lets users keep their own vaccination record and that of their dependents, compare it with the vaccination schedule by age group and special group, and receive e-mail notifications about pending doses and upcoming appointments. The system follows a layered client-server architecture: a React front end, a REST API in Node.js with Express and TypeScript, SQLite persistence and a scheduled job for notifications. As a differentiator, the physical vaccination card can be photographed and its data extracted by optical character recognition (OCR) with the Docling library, in a self-hosted service, always subject to user confirmation before being saved. The work describes the theoretical background, requirements, design, implementation, security and personal health data protection decisions (LGPD), limitations of the current version and future work, including integration with Meu SUS Digital and with health insurers and hospitals for automatic record updates.
 
 **Keywords:** vaccination; National Immunization Program; vaccination record; notifications; software engineering; data protection.
 
@@ -98,7 +98,7 @@ c) projetar uma arquitetura em camadas, com separação de responsabilidades ent
 
 d) implementar o cálculo de pendências comparando a carteira da pessoa com o calendário da sua faixa etária e de seus grupos especiais;
 
-e) automatizar o cadastro de doses a partir da fotografia da carteirinha, mantendo o usuário no controle da confirmação;
+e) automatizar o cadastro de doses a partir da foto ou do PDF da carteirinha, por OCR, mantendo o usuário no controle da confirmação;
 
 f) implementar notificações por e-mail disparadas por eventos e por rotina diária agendada;
 
@@ -180,9 +180,11 @@ A integração entre sistemas de saúde exige padrões comuns. O **HL7 FHIR** é
 
 A Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018) classifica dados referentes à saúde como **dados pessoais sensíveis** (art. 5º, II) e submete seu tratamento a bases legais mais restritas (art. 11), como o consentimento específico e destacado do titular ou a tutela da saúde. Crianças e adolescentes têm tratamento regido pelo melhor interesse e, para menores de idade, pelo consentimento de ao menos um dos pais ou responsável legal (art. 14). Princípios como finalidade, adequação, necessidade, segurança e prevenção (art. 6º) orientam todo o ciclo de vida do dado. Como o sistema permite que um responsável cadastre dependentes, o tratamento desses dados deve se apoiar na autoridade do responsável sobre a conta.
 
-## 2.5 Inteligência artificial de visão para extração de dados
+## 2.5 Reconhecimento óptico de caracteres (OCR) e Docling
 
-Modelos multimodais de linguagem conseguem receber uma imagem e responder em formato estruturado. Para documentos como carteirinhas, isso elimina a etapa de OCR tradicional seguida de regras de análise textual, pois o modelo interpreta layout, carimbos e escrita manual. Por outro lado, tais modelos podem errar ou "alucinar" campos ilegíveis. Daí a decisão de projeto, tratada na Seção 5.4, de nunca gravar automaticamente: a IA **sugere**, o usuário **revisa e confirma**.
+O reconhecimento óptico de caracteres converte o texto presente em uma imagem em texto digital. O **Docling**, biblioteca de código aberto em Python, vai além do OCR puro: analisa o *layout* da página, reconhece tabelas e preserva a estrutura do documento, exportando o resultado em formatos como o Markdown. Isso interessa a uma carteirinha de vacinação, cujo conteúdo é essencialmente uma tabela (vacina, dose, data, lote, unidade).
+
+A abordagem escolhida separa duas responsabilidades: o **OCR** (Docling) devolve o texto estruturado, e um **extrator determinístico** interpreta esse texto, identificando em cada linha a vacina (por correspondência com o catálogo do sistema, inclusive abreviações), a dose, as datas, o lote e a unidade de saúde. Em comparação com enviar a imagem a um modelo de linguagem de terceiros, a solução roda na infraestrutura do próprio sistema, o que evita compartilhar dados pessoais de saúde com um operador externo (LGPD), não tem custo por imagem e produz resultados reproduzíveis e testáveis. O preço é a menor tolerância a escrita manuscrita e a carimbos borrados: o OCR tradicional lê bem texto impresso ou digital (por exemplo, o PDF da carteira do Meu SUS Digital), mas erra mais com letra de mão. Daí a decisão de projeto, tratada na Seção 5.4, de nunca gravar automaticamente: o sistema **sugere**, o usuário **revisa e confirma**.
 
 \newpage
 
@@ -195,7 +197,7 @@ Modelos multimodais de linguagem conseguem receber uma imagem e responder em for
 | Usuário | Pessoa autenticada que gerencia a própria carteira e a de seus dependentes. |
 | Administrador | Usuário com perfil `ADMIN`, que mantém o catálogo de vacinas, o calendário e as regras vacinais. |
 | Sistema agendador | Processo interno que dispara a verificação diária de pendências. |
-| Serviços externos | Provedor de e-mail (SMTP), serviço de IA de visão e serviço público de consulta de CEP (ViaCEP). |
+| Serviços externos | Provedor de e-mail (SMTP), serviço próprio de OCR (Docling) e serviço público de consulta de CEP (ViaCEP). |
 
 ## 3.2 Requisitos funcionais
 
@@ -227,7 +229,7 @@ Modelos multimodais de linguagem conseguem receber uma imagem e responder em for
 | RNF06 | Separação em camadas e uma responsabilidade por módulo. | Manutenibilidade |
 | RNF07 | Regras vacinais configuráveis em banco de dados, não codificadas em *if/else*. | Manutenibilidade |
 | RNF08 | Interface responsiva, utilizável em celular. | Usabilidade |
-| RNF09 | Falha do provedor de e-mail ou de IA não deve derrubar o servidor. | Confiabilidade |
+| RNF09 | Falha do provedor de e-mail ou do serviço de OCR não deve derrubar o servidor. | Confiabilidade |
 | RNF10 | Aderência à LGPD no tratamento dos dados de saúde. | Conformidade |
 
 ## 3.4 Regras de negócio principais
@@ -252,8 +254,8 @@ Os principais casos de uso são: **UC01** Cadastrar-se e confirmar e-mail; **UC0
 
 * **Ator principal:** Usuário autenticado.
 * **Pré-condição:** pessoa vinculada à conta do usuário.
-* **Fluxo principal:** (1) o usuário seleciona a pessoa e envia a imagem; (2) o sistema valida a posse da pessoa; (3) o sistema envia a imagem ao serviço de visão; (4) o sistema devolve vacina, dose, data, lote e local extraídos; (5) o usuário revisa e corrige os campos; (6) o usuário confirma; (7) o sistema grava o registro e a dose; (8) o sistema envia a confirmação por e-mail, se permitido.
-* **Fluxo alternativo A:** a IA retorna erro (imagem ilegível ou não é carteirinha): o sistema informa o motivo e permite novo envio ou o cadastro manual.
+* **Fluxo principal:** (1) o usuário seleciona a pessoa e envia a foto ou o PDF; (2) o sistema valida a posse da pessoa; (3) o sistema envia o arquivo ao serviço de OCR (Docling) e extrai os campos do texto lido; (4) o sistema devolve vacina, dose, data, lote e local extraídos; (5) o usuário revisa e corrige os campos; (6) o usuário confirma; (7) o sistema grava o registro e a dose; (8) o sistema envia a confirmação por e-mail, se permitido.
+* **Fluxo alternativo A:** o OCR não lê texto ou o texto não contém nenhuma vacina conhecida (imagem ilegível ou não é carteirinha): o sistema informa o motivo e permite novo envio ou o cadastro manual.
 * **Fluxo alternativo B:** a pessoa identificada na carteirinha difere da selecionada: o sistema oferece cadastrar a pessoa como dependente (cadastro automático).
 
 \newpage
@@ -281,7 +283,7 @@ O *Notifica Vacinas* segue uma arquitetura **cliente-servidor em três camadas l
                                 +------------------+                     +----------------------------+
                                 |  SQLite (arquivo)|                     | Serviços externos          |
                                 +------------------+                     |  - SMTP (e-mail)           |
-                                                                         |  - API de IA de visão      |
+                                                                         |  - Serviço de OCR (Docling) |
                                                                                                          +----------------------------+
 ```
 
@@ -364,7 +366,7 @@ calendário da faixa etária        carteira da pessoa
 | POST | `/auth/confirmar-email` | Público (limitado) | Valida o código de 6 dígitos. |
 | GET | `/vacinas` | Público | Lista o catálogo. |
 | GET | `/pendencias/:pessoaId` | Autenticado + posse | Resumo vacinal. |
-| POST | `/scan/analisar` | Autenticado + posse | Envia imagem para a IA. |
+| POST | `/scan/analisar` | Autenticado + posse | Envia foto ou PDF para leitura por OCR. |
 | POST | `/carteira/confirmar-scan` | Autenticado + posse | Grava o resultado confirmado. |
 | GET/POST | `/calendario`, `/agendamentos` | Autenticado | Calendário e agendamentos. |
 | GET/POST | `/dependentes`, `/grupos-especiais` | Autenticado | Dependentes e grupos. |
@@ -386,9 +388,9 @@ O *front end* foi construído como SPA em React 19 com roteamento por React Rout
 | Back end | Node.js, Express 5, TypeScript | Mesma linguagem nas duas pontas; tipagem estática reduz erros. |
 | Banco | SQLite (driver `sqlite3`) | Zero configuração; adequado ao escopo acadêmico. |
 | Autenticação | `bcryptjs`, `jsonwebtoken`, `cookie-parser` | Padrões consolidados. |
-| Segurança | `cors`, `express-rate-limit` | Controle de origem e de abuso. |
+| Segurança | `cors`, `helmet`, `express-rate-limit` | Controle de origem, cabeçalhos de segurança e abuso. |
 | Notificações | `nodemailer`, `node-cron` | E-mail por SMTP e agendamento. |
-| IA | SDK da Anthropic (modelo com visão) | Extração estruturada de imagens. |
+| OCR | Docling (Python), FastAPI | Leitura de texto e tabelas da carteirinha, em serviço próprio. |
 | Controle de versão | Git | Histórico incremental. |
 
 ## 5.2 Autenticação e autorização
@@ -413,13 +415,19 @@ Como o calendário e as regras estão em tabelas, a atualização de uma recomen
 
 ## 5.4 Leitura da carteirinha por IA
 
-O `ClaudeVisionService` recebe a imagem em *base64*, valida o tipo (JPEG, PNG ou WebP) e a existência da chave de API, e envia ao modelo um *prompt* que exige resposta exclusivamente em JSON, com vacina, dose, data de aplicação, lote, local, nome e data de nascimento do titular, ou um objeto de erro quando a imagem não for uma carteirinha. A resposta é validada (JSON legível, campo `vacina` presente) e os campos ilegíveis voltam como `null`.
+O `OcrService` envia o arquivo (JPEG, PNG, WebP ou PDF) ao serviço de OCR, um pequeno servidor FastAPI em Python (pasta `ocr-service/`) que executa o Docling e devolve o texto em Markdown, tabelas incluídas. Em seguida, o `LeituraCarteirinhaService` carrega o catálogo de vacinas ativas e entrega o texto ao extrator (`utils/extratorCarteirinha.ts`), uma função pura. Para cada linha do texto, o extrator:
 
-Três decisões de projeto merecem destaque:
+* identifica a vacina pelo nome do catálogo ou por apelidos (por exemplo, "Hep B", "Pneumo 10", "SCR"), escolhendo o apelido mais longo para não confundir vacinas parecidas (uma linha "Pentavalente (DTP+Hib+HB)" é pentavalente, não DTP);
+* lê a dose ("1ª dose", "Dose única", "Reforço"), as datas (formatos `dd/mm/aaaa`, `dd-mm-aa` e `aaaa-mm-dd`, descartando datas impossíveis), o lote e a unidade de saúde;
+* trata datas futuras como "próxima dose", e não como aplicação, e ignora a data de nascimento do titular;
+* devolve o registro mais recente, além do nome e da data de nascimento do titular, quando presentes. Campos não encontrados voltam como `null`.
 
-1. **Humano no circuito.** O endpoint `/scan/analisar` apenas devolve a sugestão. A gravação ocorre em `/carteira/confirmar-scan`, após revisão do usuário. Isso trata o risco de erro do modelo, relevante porque um dado vacinal incorreto pode levar a uma conclusão errada de que a pessoa está protegida.
-2. **Validação do arquivo.** O corpo aceita até 10 MB (a imagem trafega em *base64*), mas a imagem decodificada é limitada a 5 MB e seu tipo é deduzido dos primeiros bytes (*magic bytes* de JPEG, PNG e WEBP), e não do `mediaType` informado pelo cliente. A rota tem limite de chamadas por usuário, porque cada análise gera custo no serviço de IA.
+Quatro decisões de projeto merecem destaque:
+
+1. **Humano no circuito.** O endpoint `/scan/analisar` apenas devolve a sugestão. A gravação ocorre em `/carteira/confirmar-scan`, após revisão do usuário. Isso trata o risco de erro de leitura (OCR em letra manuscrita, por exemplo), relevante porque um dado vacinal incorreto pode levar a uma conclusão errada de que a pessoa está protegida.
+2. **Validação do arquivo.** O corpo aceita até 10 MB (a imagem trafega em *base64*), mas a imagem decodificada é limitada a 5 MB e seu tipo é deduzido dos primeiros bytes (*magic bytes* de JPEG, PNG e WEBP), e não do `mediaType` informado pelo cliente. A rota tem limite de chamadas por usuário, porque cada análise consome processamento do serviço de OCR.
 3. **Cadastro automático de dependente** quando a carteirinha pertence a outra pessoa, usando nome e data de nascimento extraídos, também sujeito à confirmação.
+4. **Isolamento do OCR.** O serviço de OCR é um processo separado, chamado por HTTP com tempo limite. Se estiver fora do ar, o `/scan/analisar` responde 503 com mensagem clara e o usuário cadastra a dose manualmente, sem derrubar o servidor principal (RNF09). Como o serviço recebe dados pessoais de saúde e não tem autenticação própria, deve ficar em rede interna, acessível só pelo back end.
 
 ## 5.5 Notificações
 
@@ -465,14 +473,14 @@ A verificação foi feita por arquivos `.http` versionados (`backend/tests/`), q
 
 ## 6.2 Conformidade com a LGPD
 
-Os dados de vacinação são dados sensíveis. O sistema aplica o princípio da **necessidade**, coletando apenas o que a finalidade exige, e da **segurança**, pelas medidas acima. Permanecem pendentes, e são tratados como trabalho necessário antes de uma versão pública: (a) política de privacidade e termo de consentimento específicos, inclusive para dependentes menores; (b) mecanismos de exportação e **exclusão** de dados a pedido do titular (art. 18); (c) registro de operações de tratamento; (d) criptografia do banco em repouso; e (e) análise do envio de imagens a um serviço externo de IA, que constitui compartilhamento com operador, possivelmente com transferência internacional (arts. 33 a 36), exigindo contrato, base legal e transparência ao titular. Recomenda-se também elaborar um Relatório de Impacto à Proteção de Dados Pessoais (RIPD).
+Os dados de vacinação são dados sensíveis. O sistema aplica o princípio da **necessidade**, coletando apenas o que a finalidade exige, e da **segurança**, pelas medidas acima. Permanecem pendentes, e são tratados como trabalho necessário antes de uma versão pública: (a) política de privacidade e termo de consentimento específicos, inclusive para dependentes menores; (b) mecanismos de exportação e **exclusão** de dados a pedido do titular (art. 18); (c) registro de operações de tratamento; (d) criptografia do banco em repouso; e (e) definição de que o serviço de OCR permanece em rede interna, sem acesso externo e sem guardar os arquivos recebidos (o OCR é feito em arquivo temporário apagado ao fim do pedido), de modo que as imagens da carteirinha não são compartilhadas com terceiros nem transferidas para fora da infraestrutura do sistema, o que dispensa, nesse ponto, contrato com operador e análise de transferência internacional (arts. 33 a 36). Recomenda-se também elaborar um Relatório de Impacto à Proteção de Dados Pessoais (RIPD).
 
 ## 6.3 Visão de sistemas distribuídos
 
 Analisando o sistema pelas propriedades clássicas:
 
 * **Transparência de acesso e de localização:** o cliente conhece apenas a URL da API; a troca de banco ou de provedor de e-mail é invisível a ele.
-* **Tolerância a falhas parciais:** erros de SMTP ou de IA geram mensagens de erro tratadas, e a rotina diária isola as falhas em `try/catch`.
+* **Tolerância a falhas parciais:** erros de SMTP ou do serviço de OCR geram mensagens de erro tratadas, e a rotina diária isola as falhas em `try/catch`.
 * **Escalabilidade:** a API é *stateless* (a sessão está no JWT), o que permite replicá-la atrás de um balanceador de carga. Contudo, o SQLite em arquivo local e o agendador no mesmo processo impedem a replicação horizontal imediata: com duas instâncias, o *job* rodaria duas vezes e os usuários receberiam e-mails duplicados. A solução é mover o banco para um SGBD cliente-servidor e executar o agendador em um único *worker* dedicado ou com *lock* distribuído.
 * **Consistência:** o registro da dose e o envio da confirmação não são atômicos. O desenho aceita **consistência eventual** para a notificação, mas a gravação da dose e de seu registro pai deve ocorrer em transação para evitar linhas órfãs.
 * **Idempotência:** o envio de lembretes deve guardar a data do último disparo por agendamento para evitar duplicidade em reexecuções. É uma melhoria listada no Capítulo 8.
@@ -507,7 +515,7 @@ O *Notifica Vacinas* **não substitui** o registro oficial; atua como camada de 
 4. **Banco embarcado e agendador no mesmo processo** (Seção 6.3).
 5. **Canal único de notificação e ausência de segundo fator.** SMS não foi implementado, e e-mails podem cair em *spam* ou não ser lidos. O login depende apenas de e-mail e senha; autenticação em dois fatores (TOTP) permanece como melhoria futura, e deveria ser obrigatória para administradores.
 6. **Conformidade com a LGPD incompleta** (Seção 6.2).
-7. **Dependência de serviço externo de IA**, com custo por imagem e necessidade de rede.
+7. **Limites do OCR.** A leitura é boa para texto impresso ou digital, mas letra manuscrita e carimbos borrados saem com erros; a revisão do usuário é obrigatória. O extrator por regras também reconhece apenas o registro mais recente por envio e depende de o nome da vacina estar no catálogo. O serviço de OCR exige mais memória (carrega modelos de aprendizado de máquina) e precisa ser implantado e monitorado à parte.
 8. **Escrita manual de tabelas SQL** e migrações por `ALTER TABLE` com tratamento de erro, em vez de ferramenta de migração versionada. O esquema Prisma no repositório está incompleto em relação às tabelas reais, o que gera inconsistência de manutenção.
 9. **Ausência de avaliação com usuários.** Não houve teste de usabilidade com público-alvo, em especial idosos e pessoas de baixa familiaridade digital.
 
@@ -564,7 +572,7 @@ O *Notifica Vacinas* **não substitui** o registro oficial; atua como camada de 
 | Implantação | Contêineres (Docker), ambiente de homologação, HTTPS obrigatório, *backup* automatizado. |
 | Experiência | PWA com modo offline, acessibilidade conforme WCAG 2.1 AA e o eMAG, modo de alto contraste, internacionalização. |
 | Dados | Painéis agregados e anonimizados de cobertura para gestores públicos, com privacidade diferencial. |
-| IA | Pontuação de confiança por campo, instrução ao usuário para melhorar a foto, leitura de várias linhas da carteirinha em lote. |
+| OCR | Pontuação de confiança por campo, instrução ao usuário para melhorar a foto, leitura de todas as linhas da carteirinha em lote, avaliação de acurácia com um conjunto de carteirinhas reais, e tratamento de letra manuscrita. |
 
 ## 8.5 Dimensão internacional
 
@@ -641,7 +649,7 @@ UNIVERSIDADE DE SÃO PAULO. [Estudos sobre cobertura vacinal e hesitação vacin
 | `JWT_SECRET` | Segredo de assinatura dos tokens (obrigatório). |
 | `DATABASE_URL` | Caminho do arquivo SQLite. |
 | `ADMIN_EMAIL`, `ADMIN_SENHA` | Criação do administrador inicial. |
-| `ANTHROPIC_API_KEY` | Chave do serviço de visão. |
+| `OCR_SERVICE_URL` | URL do serviço de OCR (Docling). |
 | `EMAIL_USER`, `EMAIL_APP_PASSWORD`, `EMAIL_SERVICE`, `EMAIL_FROM` | Envio de e-mail. |
 | `NOTIFICACAO_CRON` | Expressão cron da verificação diária. |
 

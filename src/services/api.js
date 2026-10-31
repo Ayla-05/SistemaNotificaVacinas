@@ -453,7 +453,7 @@ export async function registrarVacinaNaCarteira({ pessoaId, vacinaId }) {
 }
 
 /**
- * Confirma na carteira os dados lidos pelo Claude Vision
+ * Confirma na carteira os dados lidos pelo OCR
  * (já revisados/editados pelo usuário na tela de Scan).
  */
 export async function confirmarScanNaCarteira({
@@ -512,12 +512,12 @@ export async function removerAgendamento(id) {
 }
 
 /* ==================================================
-   SCAN (CLAUDE VISION)
+   SCAN (OCR COM DOCLING)
    ================================================== */
 
 /**
- * Envia a foto da carteirinha (base64, sem o prefixo
- * "data:image/...;base64,") para leitura via Claude Vision.
+ * Envia a foto ou o PDF da carteirinha (base64, sem o prefixo
+ * "data:...;base64,") para leitura por OCR (Docling) no backend.
  */
 export async function analisarCarteirinha({ pessoaId, imagemBase64, mediaType }) {
   const response = await chamarApi("/scan/analisar", {

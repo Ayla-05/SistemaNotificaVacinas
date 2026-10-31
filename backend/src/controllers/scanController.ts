@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 
-import { ClaudeVisionService }
-  from "../services/claudeVisionService";
-import { detectarTipoImagem }
+import { LeituraCarteirinhaService }
+  from "../services/leituraCarteirinhaService";
+import { OcrIndisponivelError }
+  from "../services/ocrService";
+import { detectarTipoArquivoCarteirinha }
   from "../utils/seguranca";
 
 /*
@@ -15,7 +17,7 @@ Responsabilidades:
 - Receber a imagem da carteirinha enviada
   pelo frontend
 - Validar tamanho e tipo real da imagem
-- Chamar o ClaudeVisionService
+- Chamar a leitura da carteirinha (OCR com Docling)
 - Retornar os dados extraídos para revisão
 
 NÃO é responsável por:
@@ -29,7 +31,7 @@ NÃO é responsável por:
 
 Dependências:
 
-- ClaudeVisionService
+- LeituraCarteirinhaService
 */
 
 /* Limite do arquivo já decodificado (o corpo JSON aceita até 10 MB em base64). */
@@ -87,27 +89,32 @@ export class ScanController {
       "mediaType" informado pelo cliente.
       */
       const mediaType =
-        detectarTipoImagem(bytes);
+        detectarTipoArquivoCarteirinha(bytes);
 
       if (!mediaType) {
         return res.status(400).json({
           erro:
-            "Formato de imagem não suportado. Envie JPG, PNG ou WEBP."
+            "Formato não suportado. Envie JPG, PNG, WEBP ou PDF."
         });
       }
 
       const dados =
-        await ClaudeVisionService
-          .analisarCarteirinha(
-            imagemBase64,
-            mediaType
-          );
+        await LeituraCarteirinhaService.analisar(
+          bytes,
+          mediaType
+        );
 
       return res.status(200).json(
         dados
       );
 
     } catch (error: any) {
+
+      if (error instanceof OcrIndisponivelError) {
+        return res.status(503).json({
+          erro: error.message
+        });
+      }
 
       return res.status(400).json({
         erro: error.message
