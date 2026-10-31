@@ -73,6 +73,7 @@ hepatite B 30 e 180 dias; dengue DNG4 90 dias. Os intervalos de COVID-19 em cria
   administrador nas faixas são substituídas na troca de versão.
 - **Aviso por e-mail**: deixou de ser diário. Sai uma vez por dose, quando faltam até 7 dias (`AVISO_DOSE_DIAS`),
   com o período da campanha da vacina, se houver. Controle de repetição em `avisos_dose`.
+- **Frequência escolhida pela pessoa** (Meu Perfil > Notificações): uma vez por dose (padrão), diária, semanal, mensal ou desativada; as periódicas mandam um resumo no ritmo escolhido.
 - **Calendário da pessoa**: marca a data prevista de cada dose e o período da campanha da vacina.
 
 ## 6. O que ainda falta
