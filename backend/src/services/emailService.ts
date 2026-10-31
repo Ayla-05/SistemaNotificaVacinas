@@ -379,6 +379,84 @@ export class EmailService {
 
   /*
   ==================================================
+  RESUMO PERIÓDICO DE DOSES
+  ==================================================
+
+  Enviado no ritmo escolhido pela pessoa (diário, semanal ou
+  mensal) enquanto houver dose atrasada, disponível ou chegando.
+  */
+  static async enviarResumoDoses(
+    destinatario: string,
+    nomePessoa: string,
+    frequenciaDescrita: string,
+    doses: Array<{
+      vacina: string;
+      rotulo: string;
+      status: string;
+      dataPrevista: string | null;
+      diasParaVencer: number | null;
+      campanha: {
+        nome: string;
+        dataInicio: string | null;
+        dataFim: string | null;
+      } | null;
+    }>
+  ) {
+
+    const formatar = (iso: string | null) =>
+      iso ? iso.split("-").reverse().join("/") : "";
+
+    const linha = (d: (typeof doses)[number]) => {
+
+      const prazo =
+        d.status === "DISPONIVEL"
+          ? "pode tomar agora"
+          : d.status === "ATRASADA"
+            ? `prevista para ${formatar(d.dataPrevista)} (atrasada há ${Math.abs(d.diasParaVencer ?? 0)} dia(s))`
+            : d.diasParaVencer === 0
+              ? `hoje (${formatar(d.dataPrevista)})`
+              : `${formatar(d.dataPrevista)} (em ${d.diasParaVencer} dias)`;
+
+      const campanha = d.campanha
+        ? `<br><span style="color: #64748b; font-size: 13px;">Campanha &quot;${d.campanha.nome}&quot;${
+            d.campanha.dataInicio
+              ? `: de ${formatar(d.campanha.dataInicio)}${
+                  d.campanha.dataFim ? ` a ${formatar(d.campanha.dataFim)}` : ""
+                }`
+              : ""
+          }</span>`
+        : "";
+
+      return `<li><strong>${d.vacina}</strong> — ${d.rotulo}: ${prazo}${campanha}</li>`;
+
+    };
+
+    const secao = (titulo: string, lista: typeof doses) =>
+      lista.length > 0
+        ? `<h3>${titulo}</h3><ul>${lista.map(linha).join("")}</ul>`
+        : "";
+
+    const atrasadas = doses.filter((d) => d.status === "ATRASADA");
+    const disponiveis = doses.filter((d) => d.status === "DISPONIVEL");
+    const proximas = doses.filter((d) => d.status === "PROXIMA");
+
+    return this.enviar(
+      destinatario,
+      `Resumo de vacinas: ${nomePessoa}`,
+      modeloBase(`
+        <h2>Resumo de vacinas de ${nomePessoa}</h2>
+        ${secao("Em atraso", atrasadas)}
+        ${secao("Pode tomar agora", disponiveis)}
+        ${secao("Chegando nos próximos 30 dias", proximas)}
+        <p style="color: #64748b; font-size: 13px;">Você recebe este resumo ${frequenciaDescrita}.
+        Para mudar ou desativar, abra Meu Perfil &gt; Notificações no Notifica Vacinas.</p>
+      `)
+    );
+
+  }
+
+  /*
+  ==================================================
   LEMBRETE DE AGENDAMENTO PRÓXIMO
   ==================================================
   */

@@ -134,6 +134,8 @@ export function criarPessoa(
     receber_email?: number;
 
     receber_whatsapp?: number;
+
+    frequencia_aviso?: string;
   }
 ): Promise<number> {
 
@@ -171,10 +173,12 @@ export function criarPessoa(
 
         receber_email,
 
-        receber_whatsapp
+        receber_whatsapp,
+
+        frequencia_aviso
 
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         dados.usuario_id,
@@ -205,7 +209,9 @@ export function criarPessoa(
 
         dados.receber_email ?? 1,
 
-        dados.receber_whatsapp ?? 1
+        dados.receber_whatsapp ?? 1,
+
+        dados.frequencia_aviso ?? "UMA_VEZ"
       ],
       function (err) {
 
@@ -257,6 +263,8 @@ export function atualizarPessoa(
     receber_email?: number;
 
     receber_whatsapp?: number;
+
+    frequencia_aviso?: string;
   }
 ): Promise<number> {
 
@@ -293,7 +301,8 @@ export function atualizarPessoa(
 
         receber_email = ?,
 
-        receber_whatsapp = ?
+        receber_whatsapp = ?,
+        frequencia_aviso = ?
 
       WHERE id = ?
       `,
@@ -325,6 +334,8 @@ export function atualizarPessoa(
         dados.receber_email ?? 1,
 
         dados.receber_whatsapp ?? 1,
+
+        dados.frequencia_aviso ?? "UMA_VEZ",
 
         id
       ],
@@ -367,6 +378,39 @@ export function removerPessoa(
         }
 
         resolve(this.changes);
+
+      }
+    );
+
+  });
+
+}
+
+/*
+==================================================
+REGISTRAR O ÚLTIMO RESUMO ENVIADO
+==================================================
+
+Data (AAAA-MM-DD) do último resumo periódico de doses enviado
+por e-mail; usada para respeitar a frequência escolhida.
+*/
+export function registrarUltimoResumo(
+  id: number,
+  data: string
+): Promise<void> {
+
+  return new Promise((resolve, reject) => {
+
+    db.run(
+      `UPDATE pessoas SET ultimo_resumo_em = ? WHERE id = ?`,
+      [data, id],
+      (err) => {
+
+        if (err) {
+          return reject(err);
+        }
+
+        resolve();
 
       }
     );

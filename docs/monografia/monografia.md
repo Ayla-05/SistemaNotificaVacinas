@@ -314,7 +314,7 @@ O modelo relacional possui dezesseis tabelas.
 | Tabela | Finalidade | Relacionamentos principais |
 |---|---|---|
 | `usuarios` | Conta de acesso (nome, e-mail único, *hash* da senha, perfil, ativo, e-mail verificado, código e expiração). | 1:N com `pessoas`. |
-| `pessoas` | Titular ou dependente: nome, e-mail, telefone, data de nascimento, endereço, preferência de e-mail. | N:1 com `usuarios`. |
+| `pessoas` | Titular ou dependente: nome, e-mail, telefone, data de nascimento, endereço, preferência de e-mail e frequência dos avisos de vacina. | N:1 com `usuarios`. |
 | `dependentes` | Vínculo de parentesco entre responsável e pessoa dependente. | N:1 com `pessoas`. |
 | `grupos_especiais` | Catálogo de grupos (gestante, idoso, trabalhador de saúde, indígena, imunocomprometido, estrangeiro). | — |
 | `pessoa_grupo_especial` | Associação N:N entre pessoa e grupo. | `pessoas` × `grupos_especiais`. |
@@ -451,12 +451,14 @@ O `NotificacaoService` decide quem recebe e o `EmailService` sabe como enviar, s
 |---|---|---|
 | Boas-vindas e código | Cadastro | E-mail |
 | Confirmação de dose | Registro de dose | E-mail |
-| Dose chegando | Verificação diária; o e-mail sai uma única vez por dose, quando faltam até 7 dias para a data prevista | E-mail |
+| Dose chegando | Verificação diária; conforme a frequência escolhida: uma vez por dose (até 7 dias antes da data prevista), ou resumo diário, semanal ou mensal | E-mail |
 | Lembrete de agendamento | Rotina diária, 3 dias antes | E-mail |
 
 A rotina diária é um *job* do `node-cron`, por padrão às 8h, configurável pela variável `NOTIFICACAO_CRON`. Falhas são capturadas e registradas em *log*, sem derrubar o processo (RNF09). O módulo de SMS existe como ponto de extensão, ainda sem provedor.
 
 **Aviso de dose próxima.** O aviso por e-mail das pendências, que antes era enviado todos os dias enquanto houvesse uma vacina em atraso, foi substituído por um aviso **orientado à data**: a verificação diária calcula as próximas doses de cada pessoa e só envia e-mail quando uma dose entra na janela de 7 dias antes da data prevista (configurável por `AVISO_DOSE_DIAS`). A tabela `avisos_dose`, com chave única por pessoa, vacina, número da dose e data prevista, funciona como trava de idempotência: o `INSERT OR IGNORE` indica se é a primeira vez, de modo que a verificação pode rodar todos os dias, ou até duas vezes ao mesmo tempo, sem duplicar o e-mail. Se o envio falhar, o registro é desfeito e a dose é avisada de novo na verificação seguinte. Doses atrasadas ou sem data definida aparecem no painel e no calendário, sem e-mail diário. Quando a vacina tem campanha cadastrada, o e-mail informa o período dela.
+
+**Frequência escolhida pela pessoa.** O ritmo dos avisos é uma preferência de cada pessoa (tela *Meu Perfil*, seção *Notificações*), com cinco opções: *uma vez* (padrão, o aviso por dose descrito acima), *diariamente*, *semanalmente*, *mensalmente* e *desativado*. Nas três opções periódicas o sistema envia um **resumo** (doses atrasadas, disponíveis e as que chegam em até 30 dias), no máximo uma vez por período: a decisão de enviar é uma função pura (`utils/frequenciaAviso.ts`) que compara a data do último resumo (coluna `ultimo_resumo_em`) com a de hoje (um dia, sete dias ou um mês, sem estourar o fim do mês). A data só é gravada quando o e-mail de fato sai; se o envio falhar, a verificação seguinte tenta de novo. O valor é validado no servidor (valor desconhecido é recusado), e uma atualização parcial do perfil não apaga a preferência.
 
 No calendário da pessoa (tela *Calendário*), a data prevista de cada dose do calendário nacional é marcada no dia (vermelho se atrasada, amarelo nos próximos 30 dias, azul adiante), e o **período da campanha** da vacina é marcado nos dias que ele abrange.
 

@@ -4,6 +4,13 @@ import { SmsService } from "./smsService";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as usuarioRepository from "../repositories/usuarioRepository";
 import { ProximasDosesService } from "./proximasDosesService";
+import {
+  deveEnviarResumo,
+  ehResumoPeriodico,
+  FREQUENCIA_PADRAO,
+  frequenciaValida,
+  FrequenciaAviso
+} from "../utils/frequenciaAviso";
 import * as avisoDoseRepository from "../repositories/avisoDoseRepository";
 import * as agendamentoVacinaRepository from "../repositories/agendamentoVacinaRepository";
 
@@ -271,6 +278,27 @@ export class NotificacaoService {
     destinatario: string
   ) {
 
+    const frequencia: FrequenciaAviso =
+      frequenciaValida(pessoa.frequencia_aviso)
+        ? pessoa.frequencia_aviso
+        : FREQUENCIA_PADRAO;
+
+    if (frequencia === "DESATIVADO") {
+      return;
+    }
+
+    if (ehResumoPeriodico(frequencia)) {
+
+      await this.enviarResumoPeriodico(
+        pessoa,
+        destinatario,
+        frequencia
+      );
+
+      return;
+
+    }
+
     try {
 
       const proximas =
@@ -339,6 +367,91 @@ export class NotificacaoService {
 
       console.error(
         `[NotificacaoService] Falha ao verificar doses próximas da pessoa ${pessoa.id}:`,
+        erro.message
+      );
+
+    }
+
+  }
+
+  /*
+  Resumo periódico (diário, semanal ou mensal): reúne as doses
+  atrasadas, disponíveis e as que chegam em até 30 dias e envia no
+  ritmo escolhido, enquanto houver alguma. Só marca o envio na pessoa
+  se o e-mail saiu, para tentar de novo na verificação seguinte.
+  */
+  private static async enviarResumoPeriodico(
+    pessoa: any,
+    destinatario: string,
+    frequencia: FrequenciaAviso
+  ) {
+
+    try {
+
+      const hoje = new Date();
+
+      const dataHoje =
+        `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+
+      if (
+        !deveEnviarResumo(
+          frequencia,
+          pessoa.ultimo_resumo_em ?? null,
+          dataHoje
+        )
+      ) {
+        return;
+      }
+
+      const proximas =
+        await ProximasDosesService.calcular(
+          pessoa.id,
+          hoje
+        );
+
+      const doses = proximas.filter(
+        (d) =>
+          d.status === "ATRASADA" ||
+          d.status === "DISPONIVEL" ||
+          d.status === "PROXIMA"
+      );
+
+      if (doses.length === 0) {
+        return;
+      }
+
+      const descricao: Record<string, string> = {
+        DIARIA: "todos os dias",
+        SEMANAL: "toda semana",
+        MENSAL: "todo mês"
+      };
+
+      const resultado =
+        await EmailService.enviarResumoDoses(
+          destinatario,
+          pessoa.nome,
+          descricao[frequencia],
+          doses.map((d) => ({
+            vacina: d.vacina,
+            rotulo: d.rotulo,
+            status: d.status,
+            dataPrevista: d.dataPrevista,
+            diasParaVencer: d.diasParaVencer,
+            campanha: d.campanha
+          }))
+        );
+
+      if (resultado.enviado) {
+        await pessoaRepository.registrarUltimoResumo(
+          pessoa.id,
+          dataHoje
+        );
+      }
+
+    } catch (erro: any) {
+
+      console.error(
+        `[NotificacaoService] Falha ao enviar o resumo da pessoa ${pessoa.id}:`,
         erro.message
       );
 
