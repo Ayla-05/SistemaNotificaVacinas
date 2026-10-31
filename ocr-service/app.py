@@ -12,6 +12,7 @@ enviado a terceiros.
 import logging
 import os
 import tempfile
+import threading
 from functools import lru_cache
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -55,6 +56,24 @@ def obter_conversor():
             InputFormat.IMAGE: ImageFormatOption(pipeline_options=opcoes),
         }
     )
+
+
+@app.on_event("startup")
+def aquecer():
+    """
+    Carrega os modelos em segundo plano ao subir o serviço. Sem isso, a primeira
+    leitura pagaria o carregamento (e, na primeira vez na máquina, o download dos
+    modelos) e estouraria o tempo limite do back end.
+    """
+
+    def carregar():
+        try:
+            obter_conversor()
+            log.info("Modelos de OCR carregados. Serviço pronto.")
+        except Exception:
+            log.exception("Falha ao carregar os modelos de OCR")
+
+    threading.Thread(target=carregar, daemon=True).start()
 
 
 @app.get("/saude")
