@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { CarteiraController } from "../controllers/carteiraController";
-import { pessoaPertenceAoUsuario, pessoaDoCorpoPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
+import { pessoaPertenceAoUsuario, pessoaDoCorpoPertenceAoUsuario, registroDaUrlPertenceAoUsuario, registroDoIdPertenceAoUsuario, registroDoCorpoPertenceAoUsuario, doseDoIdPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 ==================================================
@@ -60,6 +60,7 @@ POST /carteira/dose
 */
 router.post(
   "/dose",
+  registroDoCorpoPertenceAoUsuario,
   CarteiraController.registrarDose
 );
 
@@ -72,6 +73,7 @@ GET /carteira/registro/:registroId/doses
 */
 router.get(
   "/registro/:registroId/doses",
+  registroDaUrlPertenceAoUsuario,
   CarteiraController.listarDoses
 );
 
@@ -84,6 +86,7 @@ GET /carteira/registro/:registroId/contar-doses
 */
 router.get(
   "/registro/:registroId/contar-doses",
+  registroDaUrlPertenceAoUsuario,
   CarteiraController.contarDoses
 );
 
@@ -96,6 +99,7 @@ DELETE /carteira/dose/:id
 */
 router.delete(
   "/dose/:id",
+  doseDoIdPertenceAoUsuario,
   CarteiraController.removerDose
 );
 
@@ -108,6 +112,7 @@ DELETE /carteira/registro/:id
 */
 router.delete(
   "/registro/:id",
+  registroDoIdPertenceAoUsuario,
   CarteiraController.removerRegistro
 );
 

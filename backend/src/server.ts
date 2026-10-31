@@ -564,7 +564,12 @@ async function iniciarServidor() {
 BOOTSTRAP
 ==================================================
 */
-iniciarServidor();
+/*
+Em teste o app é importado sem abrir porta nem agendar jobs.
+*/
+if (process.env.NODE_ENV !== "test") {
+  iniciarServidor();
+}
 
 export default app;
 
