@@ -11,7 +11,14 @@ import express, {
 } from "express";
 
 import cors from "cors";
+import helmet from "helmet";
 import cookieParser from "cookie-parser";
+
+import { exigirCabecalhoCsrf }
+  from "./middlewares/csrfMiddleware";
+
+import { forcarHttps }
+  from "./middlewares/httpsMiddleware";
 
 import { configurarBanco }
   from "./database/configurarBanco";
@@ -106,9 +113,63 @@ const PORT =
 
 /*
 ==================================================
+PROXY REVERSO
+==================================================
+
+Atrás de um balanceador/proxy, req.ip e req.secure só
+são corretos se o Express confiar nele. Sem isso, o
+limite de tentativas por IP vê todos os usuários como
+um único IP (o do proxy).
+
+TRUST_PROXY = número de proxies à frente do servidor
+(ex.: 1). Em branco = sem proxy (desenvolvimento).
+*/
+if (process.env.TRUST_PROXY) {
+
+  app.set(
+    "trust proxy",
+    Number(process.env.TRUST_PROXY)
+  );
+
+}
+
+/*
+==================================================
 MIDDLEWARES GLOBAIS
 ==================================================
 */
+
+/*
+HTTPS obrigatório em produção
+*/
+app.use(forcarHttps);
+
+/*
+Cabeçalhos de segurança (helmet):
+CSP restritiva (a API só devolve JSON), HSTS,
+X-Content-Type-Options, frame-ancestors 'none', etc.
+
+Cross-Origin-Resource-Policy "cross-origin" porque o
+front end está em outra origem; quem controla quem lê a
+resposta é o CORS abaixo.
+*/
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"]
+      }
+    },
+    crossOriginResourcePolicy: {
+      policy: "cross-origin"
+    },
+    strictTransportSecurity: {
+      maxAge: 15552000,
+      includeSubDomains: true
+    }
+  })
+);
 
 /*
 Permite acesso do frontend.
@@ -146,7 +207,11 @@ app.use(
             );
 
           },
-    credentials: true
+    credentials: true,
+    allowedHeaders: [
+      "Content-Type",
+      "X-CSRF-Protection"
+    ]
   })
 );
 
@@ -177,6 +242,14 @@ Lê o cookie httpOnly que carrega o token JWT
 */
 app.use(
   cookieParser()
+);
+
+/*
+Proteção CSRF: toda requisição que altera dados precisa
+do cabeçalho X-CSRF-Protection (ver csrfMiddleware).
+*/
+app.use(
+  exigirCabecalhoCsrf
 );
 
 /*

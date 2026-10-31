@@ -108,6 +108,40 @@ export class NotificacaoService {
 
   /*
   ==================================================
+  1d. REDEFINIÇÃO DE SENHA
+  ==================================================
+
+  Disparado em POST /auth/esqueci-senha (e-mail com o link)
+  e ao concluir a troca (aviso de segurança).
+  */
+  static async notificarRedefinicaoSenha(
+    email: string,
+    nome: string,
+    link: string
+  ) {
+
+    return EmailService.enviarRedefinicaoSenha(
+      email,
+      nome,
+      link
+    );
+
+  }
+
+  static async notificarSenhaAlterada(
+    email: string,
+    nome: string
+  ) {
+
+    return EmailService.enviarSenhaAlterada(
+      email,
+      nome
+    );
+
+  }
+
+  /*
+  ==================================================
   1b. REENVIO DE CÓDIGO DE VERIFICAÇÃO
   ==================================================
   */

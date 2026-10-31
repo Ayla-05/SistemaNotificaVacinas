@@ -13,6 +13,9 @@ import RotaProtegida from '../components/RotaProtegida';
 import AppLayout from '../components/layout/AppLayout';
 import Login from '../pages/Login';
 import ConfirmarEmail from '../pages/ConfirmarEmail';
+import EsqueciSenha from '../pages/EsqueciSenha';
+import RedefinirSenha from '../pages/RedefinirSenha';
+import Dispositivos from '../pages/Dispositivos';
 import CompletarCadastro from '../pages/CompletarCadastro';
 import Dashboard from '../pages/Dashboard';
 import Scan from '../pages/Scan';
@@ -34,6 +37,10 @@ export default function AppRoutes() {
 
             {/* Rota pública de autenticação (sem sidebar/header) */}
             <Route path="/login" element={<Login />} />
+
+            {/* Recuperação de senha (públicas) */}
+            <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
             {/* Confirmação de e-mail pós-cadastro (pública: ainda não há sessão nesse momento) */}
             <Route path="/confirmar-email" element={<ConfirmarEmail />} />
@@ -68,6 +75,7 @@ export default function AppRoutes() {
               <Route path="calendario" element={<Calendario />} />
               <Route path="dependentes" element={<Dependentes />} />
               <Route path="perfil" element={<Perfil />} />
+              <Route path="dispositivos" element={<Dispositivos />} />
 
               {/* Fallback: redireciona URLs desconhecidas para o Dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
