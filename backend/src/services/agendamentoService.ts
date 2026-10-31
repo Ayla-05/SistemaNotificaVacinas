@@ -188,6 +188,20 @@ export class AgendamentoService {
     status: string
   ) {
 
+    const STATUS_VALIDOS = [
+      "PENDENTE",
+      "AGENDADA",
+      "REALIZADA",
+      "CANCELADA",
+      "ATRASADA"
+    ];
+
+    if (!STATUS_VALIDOS.includes(status)) {
+      throw new Error(
+        `Status inválido. Use: ${STATUS_VALIDOS.join(", ")}.`
+      );
+    }
+
     const agendamento =
       await agendamentoVacinaRepository
         .buscarAgendamentoPorId(id);

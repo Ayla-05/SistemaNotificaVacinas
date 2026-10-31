@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { AgendamentoController } from "../controllers/agendamentoController";
-import { pessoaPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
+import { pessoaPertenceAoUsuario, pessoaDoCorpoPertenceAoUsuario, agendamentoDoIdPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 ==================================================
@@ -34,6 +34,7 @@ GET /agendamentos/:id
 */
 router.get(
   "/:id",
+  agendamentoDoIdPertenceAoUsuario,
   AgendamentoController.buscarPorId
 );
 
@@ -59,6 +60,7 @@ POST /agendamentos
 */
 router.post(
   "/",
+  pessoaDoCorpoPertenceAoUsuario,
   AgendamentoController.criar
 );
 
@@ -71,6 +73,7 @@ PATCH /agendamentos/:id/status
 */
 router.patch(
   "/:id/status",
+  agendamentoDoIdPertenceAoUsuario,
   AgendamentoController.atualizarStatus
 );
 
@@ -83,6 +86,7 @@ PATCH /agendamentos/:id/observacao
 */
 router.patch(
   "/:id/observacao",
+  agendamentoDoIdPertenceAoUsuario,
   AgendamentoController.atualizarObservacao
 );
 
@@ -107,6 +111,7 @@ DELETE /agendamentos/:id
 */
 router.delete(
   "/:id",
+  agendamentoDoIdPertenceAoUsuario,
   AgendamentoController.remover
 );
 

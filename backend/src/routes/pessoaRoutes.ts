@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 
 import { PessoaController } from "../controllers/pessoaController";
+import { pessoaDoIdPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 Garante que um usuário só liste as pessoas
@@ -63,6 +64,7 @@ GET /pessoas/:id
 */
 router.get(
   "/:id",
+  pessoaDoIdPertenceAoUsuario,
   PessoaController.buscarPorId
 );
 
@@ -100,6 +102,7 @@ PUT /pessoas/:id
 */
 router.put(
   "/:id",
+  pessoaDoIdPertenceAoUsuario,
   PessoaController.atualizar
 );
 
@@ -112,6 +115,7 @@ DELETE /pessoas/:id
 */
 router.delete(
   "/:id",
+  pessoaDoIdPertenceAoUsuario,
   PessoaController.remover
 );
 

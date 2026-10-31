@@ -25,6 +25,27 @@ Dependências:
 
 - UsuarioService
 */
+/*
+Nunca devolve o hash da senha nem o código de
+verificação de e-mail ao cliente.
+*/
+function semSegredos(usuario: any) {
+
+  if (!usuario) {
+    return usuario;
+  }
+
+  const {
+    senha,
+    codigo_verificacao,
+    codigo_verificacao_expira,
+    ...seguro
+  } = usuario;
+
+  return seguro;
+
+}
+
 export class UsuarioController {
 
   /*
@@ -45,7 +66,7 @@ export class UsuarioController {
         await UsuarioService.listarTodos();
 
       return res.status(200).json(
-        usuarios
+        usuarios.map(semSegredos)
       );
 
     } catch (error: any) {
@@ -81,7 +102,7 @@ export class UsuarioController {
         );
 
       return res.status(200).json(
-        usuario
+        semSegredos(usuario)
       );
 
     } catch (error: any) {

@@ -39,8 +39,16 @@ export class PessoaController {
 
     try {
 
+      /*
+      Usuário comum só enxerga as pessoas da própria conta;
+      a lista geral é restrita ao administrador.
+      */
       const pessoas =
-        await PessoaService.listarTodas();
+        req.perfilUsuario === "ADMIN"
+          ? await PessoaService.listarTodas()
+          : await PessoaService.listarPorUsuario(
+              req.usuarioId as number
+            );
 
       return res.status(200).json(
         pessoas
@@ -141,6 +149,17 @@ export class PessoaController {
   ) {
 
     try {
+
+      if (
+        req.perfilUsuario !== "ADMIN" &&
+        Number(req.body?.usuario_id) !== req.usuarioId
+      ) {
+
+        return res.status(403).json({
+          erro: "Você não pode criar pessoas em outra conta."
+        });
+
+      }
 
       const id =
         await PessoaService.criar(
