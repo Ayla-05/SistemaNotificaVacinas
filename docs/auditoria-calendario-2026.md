@@ -65,12 +65,20 @@ Onde o calendário não diz o intervalo, usei o que o sistema já tinha em `regr
 hepatite B 30 e 180 dias; dengue DNG4 90 dias. Os intervalos de COVID-19 em criança (28 e 56 dias) e de rotavírus
 (60 dias) estão nas notas do calendário da criança.
 
-## 5. O que ficou
+## 5. Correções feitas depois da auditoria
 
-- A tabela `calendario_vacinal` (e a rota `/calendario`) **continua com os dados antigos**. O Dashboard já não depende
-  dela. Falta decidir: atualizar o seed (precisa de migração para bancos existentes, sem sobrescrever edições do
-  administrador) ou aposentar a tabela.
-- `regras_vacinais` continua no banco, mas o cálculo novo não a usa (as regras estão em `esquemaVacinal2026.ts`).
+- **`calendario_vacinal` atualizada**: as linhas das quatro faixas etárias agora são derivadas do mesmo esquema do
+  cálculo (`utils/calendarioDerivado.ts`). A versão ("2026") fica em `configuracoes`; se o banco tiver outra versão,
+  o seed troca as linhas dessas faixas uma vez. Linhas do grupo GESTANTE não são alteradas. Edições manuais do
+  administrador nas faixas são substituídas na troca de versão.
+- **Aviso por e-mail**: deixou de ser diário. Sai uma vez por dose, quando faltam até 7 dias (`AVISO_DOSE_DIAS`),
+  com o período da campanha da vacina, se houver. Controle de repetição em `avisos_dose`.
+- **Calendário da pessoa**: marca a data prevista de cada dose e o período da campanha da vacina.
+
+## 6. O que ainda falta
+
+- `regras_vacinais` continua no banco, mas o cálculo não a usa (as regras estão em `esquemaVacinal2026.ts`).
 - Casos não modelados: gestantes, imunocomprometidos, acamados, viajantes e áreas de risco de febre amarela.
+- Não há campanhas cadastradas por padrão: o período da campanha só aparece se o administrador cadastrar a campanha
+  (a influenza, por exemplo, usa "última dose + 12 meses" como data até lá).
 - O calendário muda todo ano: atualizar = editar `esquemaVacinal2026.ts` e os testes.
-- As datas ainda não geram lembrete por e-mail; o aviso diário continua olhando só os agendamentos manuais.

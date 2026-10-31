@@ -431,6 +431,15 @@ export async function obterPendencias(idPessoa) {
 }
 
 /**
+ * Próxima dose de cada vacina e a data em que é devida (calendário
+ * nacional 2026), com o período da campanha da vacina, quando houver.
+ */
+export async function obterProximasDoses(idPessoa) {
+  const response = await chamarApi(`/pendencias/${idPessoa}/proximas-doses`);
+  return tratarResposta(response);
+}
+
+/**
  * Carteira vacinal completa da pessoa.
  */
 export async function obterCarteira(idPessoa) {

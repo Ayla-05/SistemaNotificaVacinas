@@ -38,6 +38,8 @@ import { criarTabelaAgendamentosVacina }
 
 import { criarTabelaSessoes, criarTabelaRedefinicoesSenha, migrarColunasBloqueioLogin }
   from "./tables/sessoesTable";
+import { criarTabelaConfiguracoes, criarTabelaAvisosDose }
+  from "./tables/calendarioAvisosTable";
 import * as vacinasSeedModule
   from "./seeds/vacinasSeed";
 
@@ -122,6 +124,8 @@ export async function configurarBanco() {
   criarTabelaAgendamentosVacina(db);
   criarTabelaSessoes(db);
   criarTabelaRedefinicoesSenha(db);
+  criarTabelaConfiguracoes(db);
+  criarTabelaAvisosDose(db);
 
   /*
   ==========================================

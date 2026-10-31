@@ -1,9 +1,10 @@
 import { EmailService } from "./emailService";
 import { SmsService } from "./smsService";
-import { VacinalService } from "./vacinalService";
 
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as usuarioRepository from "../repositories/usuarioRepository";
+import { ProximasDosesService } from "./proximasDosesService";
+import * as avisoDoseRepository from "../repositories/avisoDoseRepository";
 import * as agendamentoVacinaRepository from "../repositories/agendamentoVacinaRepository";
 
 /*
@@ -20,23 +21,30 @@ Responsabilidades:
   4 gatilhos do sistema:
     1. Boas-vindas (novo cadastro)
     2. Confirmação de dose registrada
-    3. Alerta de vacina(s) pendente(s)
+    3. Aviso de dose(s) chegando na data prevista
     4. Lembrete de agendamento próximo
 
 NÃO é responsável por:
 
 - Como o e-mail é enviado (EmailService)
 - Como o SMS é enviado (SmsService, ainda sem provedor)
-- Calcular pendências (VacinalService)
+- Calcular as próximas doses (ProximasDosesService)
 
 Dependências:
 
-- EmailService, SmsService, VacinalService
+- EmailService, SmsService, ProximasDosesService
 - pessoaRepository, usuarioRepository, agendamentoVacinaRepository
 */
 
 /* Dias de antecedência para lembrar de um agendamento futuro. */
 const DIAS_ANTECEDENCIA_LEMBRETE = 3;
+
+/*
+Quantos dias antes da data prevista de uma dose o sistema avisa
+(uma única vez por dose). Ajustável por AVISO_DOSE_DIAS no .env.
+*/
+const DIAS_ANTECEDENCIA_AVISO_DOSE =
+  Number(process.env.AVISO_DOSE_DIAS) || 7;
 
 export class NotificacaoService {
 
@@ -235,7 +243,7 @@ export class NotificacaoService {
         continue;
       }
 
-      await this.verificarPendenciasDaPessoa(
+      await this.verificarDosesProximasDaPessoa(
         pessoa,
         destinatario
       );
@@ -249,33 +257,88 @@ export class NotificacaoService {
 
   }
 
-  /* 3. Vacina(s) pendente(s) segundo o calendário nacional. */
-  private static async verificarPendenciasDaPessoa(
+  /*
+  3. Dose(s) chegando na data prevista pelo calendário nacional.
+
+  Avisa UMA vez por dose, quando faltam até DIAS_ANTECEDENCIA_AVISO_DOSE
+  dias (ou no dia). A verificação roda todo dia, mas o e-mail só sai
+  quando uma dose entra nessa janela; a tabela avisos_dose impede repetir.
+  Dose atrasada ou "pode tomar agora" aparece no painel e no calendário,
+  sem e-mail diário.
+  */
+  private static async verificarDosesProximasDaPessoa(
     pessoa: any,
     destinatario: string
   ) {
 
     try {
 
-      const resumo =
-        await VacinalService.obterResumoPessoa(
+      const proximas =
+        await ProximasDosesService.calcular(
           pessoa.id
         );
 
-      if (resumo.pendentes.length === 0) {
+      const naJanela = proximas.filter(
+        (d) =>
+          d.dataPrevista !== null &&
+          d.diasParaVencer !== null &&
+          d.diasParaVencer >= 0 &&
+          d.diasParaVencer <= DIAS_ANTECEDENCIA_AVISO_DOSE
+      );
+
+      const novas = [];
+
+      for (const dose of naJanela) {
+
+        const primeiraVez =
+          await avisoDoseRepository.registrarAviso(
+            pessoa.id,
+            dose.vacinaCodigo,
+            dose.numeroDose,
+            dose.dataPrevista as string
+          );
+
+        if (primeiraVez) {
+          novas.push(dose);
+        }
+
+      }
+
+      if (novas.length === 0) {
         return;
       }
 
-      await EmailService.enviarAlertaPendencias(
-        destinatario,
-        pessoa.nome,
-        resumo.pendentes
-      );
+      const resultado =
+        await EmailService.enviarAvisoDosesProximas(
+          destinatario,
+          pessoa.nome,
+          novas.map((d) => ({
+            vacina: d.vacina,
+            rotulo: d.rotulo,
+            dataPrevista: d.dataPrevista as string,
+            diasParaVencer: d.diasParaVencer as number,
+            campanha: d.campanha
+          }))
+        );
+
+      /* Não enviou: desfaz o registro, para tentar de novo amanhã. */
+      if (!resultado.enviado) {
+
+        for (const dose of novas) {
+          await avisoDoseRepository.removerAviso(
+            pessoa.id,
+            dose.vacinaCodigo,
+            dose.numeroDose,
+            dose.dataPrevista as string
+          );
+        }
+
+      }
 
     } catch (erro: any) {
 
       console.error(
-        `[NotificacaoService] Falha ao verificar pendências da pessoa ${pessoa.id}:`,
+        `[NotificacaoService] Falha ao verificar doses próximas da pessoa ${pessoa.id}:`,
         erro.message
       );
 

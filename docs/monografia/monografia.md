@@ -309,7 +309,7 @@ Essa separação reflete o padrão descrito por Fowler (2002) e permite testar o
 
 ## 4.3 Modelo de dados
 
-O modelo relacional possui catorze tabelas.
+O modelo relacional possui dezesseis tabelas.
 
 | Tabela | Finalidade | Relacionamentos principais |
 |---|---|---|
@@ -326,6 +326,8 @@ O modelo relacional possui catorze tabelas.
 | `doses_vacina` | Cada dose aplicada: número, tipo, data, lote, fabricante, observação. | N:1 com `registros_vacinacao`. |
 | `agendamentos_vacina` | Doses previstas: vacina, número da dose, data prevista, status. | N:1 com `pessoas` e `vacinas`. |
 | `sessoes` | Uma linha por login (dispositivo): hash do *refresh token*, hash anterior (detecção de reuso), *user agent*, IP, validade e revogação. | N:1 com `usuarios`. |
+| `avisos_dose` | Registro de cada aviso de dose já enviado (pessoa, vacina, nº da dose e data prevista, com chave única), para avisar uma vez só. | N:1 com `pessoas`. |
+| `configuracoes` | Pares chave/valor; guarda a versão do calendário carregada no banco. | — |
 | `redefinicoes_senha` | Tokens de redefinição de senha, de uso único, guardados apenas como *hash*, com validade. | N:1 com `usuarios`. |
 
 A separação entre `registros_vacinacao` (a vacina que a pessoa tem na carteira) e `doses_vacina` (cada aplicação) evita repetição de dados e permite registrar quantas doses se desejar para uma mesma vacina, normalizando o modelo até a terceira forma normal.
@@ -421,6 +423,8 @@ Assim, a dose nunca é marcada antes do intervalo mínimo nem antes da idade rec
 
 A aritmética de datas é feita em UTC e soma meses sem estourar o fim do mês (31/01 mais um mês é 28/02 ou 29/02), para que o fuso do servidor e a duração dos meses não desloquem o dia. O `VacinalService` usa esse resultado para montar o resumo do *Dashboard*: as doses `ATRASADA` e `DISPONIVEL` são as pendências, e as demais compõem a lista de "próximas doses" com data. O teste de integração com banco em memória confere esse caminho de ponta a ponta.
 
+A tabela `calendario_vacinal`, usada pela rota `/calendario`, deixou de ser digitada à parte: suas linhas por faixa etária (criança, adolescente, adulto e idoso) são **derivadas do mesmo esquema** (`utils/calendarioDerivado.ts`), de modo que atualizar o calendário em um único arquivo atualiza o cálculo das datas e a tabela. Uma versão do calendário ("2026") fica registrada na tabela `configuracoes`; quando ela difere da versão do código, o *seed* substitui as linhas dessas faixas, uma única vez, sem tocar nas linhas de grupos especiais. O custo é que edições manuais do administrador nessas linhas são substituídas na troca de versão.
+
 Essa abordagem tem um custo: o calendário passa a viver em um arquivo versionado, e não em tabelas editáveis pelo administrador, o que simplifica o cálculo e o torna testável, mas exige uma nova versão do sistema a cada atualização anual do calendário. Mover o esquema de volta para o banco, com edição e histórico de versões, é uma melhoria futura.
 
 ## 5.4 Leitura da carteirinha por IA
@@ -447,10 +451,14 @@ O `NotificacaoService` decide quem recebe e o `EmailService` sabe como enviar, s
 |---|---|---|
 | Boas-vindas e código | Cadastro | E-mail |
 | Confirmação de dose | Registro de dose | E-mail |
-| Alerta de pendências | Rotina diária | E-mail |
+| Dose chegando | Verificação diária; o e-mail sai uma única vez por dose, quando faltam até 7 dias para a data prevista | E-mail |
 | Lembrete de agendamento | Rotina diária, 3 dias antes | E-mail |
 
 A rotina diária é um *job* do `node-cron`, por padrão às 8h, configurável pela variável `NOTIFICACAO_CRON`. Falhas são capturadas e registradas em *log*, sem derrubar o processo (RNF09). O módulo de SMS existe como ponto de extensão, ainda sem provedor.
+
+**Aviso de dose próxima.** O aviso por e-mail das pendências, que antes era enviado todos os dias enquanto houvesse uma vacina em atraso, foi substituído por um aviso **orientado à data**: a verificação diária calcula as próximas doses de cada pessoa e só envia e-mail quando uma dose entra na janela de 7 dias antes da data prevista (configurável por `AVISO_DOSE_DIAS`). A tabela `avisos_dose`, com chave única por pessoa, vacina, número da dose e data prevista, funciona como trava de idempotência: o `INSERT OR IGNORE` indica se é a primeira vez, de modo que a verificação pode rodar todos os dias, ou até duas vezes ao mesmo tempo, sem duplicar o e-mail. Se o envio falhar, o registro é desfeito e a dose é avisada de novo na verificação seguinte. Doses atrasadas ou sem data definida aparecem no painel e no calendário, sem e-mail diário. Quando a vacina tem campanha cadastrada, o e-mail informa o período dela.
+
+No calendário da pessoa (tela *Calendário*), a data prevista de cada dose do calendário nacional é marcada no dia (vermelho se atrasada, amarelo nos próximos 30 dias, azul adiante), e o **período da campanha** da vacina é marcado nos dias que ele abrange.
 
 A história do projeto registra uma decisão pertinente: o envio foi trocado entre diferentes provedores (Resend, Mailgun e novamente SMTP via Gmail) conforme restrições de custo e de configuração. A camada de serviço absorveu essas mudanças sem impacto nos demais módulos, o que valida a decisão de isolar a integração.
 
@@ -520,7 +528,7 @@ O *Notifica Vacinas* **não substitui** o registro oficial; atua como camada de 
 ## 7.3 Limitações
 
 1. **Fonte de dados manual.** A confiabilidade da carteira depende do que o usuário lança. Não há validação cruzada com o SI-PNI.
-2. **Cobertura do calendário.** O cálculo usa o Calendário Nacional 2026 (idade, intervalo e grupo especial), mas não modela gestantes (o calendário próprio não foi incluído), imunocomprometidos, acamados, viajantes e áreas de risco, que dependem de avaliação do serviço de saúde. Onde o calendário não informa o intervalo entre doses (hepatite B e dengue), foram mantidos os valores que o sistema já utilizava. A tabela `calendario_vacinal` antiga, hoje fora do cálculo do painel, ainda precisa ser atualizada ou aposentada.
+2. **Cobertura do calendário.** O cálculo usa o Calendário Nacional 2026 (idade, intervalo e grupo especial), mas não modela gestantes (o calendário próprio não foi incluído), imunocomprometidos, acamados, viajantes e áreas de risco, que dependem de avaliação do serviço de saúde. Onde o calendário não informa o intervalo entre doses (hepatite B e dengue), foram mantidos os valores que o sistema já utilizava.
 3. **Cobertura de testes parcial.** Os mecanismos de autenticação e sessão têm testes automatizados, mas o cálculo de pendências, a faixa etária e o *front end* ainda não, e não há integração contínua executando-os.
 4. **Banco embarcado e agendador no mesmo processo** (Seção 6.3).
 5. **Canal único de notificação e ausência de segundo fator.** SMS não foi implementado, e e-mails podem cair em *spam* ou não ser lidos. O login depende apenas de e-mail e senha; autenticação em dois fatores (TOTP) permanece como melhoria futura, e deveria ser obrigatória para administradores.

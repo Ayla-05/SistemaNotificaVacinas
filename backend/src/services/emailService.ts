@@ -310,31 +310,68 @@ export class EmailService {
 
   /*
   ==================================================
-  ALERTA DE VACINA(S) PENDENTE(S)
+  AVISO: DOSE(S) CHEGANDO NA DATA
   ==================================================
+
+  Enviado uma vez por dose, quando falta pouco para a data
+  prevista (ver NotificacaoService). Não é aviso diário.
   */
-  static async enviarAlertaPendencias(
+  static async enviarAvisoDosesProximas(
     destinatario: string,
     nomePessoa: string,
-    pendencias: { vacina: string; faltam: number }[]
+    doses: Array<{
+      vacina: string;
+      rotulo: string;
+      dataPrevista: string;
+      diasParaVencer: number;
+      campanha: {
+        nome: string;
+        dataInicio: string | null;
+        dataFim: string | null;
+      } | null;
+    }>
   ) {
 
-    const listaHtml = pendencias
-      .map(
-        (p) =>
-          `<li><strong>${p.vacina}</strong> — faltam ${p.faltam} dose(s)</li>`
-      )
+    const formatar = (iso: string | null) =>
+      iso ? iso.split("-").reverse().join("/") : "";
+
+    const listaHtml = doses
+      .map((d) => {
+
+        const quando =
+          d.diasParaVencer === 0
+            ? "hoje"
+            : d.diasParaVencer === 1
+              ? "amanhã"
+              : `em ${d.diasParaVencer} dias`;
+
+        const campanha = d.campanha
+          ? `<br><span style="color: #64748b; font-size: 13px;">Campanha &quot;${d.campanha.nome}&quot;${
+              d.campanha.dataInicio
+                ? `: de ${formatar(d.campanha.dataInicio)}${
+                    d.campanha.dataFim
+                      ? ` a ${formatar(d.campanha.dataFim)}`
+                      : ""
+                  }`
+                : ""
+            }</span>`
+          : "";
+
+        return `<li><strong>${d.vacina}</strong> — ${d.rotulo}: ${formatar(d.dataPrevista)} (${quando})${campanha}</li>`;
+
+      })
       .join("");
 
     return this.enviar(
       destinatario,
-      `Vacinas pendentes: ${nomePessoa}`,
+      `Vacina chegando: ${nomePessoa}`,
       modeloBase(`
-        <h2>Atenção: vacinas pendentes</h2>
-        <p>A carteira de <strong>${nomePessoa}</strong> tem vacinas
-        em atraso segundo o calendário nacional:</p>
+        <h2>Está chegando a hora de vacinar</h2>
+        <p>Segundo o calendário nacional, <strong>${nomePessoa}</strong>
+        deve tomar em breve:</p>
         <ul>${listaHtml}</ul>
-        <p>Procure uma unidade de saúde para regularizar.</p>
+        <p>Procure uma unidade de saúde na data indicada ou nos dias
+        seguintes. Depois de tomar, registre a dose no Notifica Vacinas.</p>
       `)
     );
 

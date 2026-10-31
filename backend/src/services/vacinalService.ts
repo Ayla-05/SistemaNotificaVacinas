@@ -458,7 +458,8 @@ export class VacinalService {
         rotulo: d.rotulo,
         status: d.status,
         data_prevista: d.dataPrevista,
-        dias_para_vencer: d.diasParaVencer
+        dias_para_vencer: d.diasParaVencer,
+        campanha: d.campanha
       }));
 
     return {
