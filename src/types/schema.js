@@ -38,7 +38,7 @@ export const VacinaRegistroSchema = {
 };
 
 /**
- * Schema de Resposta da IA (GPT-4o Vision)
+ * Schema da resposta da leitura da carteirinha (OCR)
  * Formato esperado ao processar a carteirinha
  */
 export const GPT4oVisionResponseSchema = {

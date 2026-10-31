@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   calcularBloqueioMinutos,
+  detectarTipoArquivoCarteirinha,
   detectarTipoImagem,
   gerarCodigoNumerico,
   gerarTokenOpaco,
@@ -49,6 +50,20 @@ describe("detectarTipoImagem", () => {
     expect(detectarTipoImagem(Buffer.from("<?php echo 1; ?>"))).toBeNull();
     expect(detectarTipoImagem(Buffer.from("%PDF-1.7"))).toBeNull();
     expect(detectarTipoImagem(Buffer.alloc(0))).toBeNull();
+  });
+
+});
+
+describe("detectarTipoArquivoCarteirinha", () => {
+
+  it("aceita PDF além das imagens", () => {
+    expect(detectarTipoArquivoCarteirinha(Buffer.from("%PDF-1.4\n..."))).toBe("application/pdf");
+    expect(detectarTipoArquivoCarteirinha(Buffer.from([0xff, 0xd8, 0xff, 0xe0]))).toBe("image/jpeg");
+  });
+
+  it("rejeita o resto", () => {
+    expect(detectarTipoArquivoCarteirinha(Buffer.from("MZ executavel"))).toBeNull();
+    expect(detectarTipoArquivoCarteirinha(Buffer.from("%PD"))).toBeNull();
   });
 
 });
