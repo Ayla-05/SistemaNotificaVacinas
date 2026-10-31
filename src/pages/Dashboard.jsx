@@ -9,6 +9,31 @@ import {
 import { obterPendencias } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
+/** "10/02/2027" a partir de "2027-02-10". */
+function formatarData(iso) {
+  if (!iso) return '';
+  const [ano, mes, dia] = iso.split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
+/** Texto do prazo de uma dose: atrasada, disponível agora ou data prevista. */
+function descreverPrazo(item) {
+  if (item.status === 'ATRASADA') {
+    const dias = Math.abs(item.dias_para_vencer);
+    return `Atrasada há ${dias} dia${dias === 1 ? '' : 's'} (prevista para ${formatarData(item.data_prevista)})`;
+  }
+
+  if (item.status === 'DISPONIVEL') {
+    return 'Pode tomar agora';
+  }
+
+  if (item.dias_para_vencer === 0) {
+    return 'Vence hoje';
+  }
+
+  return `Prevista para ${formatarData(item.data_prevista)} (em ${item.dias_para_vencer} dias)`;
+}
+
 export default function Dashboard() {
   const { pessoaAtiva } = useAuth();
   const [dados, setDados] = useState(null);
@@ -252,8 +277,9 @@ export default function Dashboard() {
               </p>
 
               <p className="text-sm text-slate-600 mt-1">
-                Faltam{" "}
-                {dados.pendentes[0].faltam} dose(s)
+                {dados.pendentes[0].rotulo}
+                {" — "}
+                {descreverPrazo(dados.pendentes[0])}
               </p>
 
               <button className="btn-primary mt-4 flex items-center gap-2">
@@ -265,6 +291,64 @@ export default function Dashboard() {
               </button>
 
             </div>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* PRÓXIMAS DOSES (data prevista pelo calendário nacional) */}
+
+      {dados.proximas?.length > 0 && (
+
+        <div className="card">
+
+          <h2 className="text-2xl font-bold text-slate-800 mb-1">
+            📅 Próximas doses
+          </h2>
+
+          <p className="text-sm text-slate-500 mb-5">
+            Datas calculadas pela idade e pela data da última dose,
+            segundo o Calendário Nacional de Vacinação 2026.
+          </p>
+
+          <div className="space-y-3">
+
+            {dados.proximas.slice(0, 8).map((item) => (
+
+              <div
+                key={`${item.vacina}-${item.rotulo}`}
+                className="flex justify-between items-center gap-4 bg-slate-50 border border-slate-200 rounded-2xl p-4"
+              >
+
+                <div>
+
+                  <strong>{item.vacina}</strong>
+
+                  <p className="text-sm text-slate-600">
+                    {item.rotulo}
+                  </p>
+
+                </div>
+
+                <div className="text-right text-sm">
+
+                  <p className="font-semibold text-slate-800">
+                    {formatarData(item.data_prevista)}
+                  </p>
+
+                  <p className={item.status === 'PROXIMA' ? 'text-amber-600' : 'text-slate-500'}>
+                    {item.dias_para_vencer === 0
+                      ? 'hoje'
+                      : `em ${item.dias_para_vencer} dias`}
+                  </p>
+
+                </div>
+
+              </div>
+
+            ))}
 
           </div>
 
@@ -363,7 +447,7 @@ export default function Dashboard() {
                   </p>
 
                   <p className="text-sm text-red-600 font-semibold mt-1">
-                    Faltam {vacina.faltam} dose(s)
+                    {vacina.rotulo}: {descreverPrazo(vacina)}
                   </p>
 
                   <div className="w-full h-2 bg-amber-100 rounded-full mt-3">

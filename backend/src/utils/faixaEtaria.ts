@@ -2,28 +2,24 @@
 ==================================================
 FAIXAS ETÁRIAS OFICIAIS
 ==================================================
-*/
 
-/*
-
-Baseado na cartilha do Programa Nacional
-de Imunizações (PNI).
+Baseado no Calendário Nacional de Vacinação 2026
+(Ministério da Saúde):
 
 CRIANCA
-0 a 10 anos
+0 a 9 anos (e 11 meses e 29 dias)
 
 ADOLESCENTE
-11 a 19 anos
+10 a 24 anos (adolescente e jovem)
 
 ADULTO
-20 a 59 anos
- 
+25 a 59 anos
+
 IDOSO
 60+ anos
 
 GESTANTE é tratada como grupo especial.
 */
-
 export type FaixaEtaria =
   | "CRIANCA"
   | "ADOLESCENTE"
@@ -34,15 +30,15 @@ export function obterFaixaEtaria(
   idade: number
 ): FaixaEtaria {
 
-  if (idade >= 0 && idade <= 10) {
+  if (idade <= 9) {
     return "CRIANCA";
   }
 
-  if (idade >= 11 && idade <= 19) {
+  if (idade <= 24) {
     return "ADOLESCENTE";
   }
 
-  if (idade >= 20 && idade <= 59) {
+  if (idade <= 59) {
     return "ADULTO";
   }
 
