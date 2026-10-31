@@ -300,6 +300,7 @@ export function calcularProximasDoses(
 
     let linha: DoseEsquema | undefined;
     let dataPrevista: string | null = null;
+    let rotuloExibido: string | null = null;
 
     if (proximaDaSerie) {
 
@@ -340,6 +341,24 @@ export function calcularProximasDoses(
 
       dataPrevista = maiorData(candidatas);
 
+      /*
+      Reforço sem nenhuma dose anterior registrada (nem de vacina
+      equivalente): dizer "atrasado desde os 14 anos" seria enganoso,
+      porque o que falta é o esquema inteiro. Nesse caso a pessoa pode
+      tomar agora e o rótulo pede para atualizar o esquema.
+      */
+      if (
+        linha.reforco &&
+        dosesTomadas === 0 &&
+        ultimaDose === null &&
+        dataPrevista !== null &&
+        dataPrevista < hoje
+      ) {
+        dataPrevista = null;
+        rotuloExibido =
+          "Sem doses registradas: atualizar o esquema na unidade de saúde";
+      }
+
     } else if (periodica) {
 
       linha = periodica;
@@ -361,7 +380,7 @@ export function calcularProximasDoses(
     resultado.push({
       vacinaCodigo: codigo,
       numeroDose: linha.numeroDose,
-      rotulo: linha.rotulo,
+      rotulo: rotuloExibido ?? linha.rotulo,
       dataPrevista,
       ...classificar(dataPrevista, hoje),
       dosesTomadas,
