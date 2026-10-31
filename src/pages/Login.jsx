@@ -1,7 +1,7 @@
 // src/pages/Login.jsx
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Mail, Lock, User, Calendar, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -27,6 +27,7 @@ export default function Login() {
 
   const { login, registrar } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   function atualizarCampo(campo, valor) {
     setForm((atual) => ({ ...atual, [campo]: valor }));
@@ -146,6 +147,20 @@ export default function Login() {
                   className="campo-input"
                 />
               </Campo>
+            )}
+
+            {modo === 'login' && (
+              <p className="text-right -mt-2">
+                <Link to="/esqueci-senha" className="text-xs font-semibold text-emerald-700 hover:underline">
+                  Esqueci minha senha
+                </Link>
+              </p>
+            )}
+
+            {location.state?.senhaRedefinida && !erro && (
+              <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                Senha alterada. Entre com a nova senha.
+              </p>
             )}
 
             {erro && (

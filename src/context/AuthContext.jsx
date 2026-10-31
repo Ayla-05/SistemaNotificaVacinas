@@ -83,6 +83,21 @@ export function AuthProvider({ children }) {
     verificarSessao();
   }, []);
 
+  /*
+   * A renovação de sessão falhou (api.js dispara "sessao-expirada"):
+   * limpa o estado local e RotaProtegida leva o usuário ao login.
+   */
+  useEffect(() => {
+    function aoExpirar() {
+      setUsuario(null);
+      setPessoas([]);
+      setPessoaAtivaState(null);
+    }
+
+    window.addEventListener('sessao-expirada', aoExpirar);
+    return () => window.removeEventListener('sessao-expirada', aoExpirar);
+  }, []);
+
   async function login(email, senha) {
     const { usuario: usuarioLogado } = await apiLogin(email, senha);
     setUsuario(usuarioLogado);
