@@ -26,17 +26,84 @@ async function tratarResposta(response) {
 }
 
 /**
+ * Rotas de /auth que nunca disparam renovação de sessão: um 401 nelas
+ * significa "credencial errada", não "sessão vencida".
+ */
+const ROTAS_SEM_RENOVACAO = [
+  "/auth/login",
+  "/auth/refresh",
+  "/auth/registrar",
+  "/auth/confirmar-email",
+  "/auth/reenviar-codigo",
+  "/auth/esqueci-senha",
+  "/auth/redefinir-senha",
+  "/auth/logout"
+];
+
+/**
+ * Renovação em andamento, compartilhada: várias requisições que tomam 401
+ * ao mesmo tempo esperam a MESMA renovação. O refresh token é rotativo e de
+ * uso único; disparar várias renovações em paralelo faria o servidor
+ * enxergar reuso.
+ */
+let renovacaoEmAndamento = null;
+
+function renovarSessao() {
+  if (!renovacaoEmAndamento) {
+    renovacaoEmAndamento = fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "X-CSRF-Protection": "1" }
+    })
+      // 409 = outra aba acabou de renovar; o cookie novo já está no navegador.
+      .then((response) => response.ok || response.status === 409)
+      .catch(() => false)
+      .finally(() => {
+        renovacaoEmAndamento = null;
+      });
+  }
+
+  return renovacaoEmAndamento;
+}
+
+/**
  * Wrapper de fetch com "credentials: include" fixo.
- * Necessário para que o cookie httpOnly de sessão
- * (definido pelo backend em /auth/login) seja enviado
+ * Necessário para que os cookies httpOnly de sessão
+ * (definidos pelo backend em /auth/login) sejam enviados
  * em toda chamada, já que frontend e backend rodam em
  * portas/origens diferentes.
+ *
+ * Também:
+ * - envia o cabeçalho X-CSRF-Protection (exigido pelo backend em
+ *   toda requisição que altera dados);
+ * - se o token de acesso (curto, 15 min) venceu, renova a sessão
+ *   com o refresh token e repete a requisição uma vez.
  */
-function chamarApi(caminho, opcoes = {}) {
-  return fetch(`${API_URL}${caminho}`, {
-    credentials: "include",
-    ...opcoes
-  });
+async function chamarApi(caminho, opcoes = {}) {
+  const enviar = () =>
+    fetch(`${API_URL}${caminho}`, {
+      credentials: "include",
+      ...opcoes,
+      headers: {
+        ...opcoes.headers,
+        "X-CSRF-Protection": "1"
+      }
+    });
+
+  const response = await enviar();
+
+  if (response.status !== 401 || ROTAS_SEM_RENOVACAO.includes(caminho)) {
+    return response;
+  }
+
+  const renovou = await renovarSessao();
+
+  if (!renovou) {
+    window.dispatchEvent(new Event("sessao-expirada"));
+    return response;
+  }
+
+  return enviar();
 }
 
 /* ==================================================
@@ -152,6 +219,65 @@ export async function login(email, senha) {
  */
 export async function logout() {
   const response = await chamarApi("/auth/logout", { method: "POST" });
+  return tratarResposta(response);
+}
+
+/**
+ * Pede o e-mail com o link para criar uma nova senha. A resposta é
+ * sempre a mesma, exista a conta ou não.
+ */
+export async function esqueciSenha(email) {
+  const response = await chamarApi("/auth/esqueci-senha", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+
+  return tratarResposta(response);
+}
+
+/**
+ * Define a nova senha usando o token do link recebido por e-mail.
+ */
+export async function redefinirSenha({ token, senha }) {
+  const response = await chamarApi("/auth/redefinir-senha", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, senha })
+  });
+
+  return tratarResposta(response);
+}
+
+/**
+ * Dispositivos/navegadores com sessão aberta na conta.
+ */
+export async function listarSessoes() {
+  const response = await chamarApi("/auth/sessoes");
+  return tratarResposta(response);
+}
+
+/**
+ * Encerra a sessão de um dispositivo específico.
+ */
+export async function encerrarSessao(id) {
+  const response = await chamarApi(`/auth/sessoes/${encodeURIComponent(id)}`, {
+    method: "DELETE"
+  });
+
+  return tratarResposta(response);
+}
+
+/**
+ * Sai de todos os dispositivos. Com manterAtual, preserva só este.
+ */
+export async function encerrarTodasSessoes({ manterAtual = false } = {}) {
+  const response = await chamarApi("/auth/sessoes/encerrar-todas", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ manterAtual })
+  });
+
   return tratarResposta(response);
 }
 

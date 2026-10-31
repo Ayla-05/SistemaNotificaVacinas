@@ -1,5 +1,5 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 import { ScanController } from "../controllers/scanController";
 import { pessoaDoCorpoPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
@@ -20,6 +20,14 @@ Anthropic — limita para não permitir abuso.
 const limitadorDeScan = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
+  /*
+  Por usuário (e não só por IP): a rota exige login,
+  então dá para limitar quem de fato gera o custo.
+  */
+  keyGenerator: (req) =>
+    req.usuarioId
+      ? `usuario:${req.usuarioId}`
+      : ipKeyGenerator(req.ip ?? ""),
   standardHeaders: true,
   legacyHeaders: false,
   message: {

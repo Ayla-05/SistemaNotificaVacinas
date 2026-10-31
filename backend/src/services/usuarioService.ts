@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 
 import { PerfilUsuario } from "../enums/perfilUsuario";
 import * as usuarioRepository from "../repositories/usuarioRepository";
+import * as sessaoRepository from "../repositories/sessaoRepository";
 
 /*
 Custo do hash bcrypt. 12 é um bom equilíbrio
@@ -36,6 +37,36 @@ Dependências:
 - usuarioRepository
 */
 export class UsuarioService {
+
+  /*
+  ==================================================
+  VALIDAR SENHA (POLÍTICA)
+  ==================================================
+  */
+  static validarSenha(
+    senha: string
+  ) {
+
+    if (!senha?.trim()) {
+      throw new Error(
+        "Senha é obrigatória."
+      );
+    }
+
+    if (senha.length < 8) {
+      throw new Error(
+        "A senha deve ter no mínimo 8 caracteres."
+      );
+    }
+
+    if (senha.length > 128) {
+      throw new Error(
+        "A senha deve ter no máximo 128 caracteres."
+      );
+    }
+
+  }
+
 
   /*
   ==================================================
@@ -140,17 +171,7 @@ export class UsuarioService {
       );
     }
 
-    if (!senha?.trim()) {
-      throw new Error(
-        "Senha é obrigatória."
-      );
-    }
-
-    if (senha.length < 8) {
-      throw new Error(
-        "A senha deve ter no mínimo 8 caracteres."
-      );
-    }
+    this.validarSenha(senha);
 
     const usuarioExistente =
       await usuarioRepository.buscarUsuarioPorEmail(
@@ -238,11 +259,7 @@ export class UsuarioService {
     senha: string
   ) {
 
-    if (!senha?.trim()) {
-      throw new Error(
-        "Senha não informada."
-      );
-    }
+    this.validarSenha(senha);
 
     const usuario =
       await usuarioRepository.buscarUsuarioPorId(
@@ -261,10 +278,21 @@ export class UsuarioService {
         SALT_ROUNDS
       );
 
-    return await usuarioRepository.atualizarSenhaUsuario(
-      id,
-      senhaCriptografada
+    const alteradas =
+      await usuarioRepository.atualizarSenhaUsuario(
+        id,
+        senhaCriptografada
+      );
+
+    /*
+    Trocar a senha encerra todas as sessões abertas:
+    quem tinha acesso com a senha antiga perde o acesso.
+    */
+    await sessaoRepository.revogarSessoesDoUsuario(
+      id
     );
+
+    return alteradas;
 
   }
 

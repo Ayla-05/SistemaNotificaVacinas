@@ -24,7 +24,7 @@ CONEXÃO
 ==================================================
 */
 export const db = new sqlite.Database(
-  "./vacinas.db",
+  process.env.DATABASE_FILE || "./vacinas.db",
   (err) => {
     if (err) {
       console.error(

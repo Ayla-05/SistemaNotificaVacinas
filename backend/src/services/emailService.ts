@@ -236,6 +236,56 @@ export class EmailService {
 
   /*
   ==================================================
+  REDEFINIÇÃO DE SENHA
+  ==================================================
+  */
+  static async enviarRedefinicaoSenha(
+    destinatario: string,
+    nome: string,
+    link: string
+  ) {
+
+    return this.enviar(
+      destinatario,
+      "Redefinição de senha — Notifica Vacinas",
+      modeloBase(`
+        <h2>Olá, ${nome}!</h2>
+        <p>Recebemos um pedido para redefinir a senha da sua conta.</p>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="${link}" style="display: inline-block; background: #059669; color: #ffffff; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 12px;">
+            Criar nova senha
+          </a>
+        </div>
+        <p style="color: #64748b; font-size: 13px;">O link vale por 30 minutos e só pode ser usado uma vez. Se você não pediu a troca, ignore este e-mail: sua senha continua a mesma.</p>
+      `)
+    );
+
+  }
+
+  /*
+  ==================================================
+  AVISO DE SENHA ALTERADA
+  ==================================================
+  */
+  static async enviarSenhaAlterada(
+    destinatario: string,
+    nome: string
+  ) {
+
+    return this.enviar(
+      destinatario,
+      "Sua senha foi alterada — Notifica Vacinas",
+      modeloBase(`
+        <h2>Olá, ${nome}!</h2>
+        <p>A senha da sua conta acabou de ser alterada e todos os dispositivos conectados foram desconectados.</p>
+        <p style="color: #64748b; font-size: 13px;">Se não foi você, redefina a senha novamente agora mesmo pela opção "Esqueci minha senha" e entre em contato com o administrador.</p>
+      `)
+    );
+
+  }
+
+  /*
+  ==================================================
   CONFIRMAÇÃO DE DOSE REGISTRADA
   ==================================================
   */

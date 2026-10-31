@@ -36,6 +36,8 @@ import { criarTabelaDosesVacina }
 import { criarTabelaAgendamentosVacina }
   from "./tables/agendamentosVacinaTable";
 
+import { criarTabelaSessoes, criarTabelaRedefinicoesSenha, migrarColunasBloqueioLogin }
+  from "./tables/sessoesTable";
 import * as vacinasSeedModule
   from "./seeds/vacinasSeed";
 
@@ -94,6 +96,7 @@ export async function configurarBanco() {
   db.serialize(() => {
     criarTabelaUsuarios(db);
     migrarColunasVerificacaoEmail(db);
+    migrarColunasBloqueioLogin(db);
   });
 
   criarTabelaPessoas(db);
@@ -117,6 +120,8 @@ export async function configurarBanco() {
   criarTabelaDosesVacina(db);
 
   criarTabelaAgendamentosVacina(db);
+  criarTabelaSessoes(db);
+  criarTabelaRedefinicoesSenha(db);
 
   /*
   ==========================================
