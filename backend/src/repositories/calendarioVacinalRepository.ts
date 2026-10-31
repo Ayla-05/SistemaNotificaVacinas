@@ -387,3 +387,38 @@ export function removerCalendarioVacinal(
   });
 
 }
+
+/*
+==================================================
+REMOVER LINHAS DE FAIXAS ETÁRIAS
+==================================================
+
+Usado para trocar o calendário das faixas etárias por uma versão
+nova (seed). Não mexe nas linhas de grupos especiais (ex.: GESTANTE).
+*/
+export function removerPorFaixas(
+  faixas: string[]
+): Promise<number> {
+
+  return new Promise((resolve, reject) => {
+
+    db.run(
+      `
+      DELETE FROM calendario_vacinal
+      WHERE faixa_etaria IN (${faixas.map(() => "?").join(", ")})
+      `,
+      faixas,
+      function (err) {
+
+        if (err) {
+          return reject(err);
+        }
+
+        resolve(this.changes);
+
+      }
+    );
+
+  });
+
+}

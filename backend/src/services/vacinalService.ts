@@ -1,5 +1,7 @@
 import { obterFaixaEtaria } from "../utils/faixaEtaria";
 
+import { ProximasDosesService } from "./proximasDosesService";
+import * as registroVacinacaoRepo from "../repositories/registroVacinacaoRepository";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as vacinaRepository from "../repositories/vacinaRepository";
 import * as calendarioVacinalRepository from "../repositories/calendarioVacinalRepository";
@@ -389,72 +391,76 @@ export class VacinalService {
         idade
       );
 
+    /*
+    Pendências por IDADE e por DATA (calendário 2026): uma dose só é
+    cobrada quando já passou da data em que é devida, e as próximas
+    aparecem com a data prevista. Ver utils/proximasDoses.ts.
+    */
     const [
-      pendenciasBrutas,
-      emDiaBruto
+      proximasDoses,
+      carteira
     ] = await Promise.all([
-      this.calcularPendencias(pessoaId),
-      this.calcularVacinasEmDia(pessoaId)
+      ProximasDosesService.calcular(pessoaId),
+      registroVacinacaoRepo.listarCarteiraPessoa(pessoaId)
     ]);
 
-    const pendentes = await Promise.all(
-      pendenciasBrutas.map(
-        async (item: any) => {
+    const devidas = proximasDoses.filter(
+      (d) =>
+        d.status === "ATRASADA" ||
+        d.status === "DISPONIVEL"
+    );
 
-          const vacina =
-            await vacinaRepository
-              .buscarVacinaPorId(
-                item.vacina_id
-              );
+    const pendentes = devidas.map((d) => ({
+      vacina: d.vacina,
+      tomadas: d.dosesTomadas,
+      necessarias: Math.max(
+        d.numeroDose,
+        d.dosesTomadas + 1
+      ),
+      faltam: 1,
+      rotulo: d.rotulo,
+      status: d.status,
+      data_prevista: d.dataPrevista,
+      dias_para_vencer: d.diasParaVencer
+    }));
 
-          return {
-
-            vacina:
-              (vacina as any)?.nome ??
-              "Vacina não identificada",
-
-            tomadas:
-              item.doses_registradas,
-
-            necessarias:
-              item.doses_necessarias,
-
-            faltam:
-              item.faltam
-
-          };
-
-        }
-      )
+    const codigosPendentes = new Set(
+      devidas.map((d) => d.vacinaCodigo)
     );
 
     const emDia = await Promise.all(
-      emDiaBruto.map(
-        async (item: any) => {
+      carteira
+        .filter((r: any) => !codigosPendentes.has(r.codigo))
+        .map(async (r: any) => {
 
-          const vacina =
-            await vacinaRepository
-              .buscarVacinaPorId(
-                item.vacina_id
-              );
+          const tomadas =
+            await doseVacinaRepository.obterMaiorNumeroDose(
+              r.id
+            );
 
           return {
-
-            vacina:
-              (vacina as any)?.nome ??
-              "Vacina não identificada",
-
-            tomadas:
-              item.doses,
-
-            necessarias:
-              item.doses
-
+            vacina: r.nome,
+            tomadas,
+            necessarias: tomadas
           };
 
-        }
-      )
+        })
     );
+
+    const proximas = proximasDoses
+      .filter(
+        (d) =>
+          d.status === "PROXIMA" ||
+          d.status === "FUTURA"
+      )
+      .map((d) => ({
+        vacina: d.vacina,
+        rotulo: d.rotulo,
+        status: d.status,
+        data_prevista: d.dataPrevista,
+        dias_para_vencer: d.diasParaVencer,
+        campanha: d.campanha
+      }));
 
     return {
 
@@ -467,9 +473,11 @@ export class VacinalService {
       idade,
 
       em_dia:
-        emDia,
+        emDia.filter((v) => v.tomadas > 0),
 
-      pendentes
+      pendentes,
+
+      proximas
 
     };
 

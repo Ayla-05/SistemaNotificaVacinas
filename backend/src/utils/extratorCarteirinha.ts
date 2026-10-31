@@ -69,12 +69,17 @@ const APELIDOS: Record<string, string[]> = {
   "hepatite b": ["hep b", "hepb"],
   "pentavalente": ["penta"],
   "dtpa": ["dtap"],
-  "dt": ["dupla adulto", "dupla tipo adulto"],
+  "dt": [
+    "dupla adulto", "dupla tipo adulto",
+    "difteria e tetano adulto", "difteria e tetano"
+  ],
   "poliomielite vip": [
-    "polio vip", "vip", "poliomielite inativada", "polio inativada"
+    "polio vip", "vip", "poliomielite inativada", "polio inativada",
+    "poliomielite 1 2 3", "poliomielite 1 2 3 inativada"
   ],
   "poliomielite vop": [
-    "polio vop", "vop", "poliomielite oral", "polio oral", "gotinha"
+    "polio vop", "vop", "poliomielite oral", "polio oral", "gotinha",
+    "poliomielite 1 e 3", "poliomielite atenuada"
   ],
   "rotavirus humano": ["rotavirus", "vrh"],
   "triplice viral scr": [
@@ -135,7 +140,7 @@ export function casarVacina(
         `(?<![a-z0-9])${apelido
           .split(" ")
           .map(escaparRegex)
-          .join("[\\s\\-_.]+")}(?![a-z0-9])`
+          .join("[^a-z0-9]+")}(?![a-z0-9])`
       );
 
       const achado = padrao.exec(normalizada);
@@ -230,6 +235,9 @@ DOSE
 */
 export function extrairDose(texto: string): string | null {
 
+  /* Datas fora: "10/02/2023" não pode virar a fração "0/2". */
+  texto = texto.replace(REGEX_DATA, " ");
+
   if (/dose\s+[uú]nica|(?<![a-z])d\.?\s?[uú](?![a-z])/i.test(texto)) {
     return "Dose única";
   }
@@ -241,12 +249,23 @@ export function extrairDose(texto: string): string | null {
     return numero ? `${numero}º reforço` : "Reforço";
   }
 
+  /* "Revacinação" (carteira do Meu SUS Digital) é reforço. */
+  if (/revacina/i.test(texto)) {
+    return "Reforço";
+  }
+
   const dose =
     /(\d)\s*[ªaº°o]?\s*dose/i.exec(texto) ??
-    /(?<![a-z0-9])d\s?(\d)(?![a-z0-9])/i.exec(texto);
+    /(?<![A-Za-z0-9])d\s?(\d)(?![A-Za-z0-9])/i.exec(texto) ??
+    /(?<![\d\/])(\d)\s*\/\s*\d(?![\d\/])/.exec(texto);
 
   if (dose) {
     return `${dose[1]}ª dose`;
+  }
+
+  /* "Dose Inicial" (ex.: febre amarela no Meu SUS Digital) é a 1ª dose. */
+  if (/dose\s+inicial/i.test(texto)) {
+    return "1ª dose";
   }
 
   return null;
@@ -278,6 +297,19 @@ function extrairLote(texto: string): string | null {
   );
 
   return solto ? solto[0] : null;
+
+}
+
+/* Valor de célula de lote: "Não informado" e "-" significam "sem lote". */
+function limparLote(valor: string | undefined): string | null {
+
+  const texto = valor?.trim();
+
+  if (!texto || /^(?:-+|n[aã]o\s+informado|n\/?i)$/i.test(texto)) {
+    return null;
+  }
+
+  return texto.toUpperCase();
 
 }
 
@@ -324,12 +356,45 @@ function extrairTitular(
   const nascimento =
     /(?:data\s+de\s+nascimento|nascimento|nasc\.?|dn)\s*\**\s*[:\-]?\s*\**\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/i.exec(texto);
 
-  return {
+  const doRotulo = {
     nomeTitular: nome ? nome[1].replace(/\*+/g, "").trim() : null,
     dataNascimentoTitular: nascimento
       ? extrairDatas(nascimento[1], hoje)[0] ?? null
       : null
   };
+
+  if (doRotulo.nomeTitular || doRotulo.dataNascimentoTitular) {
+    return doRotulo;
+  }
+
+  /*
+  Cabeçalho em tabela (carteira do Meu SUS Digital): uma linha com
+  "Nome | Data de nascimento | CPF/CNS" e, logo abaixo, os valores.
+  */
+  const linhas = texto
+    .split(/\r?\n/)
+    .filter((l) => l.includes("|") && !/^\s*\|?[\s:\-|]+\|?\s*$/.test(l))
+    .map((l) => l.split("|").map((c) => c.trim()).filter(Boolean));
+
+  for (let i = 0; i < linhas.length - 1; i++) {
+
+    const nomes = linhas[i].map(slug);
+    const colNome = nomes.indexOf("nome");
+    const colNascimento = nomes.indexOf("data de nascimento");
+
+    if (colNome === -1 || colNascimento === -1) {
+      continue;
+    }
+
+    return {
+      nomeTitular: linhas[i + 1][colNome] ?? null,
+      dataNascimentoTitular:
+        extrairDatas(linhas[i + 1][colNascimento] ?? "", hoje)[0] ?? null
+    };
+
+  }
+
+  return doRotulo;
 
 }
 
@@ -359,6 +424,20 @@ export function extrairDadosCarteirinha(
     registro: Omit<DadosExtraidosCarteirinha, "nomeTitular" | "dataNascimentoTitular">;
   }> = [];
 
+  /*
+  Cabeçalho da tabela (ex.: "Vacina/Profilaxia | Data | Dose | Lote | ...",
+  como na carteira do Meu SUS Digital): guarda em que coluna está cada
+  campo e usa nas linhas seguintes. Sem cabeçalho, vale a leitura por
+  padrões de cada linha.
+  */
+  let colunas: {
+    vacina?: number;
+    data?: number;
+    dose?: number;
+    lote?: number;
+    local?: number;
+  } = {};
+
   texto.split(/\r?\n/).forEach((bruta, ordem) => {
 
     /* Linha de separação de tabela Markdown (| --- | --- |) */
@@ -370,29 +449,83 @@ export function extrairDadosCarteirinha(
       ? bruta.split("|").map((c) => c.trim()).filter(Boolean)
       : [];
 
+    const nomes = celulas.map(slug);
+
+    if (
+      celulas.length >= 3 &&
+      nomes.some((n) => n.startsWith("vacina")) &&
+      nomes.some((n) => n === "data")
+    ) {
+
+      colunas = {
+        vacina: nomes.findIndex((n) => n.startsWith("vacina")),
+        data: nomes.indexOf("data"),
+        dose: nomes.indexOf("dose"),
+        lote: nomes.indexOf("lote"),
+        local: nomes.findIndex(
+          (n) =>
+            n.includes("estabelecimento") ||
+            n.includes("unidade") ||
+            n === "local"
+        )
+      };
+
+      for (const chave of Object.keys(colunas) as Array<keyof typeof colunas>) {
+        if (colunas[chave] === -1) delete colunas[chave];
+      }
+
+      return;
+
+    }
+
+    const celula = (indice?: number) =>
+      indice !== undefined ? celulas[indice] : undefined;
+
     const linha = celulas.length > 0 ? celulas.join(" | ") : bruta.trim();
 
-    const vacina = casarVacina(linha, catalogo);
+    const textoVacina = celula(colunas.vacina) ?? linha;
+
+    const vacina =
+      casarVacina(textoVacina, catalogo) ??
+      (textoVacina === linha ? null : casarVacina(linha, catalogo));
 
     if (!vacina) {
       return;
     }
 
-    /* Tira o nome da vacina para ele não ser confundido com lote ou dose. */
-    const semVacina =
-      linha.slice(0, vacina.inicio) + " " + linha.slice(vacina.fim);
+    const celulaVacinaCasou =
+      casarVacina(textoVacina, catalogo) !== null;
 
-    const datas = extrairDatas(linha, hoje)
+    /* Tira o nome da vacina para ele não ser confundido com lote ou dose. */
+    const semVacina = celulaVacinaCasou && textoVacina !== linha
+      ? linha.replace(textoVacina, " ")
+      : linha.slice(0, vacina.inicio) + " " + linha.slice(vacina.fim);
+
+    const datas = extrairDatas(celula(colunas.data) ?? linha, hoje)
       .filter((d) => d <= hojeIso && d !== titular.dataNascimentoTitular);
+
+    const dose =
+      extrairDose(celula(colunas.dose) ?? semVacina) ??
+      extrairDose(semVacina);
+
+    const lote =
+      colunas.lote !== undefined && celula(colunas.lote) !== undefined
+        ? limparLote(celula(colunas.lote))
+        : extrairLote(semVacina);
+
+    const local =
+      colunas.local !== undefined && celula(colunas.local)
+        ? celula(colunas.local)!
+        : extrairLocal(semVacina, celulas);
 
     candidatos.push({
       ordem,
       registro: {
         vacina: vacina.nome,
-        dose: extrairDose(semVacina) ?? "Não identificada",
+        dose: dose ?? "Não identificada",
         dataAplicacao: datas[0] ?? null,
-        lote: extrairLote(semVacina),
-        localAplicacao: extrairLocal(semVacina, celulas)
+        lote,
+        localAplicacao: local
       }
     });
 

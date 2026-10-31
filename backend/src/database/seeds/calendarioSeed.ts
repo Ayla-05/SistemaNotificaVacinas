@@ -1,6 +1,21 @@
+import * as vacinaRepository
+  from "../../repositories/vacinaRepository";
+
+import * as calendarioVacinalRepository
+  from "../../repositories/calendarioVacinalRepository";
+
+import * as configuracaoRepository
+  from "../../repositories/configuracaoRepository";
+
+import {
+  derivarCalendarioPorFaixa,
+  FAIXAS_CALENDARIO,
+  VERSAO_CALENDARIO
+} from "../../utils/calendarioDerivado";
+
 /*
 ==================================================
-CALENDÁRIO VACINAL PADRÃO
+CALENDÁRIO VACINAL — GRUPO GESTANTE
 ==================================================
 
 Define:
@@ -23,268 +38,9 @@ export const calendarioVacinalPadrao = [
 
   /*
   ==================================================
-  CRIANÇA (0 A 10 ANOS)
-  ==================================================
-  */
-
-  {
-    vacina_codigo: "BCG",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Dose única"
-  },
-
-  {
-    vacina_codigo: "HEPATITE_B",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 3,
-    reforcos: 0,
-    observacao: "Esquema básico"
-  },
-
-  {
-    vacina_codigo: "PENTAVALENTE",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 3,
-    reforcos: 0,
-    observacao: "1ª, 2ª e 3ª dose"
-  },
-
-  {
-    vacina_codigo: "POLIO_VIP",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 3,
-    reforcos: 0,
-    observacao: "1ª, 2ª e 3ª dose"
-  },
-
-  {
-    vacina_codigo: "ROTAVIRUS",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 2,
-    reforcos: 0,
-    observacao: "1ª e 2ª dose"
-  },
-
-  {
-    vacina_codigo: "MENINGOCOCICA_C",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 2,
-    reforcos: 0,
-    observacao: "1ª e 2ª dose"
-  },
-
-  {
-    vacina_codigo: "PNEUMOCOCICA_10V",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 2,
-    reforcos: 1,
-    observacao: "2 doses + 1 reforço"
-  },
-
-  {
-    vacina_codigo: "FEBRE_AMARELA",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Dose única"
-  },
-
-  {
-    vacina_codigo: "TRIPLICE_VIRAL_SCR",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 1,
-    reforcos: 0,
-    observacao: "1ª dose"
-  },
-
-  {
-    vacina_codigo: "HEPATITE_A",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Dose única"
-  },
-
-  {
-    vacina_codigo: "DTP",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 1,
-    reforcos: 2,
-    observacao: "1º e 2º reforço"
-  },
-
-  {
-    vacina_codigo: "POLIO_VOP",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 1,
-    reforcos: 2,
-    observacao: "1º e 2º reforço"
-  },
-
-  {
-    vacina_codigo: "TETRAVIRAL",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 1,
-    reforcos: 0,
-    observacao: "SCR + Varicela"
-  },
-
-  {
-    vacina_codigo: "VARICELA",
-    faixa_etaria: "CRIANCA",
-    idade_minima: 0,
-    idade_maxima: 10,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Dose única"
-  },
-
-  /*
-  ==================================================
-  ADOLESCENTE (11 A 19 ANOS)
-  ==================================================
-  */
-
-  {
-    vacina_codigo: "HPV4",
-    faixa_etaria: "ADOLESCENTE",
-    idade_minima: 11,
-    idade_maxima: 19,
-    doses: 2,
-    reforcos: 0,
-    observacao: "2 doses com intervalo de 6 meses"
-  },
-
-  {
-    vacina_codigo: "MENINGOCOCICA_ACWY",
-    faixa_etaria: "ADOLESCENTE",
-    idade_minima: 11,
-    idade_maxima: 19,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Dose única"
-  },
-
-  {
-    vacina_codigo: "HEPATITE_B",
-    faixa_etaria: "ADOLESCENTE",
-    idade_minima: 11,
-    idade_maxima: 19,
-    doses: 3,
-    reforcos: 0,
-    observacao: "Conforme situação vacinal"
-  },
-
-  {
-    vacina_codigo: "FEBRE_AMARELA",
-    faixa_etaria: "ADOLESCENTE",
-    idade_minima: 11,
-    idade_maxima: 19,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Se nunca vacinado"
-  },
-
-  {
-    vacina_codigo: "DT",
-    faixa_etaria: "ADOLESCENTE",
-    idade_minima: 11,
-    idade_maxima: 19,
-    doses: 1,
-    reforcos: 1,
-    observacao: "Reforço a cada 10 anos"
-  },
-
-  {
-    vacina_codigo: "TRIPLICE_VIRAL_SCR",
-    faixa_etaria: "ADOLESCENTE",
-    idade_minima: 11,
-    idade_maxima: 19,
-    doses: 2,
-    reforcos: 0,
-    observacao: "Conforme histórico vacinal"
-  },
-
-  /*
-  ==================================================
-  ADULTO (20 A 59 ANOS)
-  ==================================================
-  */
-
-  {
-    vacina_codigo: "HEPATITE_B",
-    faixa_etaria: "ADULTO",
-    idade_minima: 20,
-    idade_maxima: 59,
-    doses: 3,
-    reforcos: 0,
-    observacao: "Conforme situação vacinal"
-  },
-
-  {
-    vacina_codigo: "FEBRE_AMARELA",
-    faixa_etaria: "ADULTO",
-    idade_minima: 20,
-    idade_maxima: 59,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Dose única"
-  },
-
-  {
-    vacina_codigo: "DT",
-    faixa_etaria: "ADULTO",
-    idade_minima: 20,
-    idade_maxima: 59,
-    doses: 1,
-    reforcos: 1,
-    observacao: "Reforço a cada 10 anos"
-  },
-
-  {
-    vacina_codigo: "TRIPLICE_VIRAL_SCR",
-    faixa_etaria: "ADULTO",
-    idade_minima: 20,
-    idade_maxima: 59,
-    doses: 2,
-    reforcos: 0,
-    observacao: "Conforme situação vacinal"
-  },
-
-  /*
-  ==================================================
   GESTANTE
   ==================================================
   */
-
   {
     vacina_codigo: "HEPATITE_B",
     faixa_etaria: "GESTANTE",
@@ -294,7 +50,6 @@ export const calendarioVacinalPadrao = [
     reforcos: 0,
     observacao: "Conforme situação vacinal"
   },
-
   {
     vacina_codigo: "DT",
     faixa_etaria: "GESTANTE",
@@ -304,7 +59,6 @@ export const calendarioVacinalPadrao = [
     reforcos: 0,
     observacao: "Esquema gestacional"
   },
-
   {
     vacina_codigo: "DTPA",
     faixa_etaria: "GESTANTE",
@@ -314,7 +68,6 @@ export const calendarioVacinalPadrao = [
     reforcos: 0,
     observacao: "Uma dose por gestação"
   },
-
   {
     vacina_codigo: "INFLUENZA",
     faixa_etaria: "GESTANTE",
@@ -324,121 +77,96 @@ export const calendarioVacinalPadrao = [
     reforcos: 1,
     observacao: "Campanha anual"
   },
-
   {
     vacina_codigo: "COVID19",
     faixa_etaria: "GESTANTE",
     idade_minima: 10,
     idade_maxima: 59,
-    doses: 1,
-    reforcos: 1,
-    observacao: "Conforme campanha vigente"
-  },
-
-  /*
-  ==================================================
-  IDOSO (60+)
-  ==================================================
-  */
-
-  {
-    vacina_codigo: "HEPATITE_B",
-    faixa_etaria: "IDOSO",
-    idade_minima: 60,
-    idade_maxima: 150,
-    doses: 3,
-    reforcos: 0,
-    observacao: "Conforme situação vacinal"
-  },
-
-  {
-    vacina_codigo: "FEBRE_AMARELA",
-    faixa_etaria: "IDOSO",
-    idade_minima: 60,
-    idade_maxima: 150,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Verificar histórico vacinal"
-  },
-
-  {
-    vacina_codigo: "TRIPLICE_VIRAL_SCR",
-    faixa_etaria: "IDOSO",
-    idade_minima: 60,
-    idade_maxima: 150,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Se não vacinado anteriormente"
-  },
-
-  {
-    vacina_codigo: "DT",
-    faixa_etaria: "IDOSO",
-    idade_minima: 60,
-    idade_maxima: 150,
-    doses: 1,
-    reforcos: 1,
-    observacao: "Reforço a cada 10 anos"
-  },
-
-  {
-    vacina_codigo: "PNEUMOCOCICA_23V",
-    faixa_etaria: "IDOSO",
-    idade_minima: 60,
-    idade_maxima: 150,
-    doses: 1,
-    reforcos: 0,
-    observacao: "Dose única"
-  },
-
-  {
-    vacina_codigo: "INFLUENZA",
-    faixa_etaria: "IDOSO",
-    idade_minima: 60,
-    idade_maxima: 150,
-    doses: 1,
-    reforcos: 1,
-    observacao: "Campanha anual"
-  },
-
-  {
-    vacina_codigo: "COVID19",
-    faixa_etaria: "IDOSO",
-    idade_minima: 60,
-    idade_maxima: 150,
     doses: 1,
     reforcos: 1,
     observacao: "Conforme campanha vigente"
   }
 
-  
-
 ];
-import * as vacinaRepository
-  from "../../repositories/vacinaRepository";
-
-import * as calendarioVacinalRepository
-  from "../../repositories/calendarioVacinalRepository";
 
 /*
 ==================================================
 EXECUTAR CALENDÁRIO SEED
 ==================================================
+
+Faixas etárias (criança, adolescente, adulto, idoso): vêm do
+esquema vacinal de 2026 (data/esquemaVacinal2026.ts), a mesma fonte
+do cálculo das próximas doses. Quando a versão guardada no banco é
+diferente da versão do código, as linhas dessas faixas são trocadas
+pelas novas (uma vez só, e de novo só no próximo ano). Edições
+feitas pelo administrador nessas linhas são substituídas nessa troca.
+
+Grupo especial GESTANTE: continua vindo da lista abaixo (o calendário
+da gestante não faz parte dos calendários de 2026 já incorporados).
 */
+const CHAVE_VERSAO = "calendario_versao";
+
 export async function executarCalendarioSeed() {
 
-  /*
-  Remove duplicatas que já tenham sido inseridas em
-  execuções anteriores (este seed, antes desta correção,
-  rodava sempre a cada subida do servidor, sem checar se
-  já existia).
-  */
   await calendarioVacinalRepository
     .removerDuplicatas();
 
+  const versaoNoBanco =
+    await configuracaoRepository
+      .obterConfiguracao(CHAVE_VERSAO);
+
+  if (versaoNoBanco !== VERSAO_CALENDARIO) {
+
+    await calendarioVacinalRepository
+      .removerPorFaixas(
+        FAIXAS_CALENDARIO.map((f) => f.faixa)
+      );
+
+    for (const linha of derivarCalendarioPorFaixa()) {
+
+      const vacina =
+        await vacinaRepository
+          .buscarVacinaPorCodigo(
+            linha.vacinaCodigo
+          );
+
+      const vacinaId =
+        (vacina as any)?.id;
+
+      if (!vacinaId) {
+        continue;
+      }
+
+      await calendarioVacinalRepository
+        .criarCalendarioVacinal(
+          vacinaId,
+          linha.faixa,
+          linha.idadeMinima,
+          linha.idadeMaxima,
+          linha.doses,
+          linha.reforcos,
+          linha.observacao
+        );
+
+    }
+
+    await configuracaoRepository
+      .definirConfiguracao(
+        CHAVE_VERSAO,
+        VERSAO_CALENDARIO
+      );
+
+    console.log(
+      `Calendário vacinal atualizado para a versão ${VERSAO_CALENDARIO}.`
+    );
+
+  }
+
   for (
     const item
-    of calendarioVacinalPadrao
+    of calendarioVacinalPadrao.filter(
+      (i) => i.faixa_etaria === "GESTANTE"
+    )
   ) {
 
     const vacina =

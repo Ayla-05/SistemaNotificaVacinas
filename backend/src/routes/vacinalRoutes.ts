@@ -25,6 +25,12 @@ Só o dono da pessoa (ou um admin) pode
 consultar o resumo vacinal dela.
 */
 router.get(
+  "/:pessoaId/proximas-doses",
+  pessoaPertenceAoUsuario,
+  VacinalController.obterProximasDoses
+);
+
+router.get(
   "/:pessoaId",
   pessoaPertenceAoUsuario,
   VacinalController.obterPendencias

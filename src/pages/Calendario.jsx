@@ -9,7 +9,7 @@ import {
   Trash2,
   Loader2
 } from "lucide-react";
-import { obterAgendamentos, criarAgendamento, removerAgendamento, obterVacinas } from "../services/api";
+import { obterAgendamentos, criarAgendamento, removerAgendamento, obterVacinas, obterProximasDoses } from "../services/api";
 import SeletorDose from "../components/SeletorDose";
 import { useAuth } from "../context/AuthContext";
 
@@ -18,6 +18,8 @@ const FORM_VAZIO = { vacinaId: "", dose: "", dataPrevista: "", observacao: "" };
 export default function Calendario() {
   const { pessoaAtiva } = useAuth();
   const [agendamentos, setAgendamentos] = useState([]);
+  // Doses previstas pelo calendário nacional (com data) e períodos de campanha
+  const [dosesPrevistas, setDosesPrevistas] = useState([]);
   const [vacinasDisponiveis, setVacinasDisponiveis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
@@ -38,6 +40,11 @@ export default function Calendario() {
     try {
       const lista = await obterAgendamentos(pessoaAtiva.id);
       setAgendamentos(lista);
+
+      // Não trava o calendário se o cálculo falhar: os agendamentos continuam aparecendo.
+      obterProximasDoses(pessoaAtiva.id)
+        .then(setDosesPrevistas)
+        .catch(() => setDosesPrevistas([]));
     } catch (erro) {
       console.error(erro);
     } finally {
@@ -177,6 +184,31 @@ export default function Calendario() {
         evento.data_prevista ===
         dataEsperada
     );
+  }
+
+  function dataDoDia(dia) {
+    return `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  }
+
+  /** Doses do calendário nacional previstas para este dia. */
+  function dosesPrevistasDoDia(dia) {
+    const data = dataDoDia(dia);
+    return dosesPrevistas.filter((d) => d.dataPrevista === data);
+  }
+
+  /** Campanhas cujo período inclui este dia (sem repetir a mesma campanha). */
+  function campanhasDoDia(dia) {
+    const data = dataDoDia(dia);
+    const vistas = new Map();
+
+    for (const d of dosesPrevistas) {
+      const c = d.campanha;
+      if (c?.dataInicio && c.dataFim && c.dataInicio <= data && data <= c.dataFim) {
+        vistas.set(`${d.vacinaCodigo}-${c.nome}`, { nome: c.nome, vacina: d.vacina });
+      }
+    }
+
+    return [...vistas.values()];
   }
 
   function mudarMes(valor) {
@@ -369,6 +401,12 @@ export default function Calendario() {
               const eventos =
                 eventosDoDia(dia);
 
+              const dosesDoDia =
+                dosesPrevistasDoDia(dia);
+
+              const campanhasNoDia =
+                campanhasDoDia(dia);
+
               return (
 
                 <div
@@ -381,6 +419,32 @@ export default function Calendario() {
                   </div>
 
                   <div className="space-y-1">
+
+                    {campanhasNoDia.map((campanha) => (
+                      <div
+                        key={`campanha-${campanha.vacina}-${campanha.nome}`}
+                        title={`Período da campanha: ${campanha.nome}`}
+                        className="px-2 py-0.5 rounded-lg bg-violet-100 text-violet-800 text-[10px] font-semibold truncate"
+                      >
+                        📣 {campanha.vacina}
+                      </div>
+                    ))}
+
+                    {dosesDoDia.map((dose) => (
+                      <div
+                        key={`dose-${dose.vacinaCodigo}-${dose.numeroDose}`}
+                        title={`${dose.vacina} — ${dose.rotulo} (calendário nacional)`}
+                        className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+                          dose.status === "ATRASADA"
+                            ? "bg-rose-100 text-rose-800"
+                            : dose.status === "PROXIMA"
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-sky-100 text-sky-800"
+                        }`}
+                      >
+                        💉 {dose.vacina}
+                      </div>
+                    ))}
 
                     {eventos.map(
                       (evento) => (
@@ -413,6 +477,100 @@ export default function Calendario() {
         </div>
 
       </div>
+
+      {/* DOSES PREVISTAS PELO CALENDÁRIO NACIONAL */}
+
+      {dosesPrevistas.some((d) => d.dataPrevista) && (
+
+        <div className="card">
+
+          <div className="flex items-center gap-2 mb-1">
+
+            <Syringe
+              className="text-sky-600"
+              size={20}
+            />
+
+            <h2 className="font-bold text-lg">
+              Doses previstas (calendário nacional)
+            </h2>
+
+          </div>
+
+          <p className="text-xs text-slate-500 mb-4">
+            <span className="inline-block w-2 h-2 rounded-full bg-rose-400 mr-1" />atrasada
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mx-1 ml-3" />nos próximos 30 dias
+            <span className="inline-block w-2 h-2 rounded-full bg-sky-400 mx-1 ml-3" />mais adiante
+            <span className="ml-3">📣 período de campanha</span>
+          </p>
+
+          <div className="space-y-3">
+
+            {dosesPrevistas
+              .filter((d) => d.dataPrevista)
+              .slice(0, 12)
+              .map((dose) => (
+
+                <div
+                  key={`${dose.vacinaCodigo}-${dose.numeroDose}`}
+                  className="flex justify-between items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3"
+                >
+
+                  <div>
+
+                    <div className="font-semibold">
+                      {dose.vacina}
+                    </div>
+
+                    <div className="text-sm text-slate-500">
+                      {dose.rotulo}
+                    </div>
+
+                    {dose.campanha && (
+                      <div className="text-xs text-violet-700 mt-1">
+                        📣 {dose.campanha.nome}
+                        {dose.campanha.dataInicio && (
+                          <>
+                            : de {new Date(`${dose.campanha.dataInicio}T00:00:00`).toLocaleDateString("pt-BR")}
+                            {dose.campanha.dataFim && (
+                              <> a {new Date(`${dose.campanha.dataFim}T00:00:00`).toLocaleDateString("pt-BR")}</>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                  </div>
+
+                  <div className="text-sm font-semibold text-right">
+
+                    <div className={
+                      dose.status === "ATRASADA"
+                        ? "text-rose-600"
+                        : dose.status === "PROXIMA"
+                          ? "text-amber-600"
+                          : "text-sky-700"
+                    }>
+                      {new Date(`${dose.dataPrevista}T00:00:00`).toLocaleDateString("pt-BR")}
+                    </div>
+
+                    {dose.status === "ATRASADA" && (
+                      <div className="text-xs font-normal text-rose-500">
+                        atrasada
+                      </div>
+                    )}
+
+                  </div>
+
+                </div>
+
+              ))}
+
+          </div>
+
+        </div>
+
+      )}
 
       {/* LISTA RÁPIDA */}
 
