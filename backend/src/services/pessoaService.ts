@@ -1,3 +1,4 @@
+import { frequenciaValida, FREQUENCIAS_AVISO } from "../utils/frequenciaAviso";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as usuarioRepository from "../repositories/usuarioRepository";
 
@@ -27,6 +28,27 @@ Dependências:
 - usuarioRepository
 */
 export class PessoaService {
+
+  /*
+  Frequência dos avisos de dose por e-mail (ver utils/frequenciaAviso.ts).
+  Ausente = não alterar.
+  */
+  private static validarFrequenciaAviso(
+    valor: unknown
+  ) {
+
+    if (
+      valor !== undefined &&
+      valor !== null &&
+      !frequenciaValida(valor)
+    ) {
+      throw new Error(
+        `Frequência de aviso inválida. Use: ${FREQUENCIAS_AVISO.join(", ")}.`
+      );
+    }
+
+  }
+
 
   /*
   ==================================================
@@ -144,8 +166,12 @@ export class PessoaService {
       receber_email?: number;
 
       receber_whatsapp?: number;
+
+      frequencia_aviso?: string;
     }
   ) {
+
+    this.validarFrequenciaAviso(dados.frequencia_aviso);
 
     if (!dados.nome?.trim()) {
       throw new Error(
@@ -213,8 +239,12 @@ export class PessoaService {
       receber_email?: number;
 
       receber_whatsapp?: number;
+
+      frequencia_aviso?: string;
     }
   ) {
+
+    this.validarFrequenciaAviso(dados.frequencia_aviso);
 
     const pessoa =
       await pessoaRepository.buscarPessoaPorId(

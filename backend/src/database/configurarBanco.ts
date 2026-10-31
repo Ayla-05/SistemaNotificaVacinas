@@ -3,7 +3,7 @@ import { db } from "./database";
 import { criarTabelaUsuarios, migrarColunasVerificacaoEmail }
   from "./tables/usuariosTable";
 
-import { criarTabelaPessoas }
+import { criarTabelaPessoas, migrarColunasFrequenciaAviso }
   from "./tables/pessoasTable";
 
 import { criarTabelaDependentes }
@@ -101,7 +101,11 @@ export async function configurarBanco() {
     migrarColunasBloqueioLogin(db);
   });
 
-  criarTabelaPessoas(db);
+  /* Em série: a migração faz ALTER TABLE na tabela recém-criada. */
+  db.serialize(() => {
+    criarTabelaPessoas(db);
+    migrarColunasFrequenciaAviso(db);
+  });
 
   criarTabelaDependentes(db);
 

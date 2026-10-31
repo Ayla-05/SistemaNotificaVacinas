@@ -1,7 +1,7 @@
 // src/pages/Perfil.jsx
 
 import React, { useEffect, useState } from 'react';
-import { UserCog, Save, ShieldAlert, Check, Loader2 } from 'lucide-react';
+import { UserCog, Save, ShieldAlert, Check, Loader2, BellRing } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   obterPessoa,
@@ -12,6 +12,35 @@ import {
   desvincularGrupoEspecial,
   buscarEnderecoPorCep
 } from '../services/api';
+
+/** Frequências de aviso de vacina por e-mail (valores aceitos pelo backend). */
+const FREQUENCIAS_AVISO = [
+  {
+    valor: 'UMA_VEZ',
+    rotulo: 'Uma vez, quando a dose estiver chegando (padrão)',
+    ajuda: 'Um e-mail por dose, quando faltam até 7 dias para a data prevista.'
+  },
+  {
+    valor: 'DIARIA',
+    rotulo: 'Diariamente',
+    ajuda: 'Um resumo por dia, enquanto houver dose atrasada, disponível ou chegando.'
+  },
+  {
+    valor: 'SEMANAL',
+    rotulo: 'Semanalmente',
+    ajuda: 'Um resumo por semana, enquanto houver dose atrasada, disponível ou chegando.'
+  },
+  {
+    valor: 'MENSAL',
+    rotulo: 'Mensalmente',
+    ajuda: 'Um resumo por mês, enquanto houver dose atrasada, disponível ou chegando.'
+  },
+  {
+    valor: 'DESATIVADO',
+    rotulo: 'Não quero avisos de vacina por e-mail',
+    ajuda: 'As doses continuam aparecendo no painel e no calendário.'
+  }
+];
 
 const CAMPOS_VAZIOS = {
   nome: '',
@@ -250,6 +279,28 @@ export default function Perfil() {
               <input type="text" maxLength={2} value={form.estado ?? ''} onChange={(e) => atualizarCampo('estado', e.target.value.toUpperCase())} className="campo-input" />
             </Campo>
           </div>
+        </div>
+
+        {/* Notificações */}
+        <div>
+          <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+            <BellRing className="w-4 h-4 text-emerald-600" /> Notificações por e-mail
+          </h2>
+          <p className="text-xs text-slate-500 mb-3">
+            Com que frequência você quer ser avisado(a) das vacinas de {form.nome || 'esta pessoa'}?
+          </p>
+          <select
+            value={form.frequencia_aviso ?? 'UMA_VEZ'}
+            onChange={(e) => atualizarCampo('frequencia_aviso', e.target.value)}
+            className="campo-input"
+          >
+            {FREQUENCIAS_AVISO.map((f) => (
+              <option key={f.valor} value={f.valor}>{f.rotulo}</option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-500 mt-2">
+            {FREQUENCIAS_AVISO.find((f) => f.valor === (form.frequencia_aviso ?? 'UMA_VEZ'))?.ajuda}
+          </p>
         </div>
 
         {/* Grupos especiais */}
