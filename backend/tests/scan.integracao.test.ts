@@ -124,6 +124,29 @@ describe("POST /scan/analisar", () => {
     expect(res.body.erro).toContain("indisponível");
   });
 
+  it("diz o motivo quando o serviço não está rodando (conexão recusada)", async () => {
+    const erro: any = new TypeError("fetch failed");
+    erro.cause = { code: "ECONNREFUSED" };
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(erro);
+
+    const res = await enviar(JPEG);
+
+    expect(res.status).toBe(503);
+    expect(res.body.erro).toContain("nenhum serviço respondeu em http://ocr.teste");
+    expect(res.body.erro).toContain("ocr-service");
+  });
+
+  it("diz o motivo quando o serviço demora demais (modelos ainda carregando)", async () => {
+    const erro: any = new Error("timeout");
+    erro.name = "TimeoutError";
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(erro);
+
+    const res = await enviar(JPEG);
+
+    expect(res.status).toBe(503);
+    expect(res.body.erro).toContain("demorou demais");
+  });
+
   it("explica quando o OCR não leu nenhum texto", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() => respostaOcr({ texto: "   " }));
 

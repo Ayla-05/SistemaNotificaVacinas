@@ -22,7 +22,13 @@ Dependências:
 - OCR_SERVICE_URL (variável de ambiente)
 */
 
-const TEMPO_LIMITE_MS = 90_000;
+/*
+Tempo máximo de uma leitura. A PRIMEIRA leitura de um serviço recém-iniciado
+pode demorar (carrega os modelos); por isso o serviço os carrega ao subir
+(ver ocr-service/app.py) e o limite é folgado. Ajustável por OCR_TIMEOUT_MS.
+*/
+const TEMPO_LIMITE_MS =
+  Number(process.env.OCR_TIMEOUT_MS) || 120_000;
 
 export type TipoArquivoOcr =
   | "image/jpeg"
@@ -46,6 +52,37 @@ export class OcrIndisponivelError extends Error {
     );
     this.name = "OcrIndisponivelError";
   }
+}
+
+/*
+Traduz o erro técnico do fetch em algo que diga o que fazer.
+"TypeError: fetch failed" sozinho não ajuda: a causa de verdade
+(recusou a conexão, endereço inexistente...) vem em erro.cause.
+*/
+function descreverFalhaDeConexao(
+  erro: any,
+  url: string
+): string {
+
+  const causa = erro?.cause?.code ?? erro?.cause?.name;
+
+  if (erro?.name === "TimeoutError" || erro?.name === "AbortError") {
+    return (
+      "o serviço demorou demais para responder; na primeira leitura ele baixa os modelos, " +
+      "então aguarde alguns minutos e tente de novo"
+    );
+  }
+
+  if (causa === "ECONNREFUSED") {
+    return `nenhum serviço respondeu em ${url}; confira se o ocr-service está rodando`;
+  }
+
+  if (causa === "ENOTFOUND" || causa === "EAI_AGAIN") {
+    return `endereço ${url} não encontrado; confira OCR_SERVICE_URL`;
+  }
+
+  return `falha ao conectar em ${url}${causa ? ` (${causa})` : ""}`;
+
 }
 
 export class OcrService {
@@ -86,7 +123,16 @@ export class OcrService {
 
     } catch (erro: any) {
 
-      throw new OcrIndisponivelError(erro?.name);
+      const motivo =
+        descreverFalhaDeConexao(erro, url);
+
+      /* O detalhe técnico vai para o log do servidor e para a mensagem. */
+      console.error(
+        `[OcrService] Falha ao chamar o OCR: ${motivo}`,
+        erro?.cause ?? erro
+      );
+
+      throw new OcrIndisponivelError(motivo);
 
     }
 
