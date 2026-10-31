@@ -11,6 +11,7 @@ import {
   Bell,
   UserCircle,
   UserCog,
+  MonitorSmartphone,
   Users,
   ChevronDown,
   Syringe
@@ -114,6 +115,13 @@ export default function AppLayout() {
               className={({ isActive }) => `${linkBase} ${isActive ? linkAtivo : linkInativo}`}
             >
               <UserCog className="w-5 h-5" /> Meu Perfil
+            </NavLink>
+
+            <NavLink
+              to="/dispositivos"
+              className={({ isActive }) => `${linkBase} ${isActive ? linkAtivo : linkInativo}`}
+            >
+              <MonitorSmartphone className="w-5 h-5" /> Meus dispositivos
             </NavLink>
           </nav>
         </div>

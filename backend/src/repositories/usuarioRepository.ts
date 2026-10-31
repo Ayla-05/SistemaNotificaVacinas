@@ -483,3 +483,47 @@ export function removerUsuario(
   });
 
 }
+/*
+==================================================
+BLOQUEIO PROGRESSIVO DE LOGIN
+==================================================
+*/
+export function registrarFalhaDeLogin(
+  id: number,
+  tentativas: number,
+  bloqueadoAte: string | null
+): Promise<void> {
+
+  return new Promise((resolve, reject) => {
+
+    db.run(
+      `
+      UPDATE usuarios
+      SET tentativas_falhas = ?,
+          bloqueado_ate = ?
+      WHERE id = ?
+      `,
+      [tentativas, bloqueadoAte, id],
+      (err) => {
+
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve();
+
+      }
+    );
+
+  });
+
+}
+
+export function zerarFalhasDeLogin(
+  id: number
+): Promise<void> {
+
+  return registrarFalhaDeLogin(id, 0, null);
+
+}

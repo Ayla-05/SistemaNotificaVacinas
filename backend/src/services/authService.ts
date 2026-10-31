@@ -1,7 +1,20 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 import * as usuarioRepository from "../repositories/usuarioRepository";
+import * as sessaoRepository from "../repositories/sessaoRepository";
+import * as redefinicaoSenhaRepository from "../repositories/redefinicaoSenhaRepository";
+
+import { UsuarioService } from "./usuarioService";
+import { NotificacaoService } from "./notificacaoService";
+
+import {
+  calcularBloqueioMinutos,
+  gerarCodigoNumerico,
+  gerarTokenOpaco,
+  hashToken
+} from "../utils/seguranca";
 
 /*
 ==================================================
@@ -11,7 +24,10 @@ AUTH SERVICE
 Responsabilidades:
 
 - Validar credenciais de login
-- Emitir e verificar tokens JWT
+- Bloquear a conta após falhas seguidas de login
+- Abrir, renovar (refresh token rotativo) e revogar sessões
+- Emitir e verificar tokens JWT de acesso (curtos)
+- Recuperação de senha (token de uso único)
 
 NÃO é responsável por:
 
@@ -21,7 +37,7 @@ NÃO é responsável por:
 
 Dependências:
 
-- usuarioRepository
+- usuarioRepository, sessaoRepository, redefinicaoSenhaRepository
 - bcryptjs
 - jsonwebtoken
 */
@@ -34,7 +50,27 @@ assinar token de sessão com um segredo previsível.
 const JWT_SECRET =
   process.env.JWT_SECRET;
 
-const JWT_EXPIRA_EM = "8h";
+/*
+Token de acesso curto: se for roubado, vale por poucos
+minutos. A continuidade da sessão vem do refresh token,
+que é rotativo e revogável no servidor.
+*/
+const JWT_EXPIRA_EM = "15m";
+
+const DIAS_VALIDADE_SESSAO = 30;
+
+/*
+Janela em que o reuso de um refresh token recém-rotacionado
+é tratado como corrida entre abas/requisições (e não como
+roubo): nesse caso só se recusa a renovação, sem revogar.
+*/
+const SEGUNDOS_TOLERANCIA_REFRESH = 10;
+
+/* Link de redefinição de senha válido por 30 minutos. */
+const MINUTOS_VALIDADE_REDEFINICAO = 30;
+
+/* Intervalo mínimo entre dois pedidos de redefinição da mesma conta. */
+const SEGUNDOS_ENTRE_PEDIDOS_REDEFINICAO = 60;
 
 /* Código de verificação válido por 15 minutos. */
 const MINUTOS_VALIDADE_CODIGO = 15;
@@ -42,6 +78,46 @@ const MINUTOS_VALIDADE_CODIGO = 15;
 export interface TokenPayload {
   usuarioId: number;
   perfil: string;
+  /* id da sessão no servidor (tabela sessoes) */
+  sid: string;
+}
+
+export interface ContextoRequisicao {
+  ip: string | null;
+  userAgent: string | null;
+}
+
+/* Data do SQLite (CURRENT_TIMESTAMP) vem como "AAAA-MM-DD HH:MM:SS" em UTC. */
+function lerDataSqlite(valor: string): number {
+  return new Date(
+    valor.includes("T") ? valor : valor.replace(" ", "T") + "Z"
+  ).getTime();
+}
+
+export class ContaBloqueadaError extends Error {
+  minutos: number;
+  constructor(minutos: number) {
+    super(
+      `Muitas tentativas de login. Tente novamente em ${minutos} minuto(s).`
+    );
+    this.name = "ContaBloqueadaError";
+    this.minutos = minutos;
+  }
+}
+
+export class SessaoInvalidaError extends Error {
+  constructor() {
+    super("Sessão inválida ou expirada.");
+    this.name = "SessaoInvalidaError";
+  }
+}
+
+/* Renovação simultânea (duas abas): o cliente deve repetir a requisição. */
+export class RefreshConcorrenteError extends Error {
+  constructor() {
+    super("Renovação de sessão em andamento.");
+    this.name = "RefreshConcorrenteError";
+  }
 }
 
 /*
@@ -72,9 +148,7 @@ export class AuthService {
     expiraEm: string;
   } {
 
-    const codigo = String(
-      Math.floor(100000 + Math.random() * 900000)
-    );
+    const codigo = gerarCodigoNumerico();
 
     const expiraEm = new Date(
       Date.now() + MINUTOS_VALIDADE_CODIGO * 60 * 1000
@@ -96,7 +170,8 @@ export class AuthService {
   */
   static async confirmarEmail(
     email: string,
-    codigo: string
+    codigo: string,
+    contexto: ContextoRequisicao
   ) {
 
     if (!email?.trim() || !codigo?.trim()) {
@@ -151,14 +226,15 @@ export class AuthService {
       usuario.id
     );
 
-    const token =
-      this.gerarToken({
-        usuarioId: usuario.id,
-        perfil: usuario.perfil
-      });
+    const { token, refreshToken } =
+      await this.abrirSessao(
+        usuario,
+        contexto
+      );
 
     return {
       token,
+      refreshToken,
       usuario: {
         id: usuario.id,
         nome: usuario.nome,
@@ -222,7 +298,8 @@ export class AuthService {
   */
   static async login(
     email: string,
-    senha: string
+    senha: string,
+    contexto: ContextoRequisicao
   ) {
 
     if (!email?.trim() || !senha?.trim()) {
@@ -256,6 +333,29 @@ export class AuthService {
       );
     }
 
+    /*
+    Bloqueio progressivo por conta (além do limite por IP):
+    protege contra ataque distribuído em muitos IPs.
+    */
+    if (
+      usuario.bloqueado_ate &&
+      new Date(usuario.bloqueado_ate).getTime() > Date.now()
+    ) {
+
+      const minutos = Math.max(
+        1,
+        Math.ceil(
+          (
+            new Date(usuario.bloqueado_ate).getTime() -
+            Date.now()
+          ) / 60000
+        )
+      );
+
+      throw new ContaBloqueadaError(minutos);
+
+    }
+
     const senhaConfere =
       await bcrypt.compare(
         senha,
@@ -263,8 +363,32 @@ export class AuthService {
       );
 
     if (!senhaConfere) {
+
+      const falhas =
+        (usuario.tentativas_falhas ?? 0) + 1;
+
+      const minutosBloqueio =
+        calcularBloqueioMinutos(falhas);
+
+      await usuarioRepository.registrarFalhaDeLogin(
+        usuario.id,
+        falhas,
+        minutosBloqueio > 0
+          ? new Date(
+              Date.now() + minutosBloqueio * 60000
+            ).toISOString()
+          : null
+      );
+
       throw new Error(
         credenciaisInvalidas
+      );
+
+    }
+
+    if (usuario.tentativas_falhas) {
+      await usuarioRepository.zerarFalhasDeLogin(
+        usuario.id
       );
     }
 
@@ -277,14 +401,15 @@ export class AuthService {
       throw new EmailNaoVerificadoError();
     }
 
-    const token =
-      this.gerarToken({
-        usuarioId: usuario.id,
-        perfil: usuario.perfil
-      });
+    const { token, refreshToken } =
+      await this.abrirSessao(
+        usuario,
+        contexto
+      );
 
     return {
       token,
+      refreshToken,
       usuario: {
         id: usuario.id,
         nome: usuario.nome,
@@ -292,6 +417,422 @@ export class AuthService {
         perfil: usuario.perfil
       }
     };
+
+  }
+
+  /*
+  ==================================================
+  ABRIR SESSÃO
+  ==================================================
+
+  Cria a linha em "sessoes" (guardando só o hash do
+  refresh token) e emite o token de acesso curto.
+  */
+  private static async abrirSessao(
+    usuario: any,
+    contexto: ContextoRequisicao
+  ) {
+
+    const sessaoId = crypto.randomUUID();
+    const refreshToken = gerarTokenOpaco();
+
+    await sessaoRepository.criarSessao({
+      id: sessaoId,
+      usuarioId: usuario.id,
+      refreshHash: hashToken(refreshToken),
+      userAgent: contexto.userAgent,
+      ip: contexto.ip,
+      expiraEm: new Date(
+        Date.now() +
+        DIAS_VALIDADE_SESSAO * 24 * 60 * 60 * 1000
+      ).toISOString()
+    });
+
+    const token = this.gerarToken({
+      usuarioId: usuario.id,
+      perfil: usuario.perfil,
+      sid: sessaoId
+    });
+
+    return { token, refreshToken };
+
+  }
+
+  /*
+  ==================================================
+  RENOVAR SESSÃO (REFRESH TOKEN ROTATIVO)
+  ==================================================
+
+  Cada renovação invalida o refresh token usado e emite
+  outro. Se um refresh token JÁ usado reaparece, alguém
+  o copiou: a sessão inteira é revogada.
+  */
+  static async renovarSessao(
+    refreshToken: string | undefined
+  ) {
+
+    if (!refreshToken) {
+      throw new SessaoInvalidaError();
+    }
+
+    const hash = hashToken(refreshToken);
+
+    const sessao =
+      await sessaoRepository.buscarPorRefreshHash(
+        hash
+      );
+
+    if (!sessao) {
+
+      const antiga =
+        await sessaoRepository.buscarPorRefreshHashAnterior(
+          hash
+        );
+
+      if (antiga && !antiga.revogada_em) {
+
+        const rotacionadoEm =
+          antiga.rotacionado_em
+            ? lerDataSqlite(antiga.rotacionado_em)
+            : 0;
+
+        if (
+          Date.now() - rotacionadoEm <
+          SEGUNDOS_TOLERANCIA_REFRESH * 1000
+        ) {
+          throw new RefreshConcorrenteError();
+        }
+
+        await sessaoRepository.revogarSessao(
+          antiga.id
+        );
+
+        console.warn(
+          `[Auth] Reuso de refresh token detectado. Sessão ${antiga.id} revogada.`
+        );
+
+      }
+
+      throw new SessaoInvalidaError();
+
+    }
+
+    if (
+      sessao.revogada_em ||
+      new Date(sessao.expira_em).getTime() <= Date.now()
+    ) {
+      throw new SessaoInvalidaError();
+    }
+
+    const usuario =
+      await usuarioRepository.buscarUsuarioPorId(
+        sessao.usuario_id
+      );
+
+    if (!usuario || usuario.ativo === 0) {
+
+      await sessaoRepository.revogarSessao(
+        sessao.id
+      );
+
+      throw new SessaoInvalidaError();
+
+    }
+
+    const novoRefresh = gerarTokenOpaco();
+
+    const rotacionou =
+      await sessaoRepository.rotacionarRefresh(
+        sessao.id,
+        hash,
+        hashToken(novoRefresh),
+        new Date(
+          Date.now() +
+          DIAS_VALIDADE_SESSAO * 24 * 60 * 60 * 1000
+        ).toISOString()
+      );
+
+    if (!rotacionou) {
+      throw new RefreshConcorrenteError();
+    }
+
+    return {
+      token: this.gerarToken({
+        usuarioId: usuario.id,
+        perfil: usuario.perfil,
+        sid: sessao.id
+      }),
+      refreshToken: novoRefresh
+    };
+
+  }
+
+  /*
+  ==================================================
+  SESSÃO ATIVA?
+  ==================================================
+
+  Usado pelo authMiddleware a cada requisição: é isso que
+  torna o logout (e "sair de todos") efetivo na hora.
+  */
+  static async sessaoEstaAtiva(
+    sessaoId: string,
+    usuarioId: number
+  ): Promise<boolean> {
+
+    const sessao =
+      await sessaoRepository.buscarSessaoPorId(
+        sessaoId
+      );
+
+    return !!sessao &&
+      sessao.usuario_id === usuarioId &&
+      !sessao.revogada_em &&
+      new Date(sessao.expira_em).getTime() > Date.now();
+
+  }
+
+  /*
+  ==================================================
+  ENCERRAR SESSÃO (LOGOUT)
+  ==================================================
+
+  Aceita o refresh token e/ou o token de acesso (mesmo
+  expirado), para o logout funcionar em qualquer estado.
+  */
+  static async encerrarSessao(
+    refreshToken?: string,
+    tokenAcesso?: string
+  ) {
+
+    if (refreshToken) {
+
+      const sessao =
+        await sessaoRepository.buscarPorRefreshHash(
+          hashToken(refreshToken)
+        );
+
+      if (sessao) {
+        await sessaoRepository.revogarSessao(
+          sessao.id
+        );
+      }
+
+    }
+
+    if (tokenAcesso && JWT_SECRET) {
+
+      try {
+
+        const payload = jwt.verify(
+          tokenAcesso,
+          JWT_SECRET,
+          { ignoreExpiration: true }
+        ) as TokenPayload;
+
+        if (payload.sid) {
+          await sessaoRepository.revogarSessao(
+            payload.sid,
+            payload.usuarioId
+          );
+        }
+
+      } catch {
+        /* token inválido: nada a revogar */
+      }
+
+    }
+
+  }
+
+  /*
+  ==================================================
+  LISTAR / ENCERRAR SESSÕES DO USUÁRIO
+  ==================================================
+  */
+  static async listarSessoes(
+    usuarioId: number,
+    sessaoAtualId: string
+  ) {
+
+    const sessoes =
+      await sessaoRepository.listarSessoesAtivas(
+        usuarioId
+      );
+
+    return sessoes.map((sessao: any) => ({
+      id: sessao.id,
+      userAgent: sessao.user_agent,
+      ip: sessao.ip,
+      criadoEm: sessao.criado_em,
+      ultimoUso: sessao.ultimo_uso,
+      atual: sessao.id === sessaoAtualId
+    }));
+
+  }
+
+  static async encerrarSessaoDoUsuario(
+    usuarioId: number,
+    sessaoId: string
+  ) {
+
+    const alteradas =
+      await sessaoRepository.revogarSessao(
+        sessaoId,
+        usuarioId
+      );
+
+    if (alteradas === 0) {
+      throw new Error("Sessão não encontrada.");
+    }
+
+  }
+
+  static async encerrarTodasAsSessoes(
+    usuarioId: number,
+    manterSessaoId?: string
+  ) {
+
+    await sessaoRepository.revogarSessoesDoUsuario(
+      usuarioId,
+      manterSessaoId
+    );
+
+  }
+
+  /*
+  ==================================================
+  RECUPERAÇÃO DE SENHA — PEDIDO
+  ==================================================
+
+  Resposta sempre igual, exista a conta ou não (não
+  revela quais e-mails estão cadastrados). O e-mail é
+  enviado em segundo plano, para o tempo de resposta
+  também não denunciar a existência da conta.
+  */
+  static async solicitarRedefinicaoSenha(
+    email: string
+  ) {
+
+    if (!email?.trim()) {
+      throw new Error("E-mail é obrigatório.");
+    }
+
+    const usuario =
+      await usuarioRepository.buscarUsuarioPorEmail(
+        email.trim()
+      );
+
+    if (
+      !usuario ||
+      usuario.ativo === 0 ||
+      !usuario.email_verificado
+    ) {
+      return;
+    }
+
+    const ultimo =
+      await redefinicaoSenhaRepository.buscarUltimoPedidoDoUsuario(
+        usuario.id
+      );
+
+    if (
+      ultimo &&
+      Date.now() - lerDataSqlite(ultimo.criado_em) <
+        SEGUNDOS_ENTRE_PEDIDOS_REDEFINICAO * 1000
+    ) {
+      return;
+    }
+
+    const token = gerarTokenOpaco();
+
+    await redefinicaoSenhaRepository.criarToken(
+      usuario.id,
+      hashToken(token),
+      new Date(
+        Date.now() +
+        MINUTOS_VALIDADE_REDEFINICAO * 60 * 1000
+      ).toISOString()
+    );
+
+    const base =
+      process.env.FRONTEND_URL ||
+      "http://localhost:5173";
+
+    NotificacaoService.notificarRedefinicaoSenha(
+      usuario.email,
+      usuario.nome,
+      `${base}/redefinir-senha?token=${token}`
+    );
+
+  }
+
+  /*
+  ==================================================
+  RECUPERAÇÃO DE SENHA — CONCLUSÃO
+  ==================================================
+
+  Token de uso único. Ao trocar a senha, todas as sessões
+  do usuário são revogadas (UsuarioService.atualizarSenha)
+  e o bloqueio por tentativas é zerado.
+  */
+  static async redefinirSenha(
+    token: string,
+    novaSenha: string
+  ) {
+
+    const linkInvalido =
+      "Link inválido ou expirado. Solicite um novo.";
+
+    if (!token?.trim()) {
+      throw new Error(linkInvalido);
+    }
+
+    const registro =
+      await redefinicaoSenhaRepository.buscarPorHash(
+        hashToken(token.trim())
+      );
+
+    if (
+      !registro ||
+      registro.usado_em ||
+      new Date(registro.expira_em).getTime() <= Date.now()
+    ) {
+      throw new Error(linkInvalido);
+    }
+
+    /* Valida a senha ANTES de consumir o token. */
+    UsuarioService.validarSenha(novaSenha);
+
+    const consumido =
+      await redefinicaoSenhaRepository.marcarComoUsado(
+        registro.id
+      );
+
+    if (!consumido) {
+      throw new Error(linkInvalido);
+    }
+
+    await UsuarioService.atualizarSenha(
+      registro.usuario_id,
+      novaSenha
+    );
+
+    await usuarioRepository.zerarFalhasDeLogin(
+      registro.usuario_id
+    );
+
+    const usuario =
+      await usuarioRepository.buscarUsuarioPorId(
+        registro.usuario_id
+      );
+
+    if (usuario) {
+      NotificacaoService.notificarSenhaAlterada(
+        usuario.email,
+        usuario.nome
+      );
+    }
 
   }
 
@@ -335,10 +876,20 @@ export class AuthService {
       );
     }
 
-    return jwt.verify(
+    const payload = jwt.verify(
       token,
       JWT_SECRET
     ) as TokenPayload;
+
+    /*
+    Tokens antigos (sem "sid") não têm sessão no servidor
+    e por isso não são mais aceitos.
+    */
+    if (!payload.sid) {
+      throw new SessaoInvalidaError();
+    }
+
+    return payload;
 
   }
 

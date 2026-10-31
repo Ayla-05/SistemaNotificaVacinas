@@ -45,6 +45,21 @@ const limitadorDeCodigo = rateLimit({
 });
 
 /*
+Pedido de redefinição de senha: limite mais baixo, pois
+cada pedido pode disparar um e-mail.
+*/
+const limitadorDeRedefinicao = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    erro:
+      "Muitas tentativas. Tente novamente em alguns minutos."
+  }
+});
+
+/*
 ==================================================
 CADASTRO PÚBLICO
 ==================================================
@@ -106,6 +121,66 @@ POST /auth/logout
 router.post(
   "/logout",
   AuthController.logout
+);
+
+/*
+==================================================
+RENOVAR SESSÃO (refresh token rotativo)
+==================================================
+
+POST /auth/refresh
+*/
+router.post(
+  "/refresh",
+  limitadorDeCodigo,
+  AuthController.refresh
+);
+
+/*
+==================================================
+RECUPERAÇÃO DE SENHA
+==================================================
+
+POST /auth/esqueci-senha
+POST /auth/redefinir-senha
+*/
+router.post(
+  "/esqueci-senha",
+  limitadorDeRedefinicao,
+  AuthController.esqueciSenha
+);
+
+router.post(
+  "/redefinir-senha",
+  limitadorDeRedefinicao,
+  AuthController.redefinirSenha
+);
+
+/*
+==================================================
+SESSÕES (MEUS DISPOSITIVOS)
+==================================================
+
+GET    /auth/sessoes
+DELETE /auth/sessoes/:id
+POST   /auth/sessoes/encerrar-todas
+*/
+router.get(
+  "/sessoes",
+  autenticar,
+  AuthController.listarSessoes
+);
+
+router.post(
+  "/sessoes/encerrar-todas",
+  autenticar,
+  AuthController.encerrarTodasAsSessoes
+);
+
+router.delete(
+  "/sessoes/:id",
+  autenticar,
+  AuthController.encerrarSessao
 );
 
 /*
