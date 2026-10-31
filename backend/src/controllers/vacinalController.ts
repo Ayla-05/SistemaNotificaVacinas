@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 
+import { ProximasDosesService } from "../services/proximasDosesService";
 import { VacinalService } from "../services/vacinalService";
 
 /*
@@ -54,6 +55,43 @@ export class VacinalController {
 
       return res.status(200).json(
         resumo
+      );
+
+    } catch (error: any) {
+
+      return res.status(400).json({
+        erro: error.message
+      });
+
+    }
+
+  }
+
+  /*
+  ==================================================
+  PRÓXIMAS DOSES DA PESSOA
+  ==================================================
+
+  GET /pendencias/:pessoaId/proximas-doses
+
+  Para cada vacina, a próxima dose e a data em que é
+  devida (com status: ATRASADA, DISPONIVEL, PROXIMA ou
+  FUTURA), calculada com o calendário nacional 2026.
+  */
+  static async obterProximasDoses(
+    req: Request,
+    res: Response
+  ) {
+
+    try {
+
+      const proximas =
+        await ProximasDosesService.calcular(
+          Number(req.params.pessoaId)
+        );
+
+      return res.status(200).json(
+        proximas
       );
 
     } catch (error: any) {

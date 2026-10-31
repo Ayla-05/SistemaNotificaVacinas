@@ -199,3 +199,91 @@ Febre Amarela - Dose única - 15/01/2022 - Lote: 211VFA042Z - Local: UBS Jardim 
   });
 
 });
+
+/*
+Formato da Carteira Nacional de Vacinação Digital (Meu SUS Digital), como
+o Docling o devolve em Markdown. Todos os dados abaixo são inventados.
+*/
+describe("carteira do Meu SUS Digital", () => {
+
+  const CABECALHO = `
+Carteira Nacional de Vacinação Digital
+
+| Nome | Data de nascimento | CPF/CNS |
+|---|---|---|
+| MARIA TESTE DA SILVA | 01/02/2000 | 000.000.000-00 |
+
+| Vacina/Profilaxia | Data | Dose | Lote | Estratégia | * CNES | Estabelecimento de Saúde | Município | UF |
+|---|---|---|---|---|---|---|---|---|
+`;
+
+  const linha = (vacina: string, data: string, dose: string, lote: string) =>
+    `| ${vacina} | ${data} | ${dose} | ${lote} | Rotina | 0000000 | UBS EXEMPLO | GUARULHOS | SP |\n`;
+
+  const ler = (...linhas: string[]) =>
+    extrairDadosCarteirinha(CABECALHO + linhas.join(""), CATALOGO, HOJE);
+
+  it("lê o titular da tabela de cabeçalho", () => {
+    const dados = ler(linha("VACINA FEBRE AMARELA", "21/12/2017", "Dose Inicial", "174VFC047Z"));
+
+    expect(dados.nomeTitular).toBe("MARIA TESTE DA SILVA");
+    expect(dados.dataNascimentoTitular).toBe("2000-02-01");
+  });
+
+  it("febre amarela: 'Dose Inicial' é a 1ª dose", () => {
+    expect(ler(linha("VACINA FEBRE AMARELA", "21/12/2017", "Dose Inicial", "174VFC047Z"))).toMatchObject({
+      vacina: "Febre Amarela",
+      dose: "1ª dose",
+      dataAplicacao: "2017-12-21",
+      lote: "174VFC047Z",
+      localAplicacao: "UBS EXEMPLO"
+    });
+  });
+
+  it("dT: 'Difteria e Tétano Adulto' com 'Revacinação' é reforço", () => {
+    expect(ler(linha("VACINA DIFTERIA E TÉTANO ADULTO", "06/05/2019", "Revacinação", "221502516A"))).toMatchObject({
+      vacina: "dT",
+      dose: "Reforço",
+      dataAplicacao: "2019-05-06"
+    });
+  });
+
+  it("COVID-19 com marca e dose em fração (2/2)", () => {
+    expect(ler(linha("COVID-19 PFIZER - COMIRNATY", "26/11/2021", "2/2", "FM0000"))).toMatchObject({
+      vacina: "COVID-19",
+      dose: "2ª dose",
+      dataAplicacao: "2021-11-26",
+      lote: "FM0000"
+    });
+  });
+
+  it("HPV: lote curto (L548) e 'Não informado'", () => {
+    expect(ler(linha("VACINA HPV QUADRIVALENTE", "13/01/2016", "2ª Dose", "L548"))).toMatchObject({
+      vacina: "HPV4",
+      dose: "2ª dose",
+      lote: "L548"
+    });
+
+    expect(ler(linha("VACINA HPV QUADRIVALENTE", "29/06/2015", "1ª Dose", "Não informado"))).toMatchObject({
+      vacina: "HPV4",
+      dose: "1ª dose",
+      lote: null
+    });
+  });
+
+  it("com várias linhas, devolve a mais recente", () => {
+    const dados = ler(
+      linha("COVID-19 PFIZER - COMIRNATY", "08/07/2022", "Reforço", "FN0000"),
+      linha("COVID-19 PFIZER - COMIRNATY", "26/11/2021", "2/2", "FM0000"),
+      linha("VACINA FEBRE AMARELA", "21/12/2017", "Dose Inicial", "174VFC047Z")
+    );
+
+    expect(dados).toMatchObject({
+      vacina: "COVID-19",
+      dose: "Reforço",
+      dataAplicacao: "2022-07-08"
+    });
+  });
+
+});
+

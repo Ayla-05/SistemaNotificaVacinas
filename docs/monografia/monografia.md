@@ -216,6 +216,7 @@ A abordagem escolhida separa duas responsabilidades: o **OCR** (Docling) devolve
 | RF11 | O sistema deve enviar e-mails de boas-vindas, confirmação de dose, alerta de pendências e lembrete de agendamento. |
 | RF12 | O usuário deve poder desativar o recebimento de e-mails por pessoa. |
 | RF13 | O administrador deve manter vacinas, calendário e regras vacinais. |
+| RF14 | O sistema deve calcular, para cada vacina, a próxima dose e a data em que ela é devida, a partir da idade e da data da última dose registrada. |
 
 ## 3.3 Requisitos não funcionais
 
@@ -236,7 +237,7 @@ A abordagem escolhida separa duas responsabilidades: o **OCR** (Docling) devolve
 
 **RN01.** A faixa etária segue a divisão: criança (0 a 10 anos), adolescente (11 a 19), adulto (20 a 59) e idoso (60 ou mais). Gestação é tratada como grupo especial, e não como faixa etária.
 
-**RN02.** Uma vacina está **em dia** quando o maior número de dose registrado é igual ou superior ao número de doses exigido no calendário da faixa etária.
+**RN02.** Uma dose só é **pendente** depois da data em que é devida (idade recomendada ou intervalo mínimo desde a dose anterior, o que ocorrer por último); antes disso, é uma dose **próxima**, com data prevista. Uma vacina está **em dia** quando não há dose vencida.
 
 **RN03.** Uma vacina está **pendente** quando não há registro dela na carteira ou quando o maior número de dose registrado é menor que o exigido; o número de doses faltantes é a diferença.
 
@@ -366,6 +367,7 @@ calendário da faixa etária        carteira da pessoa
 | POST | `/auth/confirmar-email` | Público (limitado) | Valida o código de 6 dígitos. |
 | GET | `/vacinas` | Público | Lista o catálogo. |
 | GET | `/pendencias/:pessoaId` | Autenticado + posse | Resumo vacinal. |
+| GET | `/pendencias/:pessoaId/proximas-doses` | Autenticado + posse | Próxima dose de cada vacina, com data prevista e status. |
 | POST | `/scan/analisar` | Autenticado + posse | Envia foto ou PDF para leitura por OCR. |
 | POST | `/carteira/confirmar-scan` | Autenticado + posse | Grava o resultado confirmado. |
 | GET/POST | `/calendario`, `/agendamentos` | Autenticado | Calendário e agendamentos. |
@@ -407,11 +409,19 @@ O cadastro grava a senha com `bcrypt` e gera um código numérico de seis dígit
 
 A autorização é feita em duas camadas: o perfil (`USUARIO` ou `ADMIN`) por `exigirAdmin`, e a **posse do recurso** por `pessoaPertenceAoUsuario` e `pessoaDoCorpoPertenceAoUsuario`. Sem a segunda, qualquer usuário logado poderia trocar o `:pessoaId` da URL e ver a carteira de outra pessoa, vulnerabilidade conhecida como IDOR (*Insecure Direct Object Reference*), que figura há anos no OWASP Top 10 na categoria de controle de acesso quebrado. O administrador inicial é criado a partir de variáveis de ambiente, sem credencial fixa no código-fonte, correção aplicada após revisão do repositório.
 
-## 5.3 Cálculo de pendências
+## 5.3 Cálculo de pendências e de próximas doses
 
-O `VacinalService` concentra a regra central. Ele calcula a idade considerando mês e dia (evitando o erro comum de subtrair apenas os anos), obtém a faixa etária pela função pura `obterFaixaEtaria`, consulta o calendário correspondente e compara cada item com a carteira por meio do maior número de dose registrado. A escolha do **maior número de dose** em vez da contagem de linhas foi deliberada: uma pessoa que só possui a 3ª dose lançada na caderneta está com o esquema completo, ainda que as anteriores não estejam digitadas. O método `obterResumoPessoa` junta tudo em um único *payload* com os nomes das vacinas, de modo que a tela do painel faça apenas uma chamada.
+A primeira versão do cálculo comparava apenas o **número de doses registradas** com o **número de doses da faixa etária**. A auditoria contra os calendários de 2026 (Apêndice C) mostrou que isso falhava em dois pontos: o calendário guardado no banco estava desatualizado e a lógica **ignorava o tempo**. Um bebê de três meses aparecia com pendência de varicela e de tríplice viral, doses que só vencem aos 12 e 15 meses; os intervalos entre doses, os reforços e os grupos especiais existiam no modelo de dados, mas nenhum código os lia; e o sistema dizia *que* faltava uma dose, não *quando*.
 
-Como o calendário e as regras estão em tabelas, a atualização de uma recomendação do PNI é uma alteração de dados e não de código, em consonância com o princípio aberto/fechado.
+O cálculo atual é orientado a datas. O Calendário Nacional 2026 foi transcrito para `data/esquemaVacinal2026.ts`, em que cada linha é uma dose com a **idade recomendada** (em meses, contados do nascimento), o **intervalo mínimo** desde a dose anterior, a **janela de idade** em que ela é cobrada e o **grupo especial** a que se aplica, quando houver. A função pura `calcularProximasDoses` (`utils/proximasDoses.ts`) recebe a data de nascimento, as doses registradas com suas datas e os grupos da pessoa e, para cada vacina, determina a próxima dose não cumprida e a sua data prevista:
+
+> data prevista = **maior** entre (nascimento + idade recomendada) e (data da última dose + intervalo mínimo)
+
+Assim, a dose nunca é marcada antes do intervalo mínimo nem antes da idade recomendada: se a 1ª dose do rotavírus é aplicada com atraso, a 2ª é empurrada para 60 dias depois dela. Reforços periódicos (dT a cada 10 anos, influenza anual, COVID-19 semestral do idoso) usam *data da última dose + período*. Cada dose recebe um status: `ATRASADA`, `DISPONIVEL` (pode ser tomada agora, mas o calendário não define data, como na hepatite B de quem nunca se vacinou), `PROXIMA` (vence em até 30 dias) ou `FUTURA`. Doses que passaram da idade máxima (como o rotavírus, cuja janela se encerra aos 11 meses e 29 dias) deixam de ser cobradas. Duas equivalências são tratadas: a pentavalente conta como hepatite B, e qualquer vacina com componente tetânico (DTP, dTpa, penta) reinicia a contagem dos 10 anos do dT.
+
+A aritmética de datas é feita em UTC e soma meses sem estourar o fim do mês (31/01 mais um mês é 28/02 ou 29/02), para que o fuso do servidor e a duração dos meses não desloquem o dia. O `VacinalService` usa esse resultado para montar o resumo do *Dashboard*: as doses `ATRASADA` e `DISPONIVEL` são as pendências, e as demais compõem a lista de "próximas doses" com data. O teste de integração com banco em memória confere esse caminho de ponta a ponta.
+
+Essa abordagem tem um custo: o calendário passa a viver em um arquivo versionado, e não em tabelas editáveis pelo administrador, o que simplifica o cálculo e o torna testável, mas exige uma nova versão do sistema a cada atualização anual do calendário. Mover o esquema de volta para o banco, com edição e histórico de versões, é uma melhoria futura.
 
 ## 5.4 Leitura da carteirinha por IA
 
@@ -510,7 +520,7 @@ O *Notifica Vacinas* **não substitui** o registro oficial; atua como camada de 
 ## 7.3 Limitações
 
 1. **Fonte de dados manual.** A confiabilidade da carteira depende do que o usuário lança. Não há validação cruzada com o SI-PNI.
-2. **Calendário simplificado.** As pendências são calculadas por faixa etária e número de doses. Não consideram ainda **intervalos mínimos entre doses**, idade mínima de cada dose, esquemas de recuperação, contraindicações, nem calendário específico completo por grupo especial. Por exemplo, uma criança de 5 anos e uma de 6 meses pertencem à mesma faixa "criança".
+2. **Cobertura do calendário.** O cálculo usa o Calendário Nacional 2026 (idade, intervalo e grupo especial), mas não modela gestantes (o calendário próprio não foi incluído), imunocomprometidos, acamados, viajantes e áreas de risco, que dependem de avaliação do serviço de saúde. Onde o calendário não informa o intervalo entre doses (hepatite B e dengue), foram mantidos os valores que o sistema já utilizava. A tabela `calendario_vacinal` antiga, hoje fora do cálculo do painel, ainda precisa ser atualizada ou aposentada.
 3. **Cobertura de testes parcial.** Os mecanismos de autenticação e sessão têm testes automatizados, mas o cálculo de pendências, a faixa etária e o *front end* ainda não, e não há integração contínua executando-os.
 4. **Banco embarcado e agendador no mesmo processo** (Seção 6.3).
 5. **Canal único de notificação e ausência de segundo fator.** SMS não foi implementado, e e-mails podem cair em *spam* ou não ser lidos. O login depende apenas de e-mail e senha; autenticação em dois fatores (TOTP) permanece como melhoria futura, e deveria ser obrigatória para administradores.
@@ -670,3 +680,11 @@ Front end:
 npm install
 npm run dev
 ```
+
+# APÊNDICE C — AUDITORIA DO CALENDÁRIO VACINAL
+
+Comparação entre o que o sistema guardava (`calendarioSeed.ts`, `regrasSeed.ts`, `faixaEtaria.ts` e `VacinalService`) e os quatro calendários do Ministério da Saúde de 2026. O texto completo, com a tabela de divergências por vacina, está em `docs/auditoria-calendario-2026.md`.
+
+* **Dados:** 20 divergências, entre elas: hepatite B da criança com 3 doses (o calendário traz 1 dose ao nascer); poliomielite sem os reforços aos 15 meses e 4 anos; tríplice viral, febre amarela e varicela da criança com número de doses a menos; HPV com 2 doses (o calendário traz 1 dose, aos 9 anos); influenza, COVID-19 e dengue ausentes do calendário; pneumocócica 23-valente no idoso (o calendário traz a 20-valente, para grupos específicos).
+* **Lógica:** faixas etárias com limites diferentes (criança 0–10, e não 0–9; adulto a partir dos 20, e não dos 25); pendências sem considerar a idade em que cada dose é devida; reforços, intervalos e grupos especiais gravados, mas nunca lidos; nenhuma data prevista.
+* **Correção:** o cálculo de próximas doses (Seção 5.3) e a revisão dos limites das faixas etárias.
