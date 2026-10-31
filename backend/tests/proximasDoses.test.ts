@@ -158,6 +158,43 @@ describe("jovem de 21 anos (nascida em 20/06/2005)", () => {
 
 });
 
+describe("reforço sem nenhuma dose registrada", () => {
+
+  it("adulta sem dT: pode tomar agora, em vez de 'atrasada desde os 14 anos'", () => {
+    const lista = calcular("2000-06-12");
+
+    expect(de(lista, "DT")).toMatchObject({
+      status: "DISPONIVEL",
+      dataPrevista: null,
+      diasParaVencer: null
+    });
+    expect(de(lista, "DT")?.rotulo).toContain("Sem doses registradas");
+  });
+
+  it("se há dose de DTP/penta (data de referência), segue a regra normal do reforço", () => {
+    const lista = calcular("2000-06-12", {
+      PENTAVALENTE: [{ numero: 3, data: "2000-12-12" }]
+    });
+
+    expect(de(lista, "DT")).toMatchObject({ status: "ATRASADA", dataPrevista: "2014-06-12" });
+  });
+
+  it("bebê sem registro continua com a data de cada dose (BCG ao nascer atrasada)", () => {
+    const lista = calcular("2026-08-31");
+
+    expect(de(lista, "BCG")).toMatchObject({ status: "ATRASADA", dataPrevista: "2026-08-31" });
+  });
+
+  it("criança de 2 anos sem registro: reforços (DTP, VIP) viram 'atualizar o esquema'", () => {
+    const lista = calcular("2024-06-01");
+
+    expect(de(lista, "DTP")).toMatchObject({ status: "DISPONIVEL", dataPrevista: null });
+    // o que não é reforço mantém a data
+    expect(de(lista, "PENTAVALENTE")).toMatchObject({ status: "ATRASADA", dataPrevista: "2024-08-01" });
+  });
+
+});
+
 describe("equivalências", () => {
 
   it("a penta completa conta como hepatite B completa", () => {

@@ -20,6 +20,9 @@ vacina e diz QUANDO ela é devida:
   encerrada). Nulo = sem limite.
 - numeroDose 0: regra de repetição periódica (reforço a cada
   N meses depois da última dose).
+- reforco: a linha é um reforço (depende de doses anteriores). Quem
+  não tem NENHUMA dose registrada não está "atrasado no reforço": o
+  sistema pede para atualizar o esquema (ver proximasDoses.ts).
 - grupo: só vale para quem pertence ao grupo especial.
 
 O que o calendário NÃO diz (e por isso não está aqui):
@@ -40,6 +43,7 @@ export interface DoseEsquema {
   idadeMinMeses: number;
   idadeMaxMeses: number | null;
   repeteMeses: number | null;
+  reforco: boolean;
   grupo: string | null;
   fonte: string;
 }
@@ -78,6 +82,7 @@ function dose(
     idadeMinMeses: o.min ?? 0,
     idadeMaxMeses: o.max === undefined ? null : o.max,
     repeteMeses: null,
+    reforco: /refor/i.test(rotulo),
     grupo: o.grupo ?? null,
     fonte
   };
