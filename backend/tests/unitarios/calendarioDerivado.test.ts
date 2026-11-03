@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   derivarCalendarioPorFaixa,
   LinhaCalendario
-} from "../src/utils/calendarioDerivado";
+} from "../../src/utils/calendarioDerivado";
 
 const linhas = derivarCalendarioPorFaixa();
 

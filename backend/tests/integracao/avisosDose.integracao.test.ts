@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 
-import { configurarBanco } from "../src/database/configurarBanco";
-import { executarCalendarioSeed } from "../src/database/seeds/calendarioSeed";
-import { NotificacaoService } from "../src/services/notificacaoService";
-import { EmailService } from "../src/services/emailService";
-import { ProximasDosesService, escolherCampanha } from "../src/services/proximasDosesService";
+import { configurarBanco } from "../../src/database/configurarBanco";
+import { executarCalendarioSeed } from "../../src/database/seeds/calendarioSeed";
+import { NotificacaoService } from "../../src/services/notificacaoService";
+import { EmailService } from "../../src/services/emailService";
+import { ProximasDosesService, escolherCampanha } from "../../src/services/proximasDosesService";
 
-import * as usuarioRepository from "../src/repositories/usuarioRepository";
-import * as pessoaRepository from "../src/repositories/pessoaRepository";
-import * as vacinaRepository from "../src/repositories/vacinaRepository";
-import * as calendarioVacinalRepository from "../src/repositories/calendarioVacinalRepository";
-import * as campanhaVacinalRepository from "../src/repositories/campanhaVacinalRepository";
-import * as configuracaoRepository from "../src/repositories/configuracaoRepository";
+import * as usuarioRepository from "../../src/repositories/usuarioRepository";
+import * as pessoaRepository from "../../src/repositories/pessoaRepository";
+import * as vacinaRepository from "../../src/repositories/vacinaRepository";
+import * as calendarioVacinalRepository from "../../src/repositories/calendarioVacinalRepository";
+import * as campanhaVacinalRepository from "../../src/repositories/campanhaVacinalRepository";
+import * as configuracaoRepository from "../../src/repositories/configuracaoRepository";
 
 let usuarioId: number;
 

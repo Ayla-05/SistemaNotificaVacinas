@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 
-import { configurarBanco } from "../src/database/configurarBanco";
-import scanRoutes from "../src/routes/scanRoutes";
+import { configurarBanco } from "../../src/database/configurarBanco";
+import scanRoutes from "../../src/routes/scanRoutes";
 
 /*
 Os limitadores de taxa e a posse da pessoa têm testes próprios;
@@ -14,7 +14,7 @@ vi.mock("express-rate-limit", () => ({
   ipKeyGenerator: (ip: string) => ip
 }));
 
-vi.mock("../src/middlewares/pessoaOwnershipMiddleware", () => ({
+vi.mock("../../src/middlewares/pessoaOwnershipMiddleware", () => ({
   pessoaDoCorpoPertenceAoUsuario: (_req: any, _res: any, next: any) => next(),
   pessoaPertenceAoUsuario: (_req: any, _res: any, next: any) => next()
 }));

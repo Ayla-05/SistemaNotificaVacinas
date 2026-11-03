@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 export interface GrupoEspecial {
   id: number;
@@ -13,27 +13,14 @@ LISTAR TODOS OS GRUPOS ESPECIAIS
 */
 export function listarGruposEspeciais(): Promise<GrupoEspecial[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM grupos_especiais
       ORDER BY nome
       `,
-      [],
-      (err, rows: GrupoEspecial[]) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows);
-
-      }
-    );
-
-  });
+    []
+  );
 
 }
 
@@ -46,27 +33,14 @@ export function buscarGrupoEspecialPorId(
   id: number
 ): Promise<GrupoEspecial | undefined> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM grupos_especiais
       WHERE id = ?
       `,
-      [id],
-      (err, row: GrupoEspecial) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -79,27 +53,14 @@ export function buscarGrupoEspecialPorNome(
   nome: string
 ): Promise<GrupoEspecial | undefined> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM grupos_especiais
       WHERE nome = ?
       `,
-      [nome],
-      (err, row: GrupoEspecial) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [nome]
+  );
 
 }
 
@@ -113,29 +74,16 @@ export function criarGrupoEspecial(
   descricao: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO grupos_especiais (
         nome,
         descricao
       )
       VALUES (?, ?)
       `,
-      [nome, descricao],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+    [nome, descricao]
+  );
 
 }
 
@@ -150,33 +98,20 @@ export function atualizarGrupoEspecial(
   descricao: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE grupos_especiais
       SET
         nome = ?,
         descricao = ?
       WHERE id = ?
       `,
-      [
+    [
         nome,
         descricao,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -189,25 +124,12 @@ export function removerGrupoEspecial(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM grupos_especiais
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }

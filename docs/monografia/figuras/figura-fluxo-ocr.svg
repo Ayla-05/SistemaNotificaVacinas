@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1190" viewBox="0 0 1000 1190" font-family="DejaVu Sans, Arial, sans-serif"><rect width="100%" height="100%" fill="#ffffff"/><defs><marker id="ponta" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#333"/></marker></defs><rect x="250" y="20" width="500" height="100" rx="8" fill="#fff" stroke="#2e7d6b" stroke-width="2"/>
+<path d="M250,50 V28 a8,8 0 0 1 8,-8 H742 a8,8 0 0 1 8,8 V50 Z" fill="#2e7d6b"/>
+<text x="500.0" y="41" text-anchor="middle" font-size="15" font-weight="bold" fill="#fff">1. Navegador (React)</text>
+<text x="264" y="72" font-size="13.5" fill="#1a1a1a">Tela Scan: usuário escolhe a pessoa e envia</text>
+<text x="264" y="92" font-size="13.5" fill="#1a1a1a">a foto ou o PDF da carteirinha (base64).</text><rect x="250" y="160" width="500" height="150" rx="8" fill="#fff" stroke="#1f3a5f" stroke-width="2"/>
+<path d="M250,190 V168 a8,8 0 0 1 8,-8 H742 a8,8 0 0 1 8,8 V190 Z" fill="#1f3a5f"/>
+<text x="500.0" y="181" text-anchor="middle" font-size="15" font-weight="bold" fill="#fff">2. API Node.js — POST /scan/analisar</text>
+<text x="264" y="212" font-size="13.5" fill="#1a1a1a">autenticar (cookie httpOnly) + CSRF</text>
+<text x="264" y="232" font-size="13.5" fill="#1a1a1a">limite de 20 análises / 15 min por usuário</text>
+<text x="264" y="252" font-size="13.5" fill="#1a1a1a">pessoa pertence ao usuário (anti-IDOR)</text>
+<text x="264" y="272" font-size="13.5" fill="#1a1a1a">tamanho ≤ 5 MB e tipo por magic bytes (JPEG/PNG/WEBP/PDF)</text><rect x="250" y="350" width="500" height="90" rx="8" fill="#fff" stroke="#1f3a5f" stroke-width="2"/>
+<path d="M250,380 V358 a8,8 0 0 1 8,-8 H742 a8,8 0 0 1 8,8 V380 Z" fill="#1f3a5f"/>
+<text x="500.0" y="371" text-anchor="middle" font-size="15" font-weight="bold" fill="#fff">3. OcrService → serviço de OCR</text>
+<text x="264" y="402" font-size="13.5" fill="#1a1a1a">HTTP multipart para POST /extrair (rede interna),</text>
+<text x="264" y="422" font-size="13.5" fill="#1a1a1a">tempo limite de 120 s; falha → 503 sem derrubar a API.</text><rect x="250" y="480" width="500" height="170" rx="8" fill="#fff" stroke="#b5651d" stroke-width="2"/>
+<path d="M250,510 V488 a8,8 0 0 1 8,-8 H742 a8,8 0 0 1 8,8 V510 Z" fill="#b5651d"/>
+<text x="500.0" y="501" text-anchor="middle" font-size="15" font-weight="bold" fill="#fff">4. ocr-service (Python, FastAPI + Docling)</text>
+<text x="264" y="532" font-size="13.5" fill="#1a1a1a">valida tipo e tamanho; grava arquivo temporário</text>
+<text x="264" y="552" font-size="13.5" fill="#1a1a1a">análise de layout da página</text>
+<text x="264" y="572" font-size="13.5" fill="#1a1a1a">estrutura de tabela (TableFormer)</text>
+<text x="264" y="592" font-size="13.5" fill="#1a1a1a">OCR EasyOCR (pt, en) onde não há texto digital</text>
+<text x="264" y="612" font-size="13.5" fill="#1a1a1a">→ devolve { texto: &lt;Markdown&gt; }</text><rect x="250" y="690" width="500" height="170" rx="8" fill="#fff" stroke="#1f3a5f" stroke-width="2"/>
+<path d="M250,720 V698 a8,8 0 0 1 8,-8 H742 a8,8 0 0 1 8,8 V720 Z" fill="#1f3a5f"/>
+<text x="500.0" y="711" text-anchor="middle" font-size="15" font-weight="bold" fill="#fff">5. extratorCarteirinha (função pura, TypeScript)</text>
+<text x="264" y="742" font-size="13.5" fill="#1a1a1a">vacina: nome do catálogo ou apelido (mais longo vence)</text>
+<text x="264" y="762" font-size="13.5" fill="#1a1a1a">dose, datas válidas (dd/mm/aaaa, aaaa-mm-dd)</text>
+<text x="264" y="782" font-size="13.5" fill="#1a1a1a">lote e unidade de saúde; data futura = próxima dose</text>
+<text x="264" y="802" font-size="13.5" fill="#1a1a1a">titular: nome e data de nascimento</text>
+<text x="264" y="822" font-size="13.5" fill="#1a1a1a">campo não encontrado → null</text><rect x="250" y="900" width="500" height="90" rx="8" fill="#fff" stroke="#2e7d6b" stroke-width="2"/>
+<path d="M250,930 V908 a8,8 0 0 1 8,-8 H742 a8,8 0 0 1 8,8 V930 Z" fill="#2e7d6b"/>
+<text x="500.0" y="921" text-anchor="middle" font-size="15" font-weight="bold" fill="#fff">6. Revisão pelo usuário (humano no circuito)</text>
+<text x="264" y="952" font-size="13.5" fill="#1a1a1a">A API só devolve a sugestão; o usuário corrige</text>
+<text x="264" y="972" font-size="13.5" fill="#1a1a1a">os campos e confirma na tela.</text><rect x="250" y="1030" width="500" height="130" rx="8" fill="#fff" stroke="#1f3a5f" stroke-width="2"/>
+<path d="M250,1060 V1038 a8,8 0 0 1 8,-8 H742 a8,8 0 0 1 8,8 V1060 Z" fill="#1f3a5f"/>
+<text x="500.0" y="1051" text-anchor="middle" font-size="15" font-weight="bold" fill="#fff">7. POST /carteira/confirmar-scan</text>
+<text x="264" y="1082" font-size="13.5" fill="#1a1a1a">grava registros_vacinacao e doses_vacina</text>
+<text x="264" y="1102" font-size="13.5" fill="#1a1a1a">cria dependente se a carteirinha for de outra pessoa</text>
+<text x="264" y="1122" font-size="13.5" fill="#1a1a1a">e-mail de confirmação da dose (em segundo plano)</text><path d="M500.0,120 L500.0,160" stroke="#333" stroke-width="2" fill="none" marker-end="url(#ponta)"/><path d="M500.0,310 L500.0,350" stroke="#333" stroke-width="2" fill="none" marker-end="url(#ponta)"/><path d="M500.0,440 L500.0,480" stroke="#333" stroke-width="2" fill="none" marker-end="url(#ponta)"/><path d="M500.0,650 L500.0,690" stroke="#333" stroke-width="2" fill="none" marker-end="url(#ponta)"/><path d="M500.0,860 L500.0,900" stroke="#333" stroke-width="2" fill="none" marker-end="url(#ponta)"/><path d="M500.0,990 L500.0,1030" stroke="#333" stroke-width="2" fill="none" marker-end="url(#ponta)"/><rect x="780" y="475" width="205" height="68" rx="6" fill="#fff7e0" stroke="#c9a227" stroke-width="1.2"/><text x="790" y="497" font-size="12.5" fill="#1a1a1a">Modelos carregados ao subir</text><text x="790" y="515" font-size="12.5" fill="#1a1a1a">o serviço (/saude). Sem GPU:</text><text x="790" y="533" font-size="12.5" fill="#1a1a1a">segundos a ~1 min por foto.</text><rect x="780" y="700" width="205" height="86" rx="6" fill="#fff7e0" stroke="#c9a227" stroke-width="1.2"/><text x="790" y="722" font-size="12.5" fill="#1a1a1a">Erros previstos: 413 (grande),</text><text x="790" y="740" font-size="12.5" fill="#1a1a1a">415 (tipo), 422 (ilegível),</text><text x="790" y="758" font-size="12.5" fill="#1a1a1a">503 (OCR fora do ar): o</text><text x="790" y="776" font-size="12.5" fill="#1a1a1a">usuário lança a dose à mão.</text><rect x="15" y="480" width="215" height="104" rx="6" fill="#fff7e0" stroke="#c9a227" stroke-width="1.2"/><text x="25" y="502" font-size="12.5" fill="#1a1a1a">O arquivo não sai da</text><text x="25" y="520" font-size="12.5" fill="#1a1a1a">infraestrutura do sistema</text><text x="25" y="538" font-size="12.5" fill="#1a1a1a">(sem terceiros — LGPD).</text><text x="25" y="556" font-size="12.5" fill="#1a1a1a">Serviço sem autenticação:</text><text x="25" y="574" font-size="12.5" fill="#1a1a1a">só rede interna.</text><rect x="15" y="905" width="215" height="86" rx="6" fill="#fff7e0" stroke="#c9a227" stroke-width="1.2"/><text x="25" y="927" font-size="12.5" fill="#1a1a1a">Nada é gravado sem a</text><text x="25" y="945" font-size="12.5" fill="#1a1a1a">confirmação do usuário</text><text x="25" y="963" font-size="12.5" fill="#1a1a1a">(erro de OCR em letra</text><text x="25" y="981" font-size="12.5" fill="#1a1a1a">manuscrita é esperado).</text></svg>

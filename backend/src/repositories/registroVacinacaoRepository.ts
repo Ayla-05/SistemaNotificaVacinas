@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { removerEmCascata, alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -9,10 +9,8 @@ export function listarCarteiraPessoa(
   pessoaId: number
 ): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT
         rv.id,
         rv.pessoa_id,
@@ -31,20 +29,8 @@ export function listarCarteiraPessoa(
 
       ORDER BY v.nome
       `,
-      [pessoaId],
-      (err, rows) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    [pessoaId]
+  );
 
 }
 
@@ -57,28 +43,14 @@ export function buscarRegistroPorId(
   id: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM registros_vacinacao
       WHERE id = ?
       `,
-      [id],
-      (err, row) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -92,29 +64,15 @@ export function buscarRegistroPessoaVacina(
   vacinaId: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM registros_vacinacao
       WHERE pessoa_id = ?
         AND vacina_id = ?
       `,
-      [pessoaId, vacinaId],
-      (err, row) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [pessoaId, vacinaId]
+  );
 
 }
 
@@ -128,30 +86,16 @@ export function criarRegistroVacinacao(
   vacinaId: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO registros_vacinacao (
         pessoa_id,
         vacina_id
       )
       VALUES (?, ?)
       `,
-      [pessoaId, vacinaId],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+    [pessoaId, vacinaId]
+  );
 
 }
 
@@ -164,27 +108,13 @@ export function removerRegistroVacinacao(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
-      DELETE FROM registros_vacinacao
-      WHERE id = ?
-      `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+  return removerEmCascata(
+    "registros_vacinacao",
+    id,
+    [
+      "DELETE FROM doses_vacina WHERE registro_vacinacao_id = $ID"
+    ]
+  );
 
 }
 
@@ -197,27 +127,13 @@ export function contarRegistrosPessoa(
   pessoaId: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT COUNT(*) AS total
       FROM registros_vacinacao
       WHERE pessoa_id = ?
       `,
-      [pessoaId],
-      (err, row: any) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row?.total ?? 0);
-
-      }
-    );
-
-  });
+    [pessoaId]
+  ).then((row) => row?.total ?? 0);
 
 }

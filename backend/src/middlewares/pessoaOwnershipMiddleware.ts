@@ -124,6 +124,11 @@ export async function pessoaDoCorpoPertenceAoUsuario(
 }
 
 /*
+CORREÇÃO [COR-04/06/07]: os middlewares abaixo estendem a checagem
+de posse (antes só havia por :pessoaId) para recursos
+identificados por id de pessoa, registro, dose e agendamento.
+*/
+/*
 Para rotas com :id da própria pessoa na URL
 (ex.: GET/PUT/DELETE /pessoas/:id).
 */

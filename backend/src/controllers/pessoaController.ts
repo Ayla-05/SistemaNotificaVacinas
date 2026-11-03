@@ -23,6 +23,12 @@ Dependências:
 
 - PessoaService
 */
+/*
+CORREÇÃO [COR-03/05]: GET /pessoas devolvia todas as pessoas do
+sistema a qualquer logado, e POST /pessoas aceitava um usuario_id
+de outra conta. Agora o usuário comum só lista e cria na própria
+conta (administrador continua sem restrição).
+*/
 export class PessoaController {
 
   /*

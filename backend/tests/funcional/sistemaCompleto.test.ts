@@ -7,10 +7,10 @@ vi.mock("express-rate-limit", () => ({
   ipKeyGenerator: (ip: string) => ip
 }));
 
-import app from "../src/server";
-import { configurarBanco } from "../src/database/configurarBanco";
-import * as usuarioRepository from "../src/repositories/usuarioRepository";
-import { NotificacaoService } from "../src/services/notificacaoService";
+import app from "../../src/server";
+import { configurarBanco } from "../../src/database/configurarBanco";
+import * as usuarioRepository from "../../src/repositories/usuarioRepository";
+import { NotificacaoService } from "../../src/services/notificacaoService";
 
 /*
 Teste de ponta a ponta do app inteiro (server.ts): CSRF, autenticação,
@@ -460,5 +460,55 @@ describe("sessões", () => {
     expect(lista.body.length).toBeGreaterThan(0);
     expect((await enviar("post", s, "/auth/sessoes/encerrar-todas")).status).toBe(200);
     expect((await get(s, "/auth/me")).status).toBe(401);
+  });
+});
+
+describe("integridade do banco e remoções em cascata", () => {
+  async function pessoaComDados(dono: Sessao) {
+    const p = (await criarPessoa(dono, "Cascata")).body.id as number;
+    const reg = await enviar("post", dono, "/carteira/registro", { pessoaId: p, vacinaId });
+    await enviar("post", dono, "/carteira/dose", { registroVacinacaoId: reg.body.id, numeroDose: 1, tipo: "DOSE" });
+    await enviar("post", dono, "/agendamentos", { pessoaId: p, vacinaId, numeroDose: 2, dataPrevista: "2031-01-01" });
+    const grupo = (await get(dono, "/grupos-especiais")).body[0].id;
+    await enviar("post", dono, `/grupos-especiais/pessoa/${p}`, { grupoEspecialId: grupo });
+    await enviar("post", dono, "/dependentes", {
+      responsavelPessoaId: p, nome: "Dep Cascata", data_nascimento: "2021-01-01", parentesco: "FILHO"
+    });
+    return { p, registroId: reg.body.id as number };
+  }
+
+  it("remover registro apaga as doses dele", async () => {
+    const dono = await novoUsuario();
+    const { p, registroId } = await pessoaComDados(dono);
+    const res = await enviar("delete", dono, `/carteira/registro/${registroId}`);
+    expect(res.status).toBe(200);
+    expect((await get(dono, `/carteira/pessoa/${p}`)).body.length).toBe(0);
+  });
+
+  it("remover pessoa apaga carteira, agendamentos, grupos e vínculos", async () => {
+    const dono = await novoUsuario();
+    const { p } = await pessoaComDados(dono);
+    const res = await enviar("delete", dono, `/pessoas/${p}`);
+    expect(res.status).toBe(200);
+    expect((await get(dono, `/pessoas/${p}`)).status).not.toBe(200);
+  });
+
+  it("remover usuário apaga sessões, pessoas e dados dependentes", async () => {
+    const dono = await novoUsuario();
+    await pessoaComDados(dono);
+    const res = await enviar("delete", admin, `/usuarios/${dono.id}`);
+    expect(res.status).toBe(200);
+    expect((await get(dono, "/auth/me")).status).toBe(401);
+  });
+
+  it("o banco recusa registro órfão (chaves estrangeiras ativas)", async () => {
+    const { db } = await import("../../src/database/database");
+    const erro = await new Promise<Error | null>((resolve) =>
+      db.run(
+        "INSERT INTO pessoas (usuario_id, nome, data_nascimento) VALUES (999999, 'Orfa', '2000-01-01')",
+        (e) => resolve(e)
+      )
+    );
+    expect(erro?.message).toMatch(/FOREIGN KEY/i);
   });
 });

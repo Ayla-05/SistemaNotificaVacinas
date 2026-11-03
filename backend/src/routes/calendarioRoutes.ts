@@ -10,6 +10,11 @@ CALENDARIO ROUTES
 
 Rotas relacionadas ao calendário vacinal.
 */
+/*
+CORREÇÃO [COR-02]: qualquer usuário logado podia criar, editar e
+apagar o calendário vacinal. Agora a escrita exige ADMIN; a
+leitura continua liberada a quem está autenticado.
+*/
 const router = Router();
 
 /*

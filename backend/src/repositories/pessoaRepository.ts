@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { removerEmCascata, alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -7,27 +7,14 @@ LISTAR TODAS AS PESSOAS
 */
 export function listarPessoas(): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM pessoas
       ORDER BY nome
       `,
-      [],
-      (err, rows) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    []
+  );
 
 }
 
@@ -40,27 +27,14 @@ export function buscarPessoaPorId(
   id: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM pessoas
       WHERE id = ?
       `,
-      [id],
-      (err, row) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -73,28 +47,15 @@ export function listarPessoasPorUsuario(
   usuarioId: number
 ): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM pessoas
       WHERE usuario_id = ?
       ORDER BY nome
       `,
-      [usuarioId],
-      (err, rows) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    [usuarioId]
+  );
 
 }
 
@@ -139,10 +100,8 @@ export function criarPessoa(
   }
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO pessoas (
 
         usuario_id,
@@ -180,7 +139,7 @@ export function criarPessoa(
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
-      [
+    [
         dados.usuario_id,
 
         dados.nome,
@@ -212,19 +171,8 @@ export function criarPessoa(
         dados.receber_whatsapp ?? 1,
 
         dados.frequencia_aviso ?? "UMA_VEZ"
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -268,10 +216,8 @@ export function atualizarPessoa(
   }
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE pessoas
       SET
 
@@ -306,7 +252,7 @@ export function atualizarPessoa(
 
       WHERE id = ?
       `,
-      [
+    [
         dados.nome,
 
         dados.email ?? null,
@@ -338,19 +284,8 @@ export function atualizarPessoa(
         dados.frequencia_aviso ?? "UMA_VEZ",
 
         id
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -363,26 +298,18 @@ export function removerPessoa(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
-      DELETE FROM pessoas
-      WHERE id = ?
-      `,
-      [id],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+  return removerEmCascata(
+    "pessoas",
+    id,
+    [
+    "DELETE FROM doses_vacina WHERE registro_vacinacao_id IN (SELECT id FROM registros_vacinacao WHERE pessoa_id IN ($ID))",
+    "DELETE FROM registros_vacinacao WHERE pessoa_id IN ($ID)",
+    "DELETE FROM agendamentos_vacina WHERE pessoa_id IN ($ID)",
+    "DELETE FROM avisos_dose WHERE pessoa_id IN ($ID)",
+    "DELETE FROM pessoa_grupo_especial WHERE pessoa_id IN ($ID)",
+    "DELETE FROM dependentes WHERE responsavel_id IN ($ID) OR dependente_id IN ($ID)"
+    ]
+  );
 
 }
 
@@ -399,22 +326,9 @@ export function registrarUltimoResumo(
   data: string
 ): Promise<void> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `UPDATE pessoas SET ultimo_resumo_em = ? WHERE id = ?`,
-      [data, id],
-      (err) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve();
-
-      }
-    );
-
-  });
+  return alterar(
+    `UPDATE pessoas SET ultimo_resumo_em = ? WHERE id = ?`,
+    [data, id]
+  ).then(() => undefined);
 
 }

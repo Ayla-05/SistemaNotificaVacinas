@@ -188,6 +188,10 @@ export class AgendamentoService {
     status: string
   ) {
 
+    /*
+    CORREÇÃO [COR-08]: o status era gravado sem validação
+    (qualquer texto entrava). Agora só os valores abaixo.
+    */
     const STATUS_VALIDOS = [
       "PENDENTE",
       "AGENDADA",
@@ -308,4 +312,40 @@ export class AgendamentoService {
 
   }
 
+
+  /*
+  ==================================================
+  LISTAR OS AGENDAMENTOS QUE O USUÁRIO PODE VER
+  ==================================================
+
+  CORREÇÃO [COR-07]: GET /agendamentos devolvia os agendamentos
+  de todos os usuários. Administrador vê tudo; usuário comum vê
+  só os das pessoas da própria conta.
+  */
+  static async listarVisiveis(
+    usuarioId: number,
+    perfil?: string
+  ) {
+
+    const agendamentos =
+      await this.listarTodos();
+
+    if (perfil === "ADMIN") {
+      return agendamentos;
+    }
+
+    const minhas =
+      await pessoaRepository.listarPessoasPorUsuario(
+        usuarioId
+      );
+
+    const ids = new Set(
+      minhas.map((p: any) => p.id)
+    );
+
+    return agendamentos.filter(
+      (a: any) => ids.has(a.pessoa_id)
+    );
+
+  }
 }

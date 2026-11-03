@@ -11,6 +11,11 @@ AGENDAMENTO ROUTES
 Rotas relacionadas aos agendamentos
 de vacinação.
 */
+/*
+CORREÇÃO [COR-07]: ver, alterar status/observação e remover
+agendamento por id (e agendar para pessoa alheia) não conferiam o
+dono. Agora passam pelos middlewares de posse.
+*/
 const router = Router();
 
 /*

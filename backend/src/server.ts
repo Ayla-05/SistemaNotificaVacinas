@@ -7,7 +7,8 @@ import "dotenv/config";
 
 import express, {
   Request,
-  Response
+  Response,
+  NextFunction
 } from "express";
 
 import cors from "cors";
@@ -169,6 +170,20 @@ app.use(
       includeSubDomains: true
     }
   })
+);
+
+/*
+CORREÇÃO [COR-14]: as respostas da API (carteira, pessoas,
+sessão) são dados de saúde e não podem ficar em cache do
+navegador nem de proxies — em computador compartilhado, o
+botão "voltar" mostraria a carteira de quem saiu.
+*/
+app.use(
+  (req: Request, res: Response, next: NextFunction) => {
+    res.set("Cache-Control", "no-store");
+    res.set("Pragma", "no-cache");
+    next();
+  }
 );
 
 /*
@@ -450,6 +465,53 @@ app.use(
 
 /*
 ==================================================
+TRATAMENTO DE ERROS
+==================================================
+
+CORREÇÃO [COR-13]: sem este manipulador, o Express responde
+erros não tratados (por exemplo, JSON malformado) com uma
+página HTML contendo a pilha de execução, que revela
+caminhos de arquivo e versões de bibliotecas. Aqui todo erro
+vira JSON enxuto; o detalhe técnico fica só no log do servidor.
+*/
+app.use(
+  (
+    erro: any,
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+
+    if (res.headersSent) {
+      return next(erro);
+    }
+
+    if (erro?.type === "entity.parse.failed") {
+      return res.status(400).json({
+        erro: "Corpo da requisição inválido (JSON malformado)."
+      });
+    }
+
+    if (erro?.type === "entity.too.large") {
+      return res.status(413).json({
+        erro: "Corpo da requisição grande demais."
+      });
+    }
+
+    console.error(
+      "Erro não tratado:",
+      erro
+    );
+
+    return res.status(500).json({
+      erro: "Erro interno do servidor."
+    });
+
+  }
+);
+
+/*
+==================================================
 INICIALIZAÇÃO DO SISTEMA
 ==================================================
 */
@@ -566,6 +628,10 @@ BOOTSTRAP
 */
 /*
 Em teste o app é importado sem abrir porta nem agendar jobs.
+*/
+/*
+CORREÇÃO [COR-10]: o servidor subia ao importar o arquivo, o que
+impedia testar o app inteiro. Agora o bootstrap é pulado em teste.
 */
 if (process.env.NODE_ENV !== "test") {
   iniciarServidor();

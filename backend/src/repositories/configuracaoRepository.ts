@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar, consultarUm } from "../database/database";
 
 /*
 ==================================================
@@ -13,24 +13,10 @@ export function obterConfiguracao(
   chave: string
 ): Promise<string | null> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `SELECT valor FROM configuracoes WHERE chave = ?`,
-      [chave],
-      (err, row: any) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row ? row.valor : null);
-
-      }
-    );
-
-  });
+  return consultarUm(
+    `SELECT valor FROM configuracoes WHERE chave = ?`,
+    [chave]
+  ).then((row) => row ? row.valor : null);
 
 }
 
@@ -39,27 +25,13 @@ export function definirConfiguracao(
   valor: string
 ): Promise<void> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       INSERT INTO configuracoes (chave, valor)
       VALUES (?, ?)
       ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor
       `,
-      [chave, valor],
-      (err) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve();
-
-      }
-    );
-
-  });
+    [chave, valor]
+  ).then(() => undefined);
 
 }

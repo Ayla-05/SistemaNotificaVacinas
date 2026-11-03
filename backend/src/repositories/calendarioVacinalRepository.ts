@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 export interface CalendarioVacinal {
   id: number;
@@ -27,30 +27,14 @@ export function listarCalendarioVacinal(): Promise<
   CalendarioVacinal[]
 > {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM calendario_vacinal
       ORDER BY faixa_etaria
       `,
-      [],
-      (
-        err,
-        rows: CalendarioVacinal[]
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows);
-
-      }
-    );
-
-  });
+    []
+  );
 
 }
 
@@ -65,30 +49,14 @@ export function buscarCalendarioPorId(
   CalendarioVacinal | undefined
 > {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM calendario_vacinal
       WHERE id = ?
       `,
-      [id],
-      (
-        err,
-        row: CalendarioVacinal
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -103,31 +71,15 @@ export function listarPorFaixaEtaria(
   CalendarioVacinal[]
 > {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM calendario_vacinal
       WHERE faixa_etaria = ?
       ORDER BY vacina_id
       `,
-      [faixaEtaria],
-      (
-        err,
-        rows: CalendarioVacinal[]
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows);
-
-      }
-    );
-
-  });
+    [faixaEtaria]
+  );
 
 }
 
@@ -142,30 +94,14 @@ export function listarPorVacina(
   CalendarioVacinal[]
 > {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM calendario_vacinal
       WHERE vacina_id = ?
       `,
-      [vacinaId],
-      (
-        err,
-        rows: CalendarioVacinal[]
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows);
-
-      }
-    );
-
-  });
+    [vacinaId]
+  );
 
 }
 
@@ -182,31 +118,15 @@ export function buscarPorVacinaEFaixa(
   faixaEtaria: string
 ): Promise<CalendarioVacinal | undefined> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM calendario_vacinal
       WHERE vacina_id = ?
         AND faixa_etaria = ?
       `,
-      [vacinaId, faixaEtaria],
-      (
-        err,
-        row: CalendarioVacinal
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [vacinaId, faixaEtaria]
+  );
 
 }
 
@@ -222,10 +142,8 @@ ter sido adicionada ao seed.
 */
 export function removerDuplicatas(): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM calendario_vacinal
       WHERE id NOT IN (
         SELECT MIN(id)
@@ -233,19 +151,8 @@ export function removerDuplicatas(): Promise<number> {
         GROUP BY vacina_id, faixa_etaria
       )
       `,
-      [],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    []
+  );
 
 }
 
@@ -264,10 +171,8 @@ export function criarCalendarioVacinal(
   observacao: string | null
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO calendario_vacinal (
         vacina_id,
         faixa_etaria,
@@ -279,7 +184,7 @@ export function criarCalendarioVacinal(
       )
       VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
-      [
+    [
         vacinaId,
         faixaEtaria,
         idadeMinima,
@@ -287,19 +192,8 @@ export function criarCalendarioVacinal(
         doses,
         reforcos,
         observacao
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -318,10 +212,8 @@ export function atualizarCalendarioVacinal(
   observacao: string | null
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE calendario_vacinal
       SET
         faixa_etaria = ?,
@@ -332,7 +224,7 @@ export function atualizarCalendarioVacinal(
         observacao = ?
       WHERE id = ?
       `,
-      [
+    [
         faixaEtaria,
         idadeMinima,
         idadeMaxima,
@@ -340,19 +232,8 @@ export function atualizarCalendarioVacinal(
         reforcos,
         observacao,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -365,26 +246,13 @@ export function removerCalendarioVacinal(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM calendario_vacinal
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -400,25 +268,12 @@ export function removerPorFaixas(
   faixas: string[]
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM calendario_vacinal
       WHERE faixa_etaria IN (${faixas.map(() => "?").join(", ")})
       `,
-      faixas,
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    faixas
+  );
 
 }

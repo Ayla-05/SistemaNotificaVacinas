@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 
-import * as pessoaRepository from "../repositories/pessoaRepository";
 import { AgendamentoService }
   from "../services/agendamentoService";
 
@@ -43,34 +42,13 @@ export class AgendamentoController {
 
       const agendamentos =
         await AgendamentoService
-          .listarTodos();
-
-      /*
-      Usuário comum só vê agendamentos das pessoas da
-      própria conta; administrador vê todos.
-      */
-      if (req.perfilUsuario === "ADMIN") {
-
-        return res.status(200).json(
-          agendamentos
-        );
-
-      }
-
-      const minhas =
-        await pessoaRepository
-          .listarPessoasPorUsuario(
-            req.usuarioId as number
+          .listarVisiveis(
+            req.usuarioId as number,
+            req.perfilUsuario
           );
 
-      const ids = new Set(
-        minhas.map((p: any) => p.id)
-      );
-
       return res.status(200).json(
-        agendamentos.filter(
-          (a: any) => ids.has(a.pessoa_id)
-        )
+        agendamentos
       );
 
     } catch (error: any) {

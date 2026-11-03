@@ -4,7 +4,7 @@ import {
   deveEnviarResumo,
   ehResumoPeriodico,
   frequenciaValida
-} from "../src/utils/frequenciaAviso";
+} from "../../src/utils/frequenciaAviso";
 
 describe("frequenciaValida", () => {
 

@@ -4,13 +4,13 @@ import cookieParser from "cookie-parser";
 import request from "supertest";
 import bcrypt from "bcryptjs";
 
-import { db } from "../src/database/database";
-import { configurarBanco } from "../src/database/configurarBanco";
-import authRoutes from "../src/routes/authRoutes";
-import { exigirCabecalhoCsrf } from "../src/middlewares/csrfMiddleware";
-import { autenticar } from "../src/middlewares/authMiddleware";
-import { NotificacaoService } from "../src/services/notificacaoService";
-import * as usuarioRepository from "../src/repositories/usuarioRepository";
+import { db } from "../../src/database/database";
+import { configurarBanco } from "../../src/database/configurarBanco";
+import authRoutes from "../../src/routes/authRoutes";
+import { exigirCabecalhoCsrf } from "../../src/middlewares/csrfMiddleware";
+import { autenticar } from "../../src/middlewares/authMiddleware";
+import { NotificacaoService } from "../../src/services/notificacaoService";
+import * as usuarioRepository from "../../src/repositories/usuarioRepository";
 
 /*
 Os limitadores de taxa são cobertos por configuração; aqui

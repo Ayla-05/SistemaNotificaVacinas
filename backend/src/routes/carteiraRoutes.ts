@@ -10,6 +10,12 @@ CARTEIRA ROUTES
 
 Rotas relacionadas à carteira vacinal.
 */
+/*
+CORREÇÃO [COR-06]: dose, doses do registro, contagem e remoção de
+dose/registro eram acessíveis a qualquer logado pelo id. Agora
+cada rota confere se o registro/dose pertence a uma pessoa da
+conta (middlewares *PertenceAoUsuario).
+*/
 const router = Router();
 
 /*
