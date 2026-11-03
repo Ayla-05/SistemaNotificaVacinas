@@ -21,6 +21,7 @@ const CATEGORIAS = {
   unitarios: ["Unitários", "Funções puras: extrator da carteirinha, faixa etária, próximas doses, frequência de aviso."],
   integracao: ["Integração", "Módulos isolados com banco em memória: autenticação/sessões, avisos de dose, leitura (scan)."],
   funcional: ["Funcional (ponta a ponta)", "App completo (CSRF, login, perfis, posse): usuários, pessoas, vacinas, carteira, agendamentos, dependentes, cascata e integridade do banco."],
+  logica: ["Lógica de negócio", "Validação de entradas, idade e datas-limite (fuso, ano bissexto), pendências e próximas doses conforme as doses registradas, concorrência e idempotência."],
   seguranca: ["Segurança", "OWASP Top 10: sessão/JWT, controle de acesso, injeção, exposição de dados, cabeçalhos, CORS, erros."],
   arquitetura: ["Arquitetura", "Camadas, ciclos, SQL parametrizado, segredos e varredura de TODAS as rotas (login, perfil, CSRF)."]
 };

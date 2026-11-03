@@ -1,3 +1,4 @@
+import { dataIsoValida, numeroDoseValido, MAIOR_NUMERO_DOSE } from "../utils/validacao";
 import * as agendamentoVacinaRepository from "../repositories/agendamentoVacinaRepository";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as vacinaRepository from "../repositories/vacinaRepository";
@@ -147,15 +148,22 @@ export class AgendamentoService {
       );
     }
 
-    if (numeroDose <= 0) {
+    /* CORREÇÃO [COR-25]: dose inteira de 1 a 20 e data que existe no calendário. */
+    if (!numeroDoseValido(numeroDose)) {
       throw new Error(
-        "Número da dose inválido."
+        `Número da dose inválido. Use um inteiro de 1 a ${MAIOR_NUMERO_DOSE}.`
       );
     }
 
     if (!dataPrevista?.trim()) {
       throw new Error(
         "Data prevista não informada."
+      );
+    }
+
+    if (!dataIsoValida(dataPrevista)) {
+      throw new Error(
+        "Data prevista inválida. Use AAAA-MM-DD."
       );
     }
 

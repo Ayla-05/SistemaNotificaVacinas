@@ -49,6 +49,17 @@ acessa ou altera o que não é seu), **Média** (robustez, vazamento limitado, i
 | COR-22 | Baixa | ~120 blocos `new Promise` + callback repetidos nos 16 repositórios (violação de DRY; ruído que escondia o SQL). | Helpers `consultarTodos`, `consultarUm`, `inserir`, `alterar` em `database.ts`; conversão mecânica de 99 blocos (restaram 5, de formato diferente). Repositórios: 4478 → ~3100 linhas, sem mudança de comportamento. | suíte inteira + `tsc` |
 | COR-23 | Média | `authController` e (por uma alteração minha) `agendamentoController` acessavam repositórios direto, pulando a camada de serviço. | Lógica movida para `AuthService` (`gerarEGravarCodigoVerificacao`, `buscarUsuarioAutenticado`, `destinatarioDasBoasVindas`) e `AgendamentoService.listarVisiveis`. | `ARQ-01` |
 
+## 3b. Lógica de negócio
+
+| Código | Sev. | Problema encontrado | Como foi corrigido | Teste |
+|---|---|---|---|---|
+| COR-25 | Alta | **Validação de entrada ausente.** A API aceitava data de nascimento futura, "abc", "14/05/1990" ou do ano 1800; e-mail inválido; atualização de pessoa com nome vazio; número de dose 0, negativo, decimal, texto ou 99; dose sem número (devolvia o erro cru do SQLite, `SQLITE_CONSTRAINT: NOT NULL…`); datas impossíveis em agendamento (30/02, "ontem"); qualquer texto como parentesco; data de aplicação futura no scan. Dado ruim na carteira vacinal distorce pendências. | Novo `utils/validacao.ts` (funções puras: `dataIsoValida`, `dataNascimentoValida`, `dataNaoFutura`, `emailValido`, `numeroDoseValido` 1–20, `parentescoValido`, tolerante a acento/caixa, como o front envia) aplicado em `PessoaService`, `DependenteService`, `CarteiraService` (dose e confirmar-scan) e `AgendamentoService`. Erros voltam como 400 com mensagem clara. | `LOG-12` a `LOG-22`, `tests/logica/validacao.test.ts` |
+| COR-26 | Alta | **Idade errada em fuso do Brasil.** `calcularIdade` fazia `new Date("1990-05-14")` (meia-noite UTC) e lia mês/dia no fuso local: em UTC−3 a data "recuava" um dia, e a pessoa ficava um ano mais velha **na véspera** do aniversário (36 em vez de 35), antecipando a troca de faixa etária (10, 25, 60 anos) e as pendências. Em servidor UTC o erro não aparecia. Também havia "hoje" em UTC (vira o dia às 21h de Brasília) e em fuso local, de forma inconsistente. | Novo `utils/dataHoje.ts`: `hojeIso()` (dia civil de `America/Sao_Paulo`, via `Intl`) e `idadeEmAnos()` (compara texto AAAA-MM-DD, sem `Date`). Usados em `VacinalService`, `ProximasDosesService`, `NotificacaoService` (resumo e lembrete de agendamento), extrator da carteirinha e validação. A suíte passa em 4 fusos (UTC, São Paulo, Auckland, Honolulu). | `LOG-07`, `tests/logica/datas.test.ts` |
+
+Também verificado, **sem defeito**: o esquema avança dose a dose (Hepatite B de adulto: 1ª → 2ª → 3ª → em dia), dose
+única (Febre Amarela) fica em dia, remover a dose devolve a pendência, 8 requisições simultâneas da mesma dose/vacina
+gravam uma só (graças aos índices únicos, COR-18), e o cadastro público já recusava nascimento futuro (`LOG-01` a `LOG-11`, `LOG-22`).
+
 ## 4. Falsos alarmes (testes escritos, sem defeito)
 
 Ficam registrados porque mostram o que foi verificado e está correto: `SEG-01` a `SEG-13`, `SEG-16` a
