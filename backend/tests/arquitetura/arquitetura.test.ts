@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, dirname, resolve } from "node:path";
+import { join, relative as relativoDe, dirname, resolve, sep } from "node:path";
+
+/* Caminhos sempre com "/" (no Windows o node usa "\\", e os testes comparam por "/"). */
+const posix = (f: string) => f.split(sep).join("/");
+const relative = (de: string, para: string) => relativoDe(de, para).split(sep).join("/");
 import { execSync } from "node:child_process";
 import request from "supertest";
 
@@ -111,8 +115,8 @@ describe("SQL e segredos", () => {
         .filter((m) => [...m[1].matchAll(/\$\{([^}]*)\}/g)].some((x) =>
           !(/^[^"]*"[^"]*"\s*:\s*"[^"]*"$/.test(x[1].trim()) ||
             /\.map\(\(\) => "\?"\)/.test(x[1]) ||
-            (f.endsWith("database/database.ts") && /^(tabela|comandos)$/.test(x[1].trim())) ||
-            f.endsWith("database/indices.ts"))))
+            (posix(f).endsWith("database/database.ts") && /^(tabela|comandos)$/.test(x[1].trim())) ||
+            posix(f).endsWith("database/indices.ts"))))
         .map((m) => `${relative(SRC, f)}: ${m[1].trim().slice(0, 60)}`)
     );
     expect(suspeitos).toEqual([]);
