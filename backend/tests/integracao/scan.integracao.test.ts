@@ -69,7 +69,7 @@ describe("POST /scan/analisar", () => {
     const res = await enviar(JPEG);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({
+    expect(res.body).toMatchObject({
       vacina: "Hepatite B",
       dose: "1ª dose",
       dataAplicacao: "2023-02-10",

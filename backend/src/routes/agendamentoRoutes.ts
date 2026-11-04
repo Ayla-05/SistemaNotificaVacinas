@@ -84,6 +84,22 @@ router.patch(
 
 /*
 ==================================================
+CONFIRMAR QUE A VACINA FOI TOMADA
+==================================================
+
+PATCH /agendamentos/:id/confirmar
+
+Marca o agendamento como REALIZADA e registra a dose na
+carteira vacinal (ver AgendamentoService.confirmarRealizacao).
+*/
+router.patch(
+  "/:id/confirmar",
+  agendamentoDoIdPertenceAoUsuario,
+  AgendamentoController.confirmar
+);
+
+/*
+==================================================
 ATUALIZAR OBSERVAÇÃO
 ==================================================
 

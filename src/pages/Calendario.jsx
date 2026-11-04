@@ -7,9 +7,10 @@ import {
   X,
   PlusCircle,
   Trash2,
+  CheckCircle2,
   Loader2
 } from "lucide-react";
-import { obterAgendamentos, criarAgendamento, removerAgendamento, obterVacinas, obterProximasDoses } from "../services/api";
+import { obterAgendamentos, criarAgendamento, removerAgendamento, confirmarAgendamento, obterVacinas, obterProximasDoses } from "../services/api";
 import SeletorDose from "../components/SeletorDose";
 import { useAuth } from "../context/AuthContext";
 
@@ -27,6 +28,7 @@ export default function Calendario() {
   const [form, setForm] = useState(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
   const [removendo, setRemovendo] = useState(false);
+  const [erroAcao, setErroAcao] = useState("");
   const [erroForm, setErroForm] = useState("");
 
   const [mesAtual, setMesAtual] = useState(new Date());
@@ -101,15 +103,41 @@ export default function Calendario() {
     }
   }
 
+  function hojeISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function fecharModal() {
+    setEventoSelecionado(null);
+    setErroAcao("");
+  }
+
   async function handleRemoverAgendamento() {
     setRemovendo(true);
+    setErroAcao("");
 
     try {
       await removerAgendamento(eventoSelecionado.id);
-      setEventoSelecionado(null);
+      fecharModal();
       await carregar();
     } catch (erro) {
-      console.error(erro);
+      setErroAcao(erro.message || "Não foi possível remover.");
+    } finally {
+      setRemovendo(false);
+    }
+  }
+
+  async function handleConfirmarAgendamento() {
+    setRemovendo(true);
+    setErroAcao("");
+
+    try {
+      await confirmarAgendamento(eventoSelecionado.id);
+      fecharModal();
+      await carregar();
+    } catch (erro) {
+      setErroAcao(erro.message || "Não foi possível confirmar.");
     } finally {
       setRemovendo(false);
     }
@@ -302,6 +330,7 @@ export default function Calendario() {
               <input
                 type="date"
                 required
+                min={hojeISO()}
                 value={form.dataPrevista}
                 onChange={(e) => setForm({ ...form, dataPrevista: e.target.value })}
                 className="campo-input"
@@ -641,9 +670,7 @@ export default function Calendario() {
           <div className="bg-white rounded-3xl p-6 w-full max-w-md relative">
 
             <button
-              onClick={() =>
-                setEventoSelecionado(null)
-              }
+              onClick={fecharModal}
               className="absolute top-4 right-4"
             >
               <X />
@@ -689,10 +716,31 @@ export default function Calendario() {
 
             </div>
 
+            {erroAcao && (
+              <p className="mt-4 text-sm text-rose-600">{erroAcao}</p>
+            )}
+
+            {eventoSelecionado.status === "PENDENTE" && (
+              eventoSelecionado.data_prevista <= hojeISO() ? (
+                <button
+                  onClick={handleConfirmarAgendamento}
+                  disabled={removendo}
+                  className="mt-5 w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition disabled:opacity-60"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  OK, já tomei esta vacina
+                </button>
+              ) : (
+                <p className="mt-5 text-xs text-slate-500 text-center">
+                  A confirmação fica disponível a partir da data agendada.
+                </p>
+              )
+            )}
+
             <button
               onClick={handleRemoverAgendamento}
               disabled={removendo}
-              className="mt-5 w-full flex items-center justify-center gap-2 px-4 py-2 border border-rose-200 text-rose-600 rounded-xl text-sm font-semibold hover:bg-rose-50 transition disabled:opacity-60"
+              className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2 border border-rose-200 text-rose-600 rounded-xl text-sm font-semibold hover:bg-rose-50 transition disabled:opacity-60"
             >
               {removendo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               Remover agendamento

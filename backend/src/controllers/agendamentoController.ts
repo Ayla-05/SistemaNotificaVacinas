@@ -235,6 +235,42 @@ export class AgendamentoController {
 
   /*
   ==================================================
+  CONFIRMAR QUE A VACINA FOI TOMADA
+  ==================================================
+
+  PATCH /agendamentos/:id/confirmar
+  */
+  static async confirmar(
+    req: Request,
+    res: Response
+  ) {
+
+    try {
+
+      await AgendamentoService
+        .confirmarRealizacao(
+          Number(req.params.id)
+        );
+
+      return res.status(200).json({
+
+        mensagem:
+          "Vacina confirmada e registrada na carteira."
+
+      });
+
+    } catch (error: any) {
+
+      return res.status(400).json({
+        erro: error.message
+      });
+
+    }
+
+  }
+
+  /*
+  ==================================================
   ATUALIZAR OBSERVAÇÃO
   ==================================================
 

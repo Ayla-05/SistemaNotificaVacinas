@@ -1,0 +1,131 @@
+/* ============================================================
+   Esqueleto do Chibi: cada junta é um <g> que gira por variável CSS
+   (ver poses.js). A transição suaviza a passagem de uma pose a outra.
+   ============================================================ */
+.rg-corpo,
+.rg-tronco,
+.rg-cabeca,
+.rg-quadril,
+.rg-joelho,
+.rg-ombro,
+.rg-cotovelo,
+.rg-sombra,
+.rg-travesseiro,
+.rg-pulso,
+.rg-tornozelo,
+.rg-dedo {
+  transition: transform .55s cubic-bezier(.3, .8, .3, 1), opacity .4s;
+}
+
+.rg-corpo { transform: translate(var(--rx, 0px), var(--ry, 0px)) translate(60px, 118px) rotate(var(--rot, 0deg)) translate(-60px, -118px); }
+.rg-tronco { transform: translate(60px, 118px) rotate(var(--torso, 0deg)) scaleX(var(--giro, 1)); }
+.rg-cabeca { transform: translate(var(--cx, 0px), -28px) translate(0px, var(--cy, 0px)) rotate(var(--cabeca, 0deg)); }
+
+.rg-qe { transform: translate(50px, 118px) rotate(var(--hl, 0deg)); }
+.rg-qd { transform: translate(70px, 118px) rotate(var(--hr, 0deg)); }
+.rg-je { transform: translate(0px, 12px) rotate(var(--kl, 0deg)); }
+.rg-jd { transform: translate(0px, 12px) rotate(var(--kr, 0deg)); }
+
+.rg-oe { transform: translate(-22px, calc(-20px + var(--oe, 0px))) rotate(var(--sl, 6deg)); }
+.rg-od { transform: translate(22px, calc(-20px + var(--od, 0px))) rotate(var(--sr, -6deg)); }
+.rg-ce { transform: translate(0px, 11px) rotate(var(--el, 0deg)); }
+.rg-cd { transform: translate(0px, 11px) rotate(var(--er, 0deg)); }
+.rg-pe { transform: translate(0px, 10.500px) rotate(var(--pe, 0deg)); }
+.rg-pd { transform: translate(0px, 10.500px) rotate(var(--pd, 0deg)); }
+.rg-te { transform: translate(0px, 10px) rotate(var(--tl, 0deg)); }
+.rg-td { transform: translate(0px, 10px) rotate(var(--tr, 0deg)); }
+/* dedo: base na palma; abre em leque (--abre) e encolhe quando dobra (--esc) */
+.rg-dedo { transform: translate(var(--x, 0px), 6px) rotate(calc(var(--i, 0) * var(--abre, 0deg))) scaleY(var(--esc, 1)); }
+.rg-polegar { transform: translate(var(--x, 3.600px), 3px) rotate(calc(var(--lado, 1) * (-26deg - var(--abre, 0deg) * 0.6))) scaleY(var(--esc, 1)); }
+
+.rg-sombra { transform-box: fill-box; transform-origin: center; transform: scaleX(var(--sombra, 1)); }
+.rg-travesseiro { opacity: var(--trav, 0); }
+.rg-respira { transform-origin: 0px -10px; animation: rg-respira 3.6s ease-in-out infinite; }
+
+/* rosto */
+.chibi-broto { animation: chibi-broto 3s ease-in-out infinite; }
+.chibi-olho { transform-box: fill-box; transform-origin: center; animation: chibi-piscar 4.8s infinite; }
+.chibi-feliz, .chibi-dormindo { display: none; }
+.hap .chibi-aberto, .slp .chibi-aberto { display: none; }
+.hap .chibi-feliz { display: inline; }
+.slp .chibi-dormindo { display: inline; }
+.slp .chibi-feliz { display: none; }
+.chibi-brilho { transform-box: fill-box; transform-origin: center; animation: chibi-brilha 1.8s ease-in-out infinite; }
+.chibi-gota { animation: chibi-pinga 2s ease-in infinite; }
+.chibi-z { animation: chibi-zz 2s ease-in-out infinite; }
+.slp .rg-respira { animation-duration: 3s; }
+
+@keyframes rg-respira { 50% { transform: scale(1.03, 1.05); } }
+@keyframes chibi-broto { 50% { transform: rotate(7deg); } }
+@keyframes chibi-piscar { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.08); } }
+@keyframes chibi-brilha { 0%, 100% { opacity: .2; transform: scale(.6); } 50% { opacity: 1; transform: scale(1.1); } }
+@keyframes chibi-pinga { 0% { transform: translateY(-3px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(9px); opacity: 0; } }
+@keyframes chibi-zz { 0% { transform: translate(0, 4px); opacity: 0; } 40% { opacity: 1; } 100% { transform: translate(8px, -10px); opacity: 0; } }
+
+/* movimentos contínuos (substituem a pose da junta enquanto duram) */
+.passeio-ch.walking .rg-qe { animation: rg-andar-e .42s ease-in-out infinite; }
+.passeio-ch.walking .rg-qd { animation: rg-andar-d .42s ease-in-out infinite; }
+.passeio-ch.walking .rg-respira { animation: rg-pulinho .42s ease-in-out infinite; }
+.passeio-ch.sit .rg-qe { animation: rg-balanca-e 1.3s ease-in-out infinite; }
+.passeio-ch.sit .rg-qd { animation: rg-balanca-d 1.3s ease-in-out infinite; }
+.passeio-ch.lift .rg-qe { animation: rg-balanca-e .36s ease-in-out infinite; }
+.passeio-ch.lift .rg-qd { animation: rg-balanca-d .36s ease-in-out infinite; }
+.passeio-ch.wave .rg-cd { animation: rg-acena .7s ease-in-out infinite; }
+.passeio-ch.wave .rg-pd { animation: rg-pulso .35s ease-in-out infinite; }
+.passeio-ch.cheer .rg-oe { animation: rg-torce-e .5s ease-in-out infinite; }
+.passeio-ch.cheer .rg-od { animation: rg-torce-d .5s ease-in-out infinite; }
+.passeio-ch.cheer .rg-respira { animation: rg-pulinho .5s ease-in-out infinite; }
+.passeio-ch.slp .rg-qe, .passeio-ch.slp .rg-qd, .passeio-ch.slp .rg-cd, .passeio-ch.slp .rg-oe, .passeio-ch.slp .rg-od { animation: none; }
+
+@keyframes rg-andar-e { 0%, 100% { transform: translate(50px, 118px) rotate(-26deg); } 50% { transform: translate(50px, 118px) rotate(26deg); } }
+@keyframes rg-andar-d { 0%, 100% { transform: translate(70px, 118px) rotate(26deg); } 50% { transform: translate(70px, 118px) rotate(-26deg); } }
+@keyframes rg-balanca-e { 0%, 100% { transform: translate(50px, 118px) rotate(-6deg); } 50% { transform: translate(50px, 118px) rotate(20deg); } }
+@keyframes rg-balanca-d { 0%, 100% { transform: translate(70px, 118px) rotate(6deg); } 50% { transform: translate(70px, 118px) rotate(-20deg); } }
+@keyframes rg-acena { 0%, 100% { transform: translate(0px, 11px) rotate(-8deg); } 50% { transform: translate(0px, 11px) rotate(-58deg); } }
+@keyframes rg-torce-e { 0%, 100% { transform: translate(-22px, -20px) rotate(138deg); } 50% { transform: translate(-22px, -20px) rotate(112deg); } }
+@keyframes rg-torce-d { 0%, 100% { transform: translate(22px, -20px) rotate(-138deg); } 50% { transform: translate(22px, -20px) rotate(-112deg); } }
+@keyframes rg-pulso { 0%, 100% { transform: translate(0px, 10.500px) rotate(-22deg); } 50% { transform: translate(0px, 10.500px) rotate(22deg); } }
+@keyframes rg-pulinho { 50% { transform: translateY(-3px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .chibi, .chibi * { animation: none !important; transition: none !important; }
+}
+
+/* ============ Passeio (camada flutuante) ============ */
+.passeio-raiz { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
+.passeio-ch { position: absolute; left: 0; top: 0; width: 112px; height: 140px; pointer-events: auto; cursor: grab; touch-action: none; will-change: transform; }
+.passeio-ch.lift { cursor: grabbing; }
+.passeio-fl { width: 100%; height: 100%; transform-origin: 50% 100%; }
+.passeio-ch.air .passeio-fl { scale: .95 1.07; }
+.passeio-ch.land .passeio-fl { animation: passeio-pouso .32s ease-out; }
+.passeio-bb {
+  position: absolute; bottom: calc(100% - 6px); left: 50%; transform: translateX(-50%) scale(.85);
+  opacity: 0; transition: opacity .18s, transform .18s; pointer-events: none;
+  background: #fff; color: #1e293b; border-radius: 16px; padding: 8px 14px;
+  font-size: 15px; font-weight: 600; line-height: 1.35; width: max-content; max-width: 230px; text-align: center;
+  box-shadow: 0 2px 10px rgba(15, 80, 60, .22); z-index: 5;
+}
+.passeio-bb.on { opacity: 1; transform: translateX(-50%) scale(1); }
+.passeio-bb::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -7px; border: 7px solid transparent; border-bottom: 0; border-top-color: #fff; }
+
+/* reação dos elementos da página */
+.passeio-afunda { animation: passeio-afunda .44s ease-out; }
+.passeio-balanca { animation: passeio-card .5s ease-in-out infinite; transform-origin: 50% 0; }
+.passeio-alvo { animation: passeio-alvo 1.1s ease-in-out 3; }
+
+@keyframes passeio-pouso { 0% { transform: scale(1.2, .78); } 60% { transform: scale(.94, 1.08); } 100% { transform: scale(1); } }
+@keyframes passeio-afunda { 40% { translate: 0 6px; } 100% { translate: 0 0; } }
+@keyframes passeio-card { 0%, 100% { rotate: -.5deg; } 50% { rotate: .5deg; } }
+@keyframes passeio-alvo { 0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } 50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, .45); } }
+
+/* boca some quando dorme (a boquinha de sono fica no grupo .chibi-dormindo) */
+.slp .chibi-boca { display: none; }
+
+/* fadinha ainda não desbloqueada (vacina não tomada) */
+.chibi-bloqueada { filter: grayscale(1) brightness(1.04) contrast(.9); opacity: .5; }
+
+/* asas do príncipe-fada: batem devagarinho */
+.chibi-asa-e { animation: chibi-asa-e 1.9s ease-in-out infinite; }
+.chibi-asa-d { animation: chibi-asa-d 1.9s ease-in-out infinite; }
+@keyframes chibi-asa-e { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.88); } }
+@keyframes chibi-asa-d { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.88); } }

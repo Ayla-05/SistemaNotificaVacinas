@@ -1,3 +1,4 @@
+import { normalizarEmail } from "../utils/validacao";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
@@ -311,7 +312,7 @@ export class AuthService {
 
     const usuario =
       await usuarioRepository.buscarUsuarioPorEmail(
-        email
+        normalizarEmail(email)
       );
 
     /*

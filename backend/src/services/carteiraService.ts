@@ -1,4 +1,8 @@
-import { dataNaoFutura, numeroDoseValido, MAIOR_NUMERO_DOSE } from "../utils/validacao";
+import {
+  validarDataAplicacao,
+  validarNumeroDose,
+  validarTexto
+} from "../utils/validacao";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as vacinaRepository from "../repositories/vacinaRepository";
 import * as registroVacinacaoRepository from "../repositories/registroVacinacaoRepository";
@@ -135,21 +139,8 @@ export class CarteiraService {
     tipo: string
   ) {
 
-    /*
-    CORREÇÃO [COR-25]: aceitava dose 0, negativa, decimal, texto e
-    99; e dose sem número devolvia o erro cru do SQLite.
-    */
-    if (!numeroDoseValido(numeroDose)) {
-      throw new Error(
-        `Número da dose inválido. Use um inteiro de 1 a ${MAIOR_NUMERO_DOSE}.`
-      );
-    }
-
-    if (typeof tipo !== "string" || !tipo.trim() || tipo.length > 60) {
-      throw new Error(
-        "Tipo da dose inválido."
-      );
-    }
+    validarNumeroDose(numeroDose);
+    validarTexto(tipo, "Tipo da dose", { max: 50 });
 
     const registro =
       await registroVacinacaoRepository
@@ -319,16 +310,6 @@ export class CarteiraService {
     }
   ) {
 
-    /* CORREÇÃO [COR-25]: a data de aplicação lida/editada deve existir e não ser futura. */
-    if (
-      dados.dataAplicacao &&
-      !dataNaoFutura(dados.dataAplicacao)
-    ) {
-      throw new Error(
-        "Data de aplicação inválida. Use AAAA-MM-DD, sem datas futuras."
-      );
-    }
-
     const pessoa =
       await pessoaRepository.buscarPessoaPorId(
         pessoaId
@@ -337,6 +318,18 @@ export class CarteiraService {
     if (!pessoa) {
       throw new Error(
         "Pessoa não encontrada."
+      );
+    }
+
+    validarTexto(dados.vacina, "Nome da vacina", { obrigatorio: true, max: 100 });
+    validarTexto(dados.dose, "Dose", { max: 50 });
+    validarTexto(dados.lote, "Lote", { max: 50 });
+    validarTexto(dados.localAplicacao, "Local de aplicação", { max: 200 });
+
+    if (dados.dataAplicacao) {
+      dados.dataAplicacao = validarDataAplicacao(
+        dados.dataAplicacao,
+        pessoa.data_nascimento
       );
     }
 
@@ -392,6 +385,35 @@ export class CarteiraService {
           );
     }
 
+    /*
+    Reenviar a mesma carteirinha não pode duplicar doses: se já existe uma
+    dose desta vacina na mesma data e com o mesmo lote, não registra de novo.
+    */
+    if (dados.dataAplicacao) {
+
+      const dosesExistentes =
+        await doseVacinaRepository.listarDosesRegistro(
+          registroId
+        );
+
+      const jaRegistrada =
+        dosesExistentes.find(
+          (d: any) =>
+            d.data_aplicacao === dados.dataAplicacao &&
+            (d.lote ?? null) === (dados.lote ?? null)
+        );
+
+      if (jaRegistrada) {
+        return {
+          registroId,
+          doseId: jaRegistrada.id,
+          vacina: vacina.nome,
+          jaExistia: true
+        };
+      }
+
+    }
+
     const maiorDoseExistente =
       await doseVacinaRepository.obterMaiorNumeroDose(
         registroId
@@ -409,6 +431,10 @@ export class CarteiraService {
       Number(
         dados.dose?.match(/\d+/)?.[0]
       );
+
+    if (!Number.isNaN(numeroDeclarado)) {
+      validarNumeroDose(numeroDeclarado);
+    }
 
     const numeroDose =
       numeroDeclarado > maiorDoseExistente

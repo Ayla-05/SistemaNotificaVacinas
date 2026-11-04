@@ -26,8 +26,9 @@ Dependências:
 /*
 CORREÇÃO [COR-03/05]: GET /pessoas devolvia todas as pessoas do
 sistema a qualquer logado, e POST /pessoas aceitava um usuario_id
-de outra conta. Agora o usuário comum só lista e cria na própria
-conta (administrador continua sem restrição).
+de outra conta. Agora o usuário comum só lista as pessoas da própria
+conta e, ao criar, o usuario_id do corpo é ignorado (a rota força o
+dono: ver forcarDonoDaPessoa em pessoaRoutes.ts).
 */
 export class PessoaController {
 
@@ -155,17 +156,6 @@ export class PessoaController {
   ) {
 
     try {
-
-      if (
-        req.perfilUsuario !== "ADMIN" &&
-        Number(req.body?.usuario_id) !== req.usuarioId
-      ) {
-
-        return res.status(403).json({
-          erro: "Você não pode criar pessoas em outra conta."
-        });
-
-      }
 
       const id =
         await PessoaService.criar(

@@ -448,6 +448,14 @@ export async function obterCarteira(idPessoa) {
 }
 
 /**
+ * Doses já registradas de um registro vacinal (data, lote, tipo).
+ */
+export async function obterDosesRegistro(registroId) {
+  const response = await chamarApi(`/carteira/registro/${registroId}/doses`);
+  return tratarResposta(response);
+}
+
+/**
  * Registra uma vacina + dose já revisada pelo usuário
  * (fluxo do Scan, depois da confirmação manual).
  */
@@ -517,6 +525,15 @@ export async function criarAgendamento({ pessoaId, vacinaId, numeroDose, dataPre
  */
 export async function removerAgendamento(id) {
   const response = await chamarApi(`/agendamentos/${id}`, { method: 'DELETE' });
+  return tratarResposta(response);
+}
+
+/**
+ * Confirma que a vacina do agendamento foi tomada
+ * (registra a dose na carteira e marca como REALIZADA).
+ */
+export async function confirmarAgendamento(id) {
+  const response = await chamarApi(`/agendamentos/${id}/confirmar`, { method: 'PATCH' });
   return tratarResposta(response);
 }
 
