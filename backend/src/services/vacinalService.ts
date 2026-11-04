@@ -395,7 +395,10 @@ export class VacinalService {
       rotulo: d.rotulo,
       status: d.status,
       data_prevista: d.dataPrevista,
-      dias_para_vencer: d.diasParaVencer
+      dias_para_vencer: d.diasParaVencer,
+      numero_dose: d.numeroDose,
+      ultima_dose: d.ultimaDose,
+      rotulo_ultima_tomada: d.rotuloUltimaTomada
     }));
 
     const codigosPendentes = new Set(
@@ -433,7 +436,11 @@ export class VacinalService {
         status: d.status,
         data_prevista: d.dataPrevista,
         dias_para_vencer: d.diasParaVencer,
-        campanha: d.campanha
+        campanha: d.campanha,
+        numero_dose: d.numeroDose,
+        doses_tomadas: d.dosesTomadas,
+        ultima_dose: d.ultimaDose,
+        rotulo_ultima_tomada: d.rotuloUltimaTomada
       }));
 
     return {
