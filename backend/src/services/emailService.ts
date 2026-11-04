@@ -39,6 +39,64 @@ Por padrão assume Gmail, mas aceita qualquer serviço que o
 Nodemailer reconheça nativamente (ex.: "yahoo", "outlook365",
 "hotmail") via a variável EMAIL_SERVICE no .env.
 */
+/*
+Erro 535 (login recusado) quase sempre é configuração: o EMAIL_USER precisa ser o
+endereço COMPLETO e a senha precisa ser uma "senha de app" (16 letras), não a senha
+normal da conta. Nunca imprime a senha, só aponta o que conferir.
+*/
+function dicaDeConfiguracao(erro: any): string | null {
+
+  const recusado =
+    erro?.responseCode === 535 || /535|Invalid login|BadCredentials/i.test(erro?.message ?? "");
+
+  if (!recusado) {
+    return null;
+  }
+
+  const problemas: string[] = [];
+
+  const { user, pass } = credenciais();
+
+  if (!user.includes("@")) {
+    problemas.push("EMAIL_USER deve ser o e-mail completo (ex.: nome@gmail.com), não só o nome");
+  }
+
+  const senha = pass;
+
+  if (!/^[a-z]{16}$/.test(senha)) {
+    problemas.push(
+      `EMAIL_APP_PASSWORD parece não ser uma senha de app do Google (têm 16 letras minúsculas; a atual tem ${senha.length} caracteres) — gere em https://myaccount.google.com/apppasswords (exige verificação em duas etapas)`
+    );
+  }
+
+  return problemas.length > 0
+    ? problemas.join("; ") + "."
+    : "confira se a senha de app é a da MESMA conta de EMAIL_USER e se não foi revogada.";
+
+}
+
+/*
+Tolerância a erros comuns no .env: o Google mostra a senha de app em 4 grupos
+separados por espaço (os espaços não fazem parte dela) e é fácil esquecer o
+"@gmail.com" no usuário. Só corrige o que é inequívoco.
+*/
+function credenciais() {
+
+  let usuario = (process.env.EMAIL_USER ?? "").trim();
+
+  const servico = (process.env.EMAIL_SERVICE || "gmail").toLowerCase();
+
+  if (usuario && !usuario.includes("@") && servico === "gmail") {
+    usuario = `${usuario}@gmail.com`;
+  }
+
+  return {
+    user: usuario,
+    pass: (process.env.EMAIL_APP_PASSWORD ?? "").replace(/\s+/g, "")
+  };
+
+}
+
 let transportador: Transporter | null = null;
 
 function obterTransportador() {
@@ -53,10 +111,7 @@ function obterTransportador() {
 
   transportador = nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE || "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_APP_PASSWORD
-    }
+    auth: credenciais()
   });
 
   return transportador;
@@ -125,6 +180,14 @@ export class EmailService {
         "[EmailService] Falha ao enviar e-mail:",
         erro.message
       );
+
+      const dica = dicaDeConfiguracao(erro);
+
+      if (dica) {
+        console.error(
+          `[EmailService] Dica: ${dica}`
+        );
+      }
 
       return {
         enviado: false,
