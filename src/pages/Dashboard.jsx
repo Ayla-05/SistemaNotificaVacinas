@@ -24,13 +24,8 @@ import { BannerSaude } from "../components/IlustracaoSaude";
 import Passeio from "../components/mascotes/Passeio";
 import Chibi from "../components/mascotes/Chibi";
 import { personagemDaVacina, artigoFadinha } from "../components/mascotes/catalogo";
-
-/** "10/02/2027" a partir de "2027-02-10". */
-function formatarData(iso) {
-  if (!iso) return '';
-  const [ano, mes, dia] = iso.slice(0, 10).split('-');
-  return `${dia}/${mes}/${ano}`;
-}
+import { ResumoDoses } from "../components/PainelVacina";
+import { formatarData, descreverPrazo } from "../utils/formatacao";
 
 const MESES_CURTOS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
 
@@ -40,24 +35,6 @@ const FAIXAS = {
   ADULTO: "Adulto",
   IDOSO: "Idoso"
 };
-
-/** Texto do prazo de uma dose: atrasada, disponível agora ou data prevista. */
-function descreverPrazo(item) {
-  if (item.status === 'ATRASADA') {
-    const dias = Math.abs(item.dias_para_vencer);
-    return `Atrasada há ${dias} dia${dias === 1 ? '' : 's'} (prevista para ${formatarData(item.data_prevista)})`;
-  }
-
-  if (item.status === 'DISPONIVEL') {
-    return 'Pode tomar agora';
-  }
-
-  if (item.dias_para_vencer === 0) {
-    return 'Vence hoje';
-  }
-
-  return `Prevista para ${formatarData(item.data_prevista)} (em ${item.dias_para_vencer} dias)`;
-}
 
 function calcularPorcentagem(resumo) {
   const total = resumo.em_dia.length + resumo.pendentes.length;
@@ -251,21 +228,7 @@ function DetalhesVacina({ item, registro, proxima, doses, aoFechar }) {
             </p>
           )}
 
-          <p>
-            <strong>Doses:</strong> {item.tomadas} de {item.necessarias}
-          </p>
-
-          {pendente && (
-            <p className={item.status === "ATRASADA" ? "text-rose-800 font-bold" : "text-amber-900 font-bold"}>
-              {item.rotulo}: {descreverPrazo(item)}
-            </p>
-          )}
-
-          {!pendente && proxima && (
-            <p>
-              <strong>Próxima dose:</strong> {proxima.rotulo} — {formatarData(proxima.data_prevista)}
-            </p>
-          )}
+          <ResumoDoses item={item} proxima={proxima} doses={doses} />
 
           {doses?.length > 0 && (
             <div>

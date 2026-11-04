@@ -285,3 +285,25 @@ describe("ordenação", () => {
   });
 
 });
+
+describe("dose já tomada x próxima dose (texto da tela)", () => {
+
+  it("dT: quem tomou a 3ª dose de reforço aos 14 anos tem como próxima a 4ª, e a tela sabe o nome da tomada", () => {
+    // nasceu em 12/05/2005; tomou 1 dose de dT em 06/05/2019 (aos 14 anos)
+    const lista = calcular("2005-05-12", { DT: [{ numero: 1, data: "2019-05-06" }] });
+    const dt = de(lista, "DT");
+    expect(dt?.numeroDose).toBe(2);
+    expect(dt?.rotulo).toBe("4ª dose de reforço");
+    expect(dt?.rotuloUltimaTomada).toBe("3ª dose de reforço");
+    expect(dt?.dosesTomadas).toBe(1);
+    expect(dt?.ultimaDose).toBe("2019-05-06");
+    // aos 24 anos (12/05/2029), e nunca antes de 10 anos da dose anterior (06/05/2029)
+    expect(dt?.dataPrevista).toBe("2029-05-12");
+  });
+
+  it("sem dose tomada não há rótulo de dose tomada", () => {
+    const dt = de(calcular("2005-05-12", {}), "DT");
+    expect(dt?.rotuloUltimaTomada).toBeNull();
+  });
+
+});

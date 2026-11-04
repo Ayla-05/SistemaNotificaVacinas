@@ -68,6 +68,8 @@ export interface ProximaDose {
   diasParaVencer: number | null;
   dosesTomadas: number;
   ultimaDose: string | null;
+  /* nome da dose já tomada no esquema (ex.: "3ª dose de reforço"), se o calendário a define */
+  rotuloUltimaTomada: string | null;
   fonte: string;
 }
 
@@ -385,6 +387,17 @@ export function calcularProximasDoses(
       ...classificar(dataPrevista, hoje),
       dosesTomadas,
       ultimaDose,
+      rotuloUltimaTomada:
+        dosesTomadas > 0
+          ? (
+              serie.find((s) => s.numeroDose === dosesTomadas) ??
+              esquema.find(
+                (e) =>
+                  e.vacinaCodigo === codigo &&
+                  e.numeroDose === dosesTomadas
+              )
+            )?.rotulo ?? null
+          : null,
       fonte: linha.fonte
     });
 

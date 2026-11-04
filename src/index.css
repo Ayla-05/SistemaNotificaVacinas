@@ -185,3 +185,17 @@
   .marquee { overflow-x: auto; }
   .marquee-track { animation: none; }
 }
+
+/* Painel lateral (detalhes da vacina na Carteira): entra pela direita. */
+@keyframes painel-entrar {
+  from { transform: translateX(32px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.painel-entrar {
+  animation: painel-entrar 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .painel-entrar { animation: none; }
+}

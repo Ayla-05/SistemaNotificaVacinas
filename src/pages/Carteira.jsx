@@ -1,10 +1,17 @@
 // src/pages/Carteira.jsx
 
 import React, { useEffect, useState } from 'react';
-import { Syringe, PlusCircle, Loader2, Check } from 'lucide-react';
+import { Syringe, PlusCircle, Loader2, Check, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import SeletorDose from '../components/SeletorDose';
-import { obterCarteira, obterVacinas, confirmarScanNaCarteira } from '../services/api';
+import PainelVacina from '../components/PainelVacina';
+import {
+  obterCarteira,
+  obterVacinas,
+  obterPendencias,
+  obterDosesRegistro,
+  confirmarScanNaCarteira
+} from '../services/api';
 
 const FORM_VAZIO = { vacina: '', dose: '', dataAplicacao: '', lote: '', localAplicacao: '' };
 
@@ -29,6 +36,10 @@ export default function Carteira() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
+  const [resumo, setResumo] = useState(null);
+  const [aberta, setAberta] = useState(null);
+  const [dosesAbertas, setDosesAbertas] = useState([]);
+  const [carregandoDoses, setCarregandoDoses] = useState(false);
 
   async function carregar() {
     if (!pessoaAtiva) {
@@ -37,13 +48,15 @@ export default function Carteira() {
     }
 
     try {
-      const [carteira, vacinas] = await Promise.all([
+      const [carteira, vacinas, pendencias] = await Promise.all([
         obterCarteira(pessoaAtiva.id),
-        obterVacinas()
+        obterVacinas(),
+        obterPendencias(pessoaAtiva.id).catch(() => null)
       ]);
 
       setRegistros(carteira);
       setVacinasDisponiveis(vacinas);
+      setResumo(pendencias);
     } catch (erroCapturado) {
       setErro(erroCapturado.message);
     } finally {
@@ -74,6 +87,30 @@ export default function Carteira() {
       setSalvando(false);
     }
   }
+
+  async function abrirVacina(registro) {
+    setAberta(registro);
+    setDosesAbertas([]);
+    setCarregandoDoses(true);
+
+    try {
+      setDosesAbertas(await obterDosesRegistro(registro.id));
+    } catch {
+      setDosesAbertas([]);
+    } finally {
+      setCarregandoDoses(false);
+    }
+  }
+
+  // Situação da vacina aberta (em dia ou pendente) e a próxima dose do calendário.
+  const itemAberto = aberta
+    ? resumo?.pendentes.find((v) => v.vacina === aberta.nome)
+      ? { ...resumo.pendentes.find((v) => v.vacina === aberta.nome), tipo: 'pendente' }
+      : resumo?.em_dia.find((v) => v.vacina === aberta.nome)
+        ? { ...resumo.em_dia.find((v) => v.vacina === aberta.nome), tipo: 'tomada' }
+        : null
+    : null;
+  const proximaAberta = aberta ? resumo?.proximas?.find((p) => p.vacina === aberta.nome) : null;
 
   if (loading) {
     return (
@@ -191,17 +228,38 @@ export default function Carteira() {
         ) : (
           <div className="space-y-3">
             {registros.map((r) => (
-              <div key={r.id} className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => abrirVacina(r)}
+                className="w-full text-left flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 hover:border-emerald-500 hover:shadow-sm rounded-xl px-4 py-3 transition focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400"
+                aria-label={`Ver detalhes de ${r.nome}`}
+              >
                 <div>
                   <p className="font-semibold text-slate-800">{r.nome}</p>
                   {r.doencas_evitadas && <p className="text-xs text-slate-500">{r.doencas_evitadas}</p>}
                 </div>
-                <span className="badge badge-success">Registrada</span>
-              </div>
+                <span className="flex items-center gap-2">
+                  <span className="badge badge-success">Registrada</span>
+                  <ChevronRight className="w-5 h-5 text-emerald-700" />
+                </span>
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      {aberta && (
+        <PainelVacina
+          vacina={aberta.nome}
+          item={itemAberto}
+          registro={aberta}
+          proxima={proximaAberta}
+          doses={dosesAbertas}
+          carregandoDoses={carregandoDoses}
+          aoFechar={() => setAberta(null)}
+        />
+      )}
     </div>
   );
 }
