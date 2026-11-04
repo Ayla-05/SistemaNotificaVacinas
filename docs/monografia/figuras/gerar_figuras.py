@@ -3,6 +3,7 @@ Gera os diagramas da monografia em SVG (somente biblioteca padrão):
 
   figura-modelo-er.svg   Modelo de dados (16 tabelas do SQLite)
   figura-fluxo-ocr.svg   Fluxo da leitura da carteirinha por OCR
+  figura-casos-de-uso.svg Diagrama de casos de uso
 
 Uso: python3 gerar_figuras.py
 Os PNG usados no .docx são renderizados a partir dos SVG (ver README da pasta).
@@ -243,7 +244,94 @@ def figura_ocr():
             f'<rect width="100%" height="100%" fill="#ffffff"/>{defs}{"".join(out)}</svg>')
 
 
+# ----------------------------------------------------------------------------
+# DIAGRAMA DE CASOS DE USO
+# ----------------------------------------------------------------------------
+def figura_casos_de_uso():
+    L, A = 1400, 1010
+    out = []
+    OVAL_W, OVAL_H = 232, 62
+
+    def oval(cx, cy, codigo, linhas):
+        t = "".join(
+            f'<tspan x="{cx}" dy="{(-8 if len(linhas) > 1 else 5) if i == 0 else 16}">{escape(l)}</tspan>'
+            for i, l in enumerate(linhas))
+        return (f'<ellipse cx="{cx}" cy="{cy}" rx="{OVAL_W/2}" ry="{OVAL_H/2}" fill="#fff" stroke="{COR_BORDA}" stroke-width="1.5"/>'
+                f'<text x="{cx}" y="{cy}" text-anchor="middle" font-size="12.5" fill="{COR_TXT}">'
+                f'<tspan font-weight="bold" x="{cx}" dy="{-16 if len(linhas) > 1 else -8}">{codigo}</tspan>'
+                + "".join(f'<tspan x="{cx}" dy="{16 if i == 0 else 15}">{escape(l)}</tspan>' for i, l in enumerate(linhas))
+                + '</text>')
+
+    def pacote(x, y, w, h, titulo, cor, ovais, colunas):
+        s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{cor}" fill-opacity="0.10" stroke="{cor}" stroke-width="1.8"/>',
+             f'<text x="{x+14}" y="{y+24}" font-size="14.5" font-weight="bold" fill="{cor}">{escape(titulo)}</text>']
+        for i, (cod, linhas) in enumerate(ovais):
+            col, lin = i % colunas, i // colunas
+            cx = x + w / (colunas * 2) * (2 * col + 1)
+            cy = y + 62 + lin * 82
+            s.append(oval(cx, cy, cod, linhas))
+        return "\n".join(s)
+
+    def ator(cx, cy, nome, cor="#1f3a5f"):
+        return (f'<g stroke="{cor}" stroke-width="2.2" fill="none">'
+                f'<circle cx="{cx}" cy="{cy-34}" r="12"/><path d="M{cx},{cy-22} V{cy+14} M{cx-22},{cy-8} H{cx+22} M{cx},{cy+14} L{cx-18},{cy+42} M{cx},{cy+14} L{cx+18},{cy+42}"/></g>'
+                f'<text x="{cx}" y="{cy+62}" text-anchor="middle" font-size="13.5" font-weight="bold" fill="{cor}">{escape(nome)}</text>')
+
+    def liga(x1, y1, x2, y2, tracejada=False, rotulo=None):
+        d = ' stroke-dasharray="6,4"' if tracejada else ""
+        r = (f'<text x="{(x1+x2)/2}" y="{(y1+y2)/2-6}" text-anchor="middle" font-size="11.5" fill="#444">{rotulo}</text>' if rotulo else "")
+        return f'<path d="M{x1},{y1} L{x2},{y2}" stroke="#444" stroke-width="1.4"{d}/>{r}'
+
+    # fronteira do sistema
+    out.append(f'<rect x="170" y="14" width="1060" height="{A-28}" rx="14" fill="none" stroke="{COR_BORDA}" stroke-width="2.2"/>')
+    out.append(f'<text x="200" y="44" font-size="17" font-weight="bold" fill="{COR_BORDA}">Notifica Vacinas</text>')
+
+    XA, WA = 195, 520
+    p1 = (XA, 66, WA, 236)
+    p2 = (XA, 322, WA, 322)
+    p3 = (XA, 664, WA, 322)
+    out.append(pacote(*p1, "Conta e acesso", "#6b7a8f", [
+        ("UC01", ["Cadastrar-se e confirmar e-mail"]), ("UC02", ["Entrar (login e sessão)"]),
+        ("UC03", ["Recuperar senha"]), ("UC04", ["Sair e gerenciar dispositivos"])], 2))
+    out.append(pacote(*p2, "Pessoas e carteira", "#2e7d6b", [
+        ("UC05", ["Concluir cadastro inicial"]), ("UC06", ["Cadastrar e remover dependentes"]),
+        ("UC07", ["Informar grupos especiais"]), ("UC08", ["Registrar dose manualmente"]),
+        ("UC09", ["Registrar dose por foto/PDF"])], 2))
+    out.append(pacote(*p3, "Situação, calendário e avisos", "#b5651d", [
+        ("UC10", ["Consultar situação vacinal"]), ("UC11", ["Consultar calendário", "e agendar vacina"]),
+        ("UC12", ["Confirmar vacina tomada"]), ("UC13", ["Ver notificações no painel"]),
+        ("UC14", ["Definir preferências de aviso"])], 2))
+
+    XB, WB = 905, 300
+    p4 = (XB, 66, WB, 292)
+    p5 = (XB, 700, WB, 210)
+    out.append(pacote(*p4, "Administração (somente ADMIN)", "#7a4fa0", [
+        ("UC15", ["Gerir usuários"]), ("UC16", ["Gerir vacinas"]), ("UC17", ["Gerir calendário e regras"])], 1))
+    out.append(pacote(*p5, "Automático (agendador diário)", "#c0392b", [
+        ("UC18", ["Verificar pendências", "e enviar avisos"]), ("UC19", ["Enviar lembrete", "de agendamento"])], 1))
+
+    # atores e ligações
+    out.append(ator(85, 470, "Usuário"))
+    for (x, y, w, h) in (p1, p2, p3):
+        out.append(liga(112, 470, x, y + h / 2))
+    out.append(ator(1310, 210, "Administrador", "#7a4fa0"))
+    out.append(liga(1288, 210, XB + WB, 210))
+    out.append(ator(1310, 810, "Agendador", "#c0392b"))
+    out.append(liga(1288, 810, XB + WB, 810))
+    # serviço de OCR (ator secundário) ligado ao UC09
+    out.append(ator(1310, 530, "Serviço de OCR", "#b5651d"))
+    uc09 = (XA + WA / 4 * 1, 322 + 62 + 2 * 82)
+    out.append(f'<path d="M1288,540 H{XB-20} V{uc09[1]} H{uc09[0]+OVAL_W/2}" fill="none" stroke="#444" stroke-width="1.4" stroke-dasharray="6,4"/>')
+    out.append(f'<text x="{XB-12}" y="{uc09[1]-8}" font-size="11.5" fill="#444">«usa»</text>')
+    # admin herda tudo do usuário (generalização, só texto)
+    out.append(f'<text x="1310" y="296" text-anchor="middle" font-size="11" fill="#555">também executa</text>'
+               f'<text x="1310" y="310" text-anchor="middle" font-size="11" fill="#555">UC01 a UC14</text>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{L}" height="{A}" viewBox="0 0 {L} {A}" font-family="{FONTE}">'
+            f'<rect width="100%" height="100%" fill="#ffffff"/>{"".join(out)}</svg>')
+
+
 if __name__ == "__main__":
     (DESTINO / "figura-modelo-er.svg").write_text(figura_er(), encoding="utf-8")
     (DESTINO / "figura-fluxo-ocr.svg").write_text(figura_ocr(), encoding="utf-8")
+    (DESTINO / "figura-casos-de-uso.svg").write_text(figura_casos_de_uso(), encoding="utf-8")
     print("SVG gerados em", DESTINO)
