@@ -1,5 +1,7 @@
 import { db } from "./database";
 
+import { criarIndices }
+  from "./indices";
 import { criarTabelaUsuarios, migrarColunasVerificacaoEmail }
   from "./tables/usuariosTable";
 
@@ -95,54 +97,56 @@ export async function configurarBanco() {
   disparar os dois em paralelo e a migração falha com
   "no such table" numa base nova.
   */
-  db.serialize(() => {
-    criarTabelaUsuarios(db);
-    migrarColunasVerificacaoEmail(db);
-    migrarColunasBloqueioLogin(db);
-  });
-
-  /* Em série: a migração faz ALTER TABLE na tabela recém-criada. */
-  db.serialize(() => {
-    criarTabelaPessoas(db);
-    migrarColunasFrequenciaAviso(db);
-  });
-
-  criarTabelaDependentes(db);
-
-  criarTabelaGruposEspeciais(db);
-
-  criarTabelaPessoaGrupoEspecial(db);
-
-  criarTabelaVacinas(db);
-
-  criarTabelaCalendarioVacinal(db);
-
-  criarTabelaRegrasVacinais(db);
-
-  criarTabelaCampanhasVacinais(db);
-
-  criarTabelaRegistrosVacinacao(db);
-
-  criarTabelaDosesVacina(db);
-
-  criarTabelaAgendamentosVacina(db);
-  criarTabelaSessoes(db);
-  criarTabelaRedefinicoesSenha(db);
-  criarTabelaConfiguracoes(db);
-  criarTabelaAvisosDose(db);
-
   /*
-  ==========================================
-  AGUARDA SQLITE
-  ==========================================
+  CORREÇÃO [COR-19]: a estrutura era criada "em paralelo" e o código
+  esperava 1 segundo fixo (setTimeout) torcendo para terminar —
+  lento em todo boot e sujeito a corrida em máquina lenta. Agora
+  tudo roda em série e uma consulta final sinaliza o término.
   */
+  await new Promise<void>((resolve, reject) => {
 
-  await new Promise(
-    resolve => setTimeout(
-      resolve,
-      1000
-    )
-  );
+    db.serialize(() => {
+
+      criarTabelaUsuarios(db);
+      migrarColunasVerificacaoEmail(db);
+      migrarColunasBloqueioLogin(db);
+
+      criarTabelaPessoas(db);
+      migrarColunasFrequenciaAviso(db);
+
+      criarTabelaDependentes(db);
+      criarTabelaGruposEspeciais(db);
+      criarTabelaPessoaGrupoEspecial(db);
+      criarTabelaVacinas(db);
+      criarTabelaCalendarioVacinal(db);
+      criarTabelaRegrasVacinais(db);
+      criarTabelaCampanhasVacinais(db);
+      criarTabelaRegistrosVacinacao(db);
+      criarTabelaDosesVacina(db);
+      criarTabelaAgendamentosVacina(db);
+      criarTabelaSessoes(db);
+      criarTabelaRedefinicoesSenha(db);
+      criarTabelaConfiguracoes(db);
+      criarTabelaAvisosDose(db);
+
+      criarIndices(db);
+
+      /*
+      Em modo serial, esta consulta só roda depois de todos
+      os comandos acima: é o sinal de que a estrutura está
+      pronta (no lugar da antiga espera fixa de 1 s).
+      */
+      db.get("SELECT 1", (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      });
+
+    });
+
+  });
 
   /*
   ==========================================

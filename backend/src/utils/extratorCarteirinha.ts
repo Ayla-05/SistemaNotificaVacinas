@@ -1,3 +1,4 @@
+import { hojeIso } from "./dataHoje";
 /*
 ==================================================
 EXTRATOR DE CARTEIRINHA (FUNÇÕES PURAS)
@@ -434,7 +435,7 @@ export function extrairDadosCarteirinha(
 
   const titular = extrairTitular(texto, hoje);
 
-  const hojeIso = hoje.toISOString().slice(0, 10);
+  const dataHoje = hojeIso(hoje);
 
   const candidatos: Array<{
     ordem: number;
@@ -519,7 +520,7 @@ export function extrairDadosCarteirinha(
       : linha.slice(0, vacina.inicio) + " " + linha.slice(vacina.fim);
 
     const datas = extrairDatas(celula(colunas.data) ?? linha, hoje)
-      .filter((d) => d <= hojeIso && d !== titular.dataNascimentoTitular);
+      .filter((d) => d <= dataHoje && d !== titular.dataNascimentoTitular);
 
     const dose =
       extrairDose(celula(colunas.dose) ?? semVacina) ??

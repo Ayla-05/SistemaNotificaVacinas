@@ -1,13 +1,7 @@
 import { Router } from "express";
 
 import { CarteiraController } from "../controllers/carteiraController";
-import {
-  pessoaPertenceAoUsuario,
-  pessoaDoCorpoPertenceAoUsuario,
-  registroPertenceAoUsuario,
-  registroDoCorpoPertenceAoUsuario,
-  dosePertenceAoUsuario
-} from "../middlewares/pessoaOwnershipMiddleware";
+import { pessoaPertenceAoUsuario, pessoaDoCorpoPertenceAoUsuario, registroDaUrlPertenceAoUsuario, registroDoIdPertenceAoUsuario, registroDoCorpoPertenceAoUsuario, doseDoIdPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 ==================================================
@@ -15,6 +9,12 @@ CARTEIRA ROUTES
 ==================================================
 
 Rotas relacionadas à carteira vacinal.
+*/
+/*
+CORREÇÃO [COR-06]: dose, doses do registro, contagem e remoção de
+dose/registro eram acessíveis a qualquer logado pelo id. Agora
+cada rota confere se o registro/dose pertence a uma pessoa da
+conta (middlewares *PertenceAoUsuario).
 */
 const router = Router();
 
@@ -79,7 +79,7 @@ GET /carteira/registro/:registroId/doses
 */
 router.get(
   "/registro/:registroId/doses",
-  registroPertenceAoUsuario("registroId"),
+  registroDaUrlPertenceAoUsuario,
   CarteiraController.listarDoses
 );
 
@@ -92,7 +92,7 @@ GET /carteira/registro/:registroId/contar-doses
 */
 router.get(
   "/registro/:registroId/contar-doses",
-  registroPertenceAoUsuario("registroId"),
+  registroDaUrlPertenceAoUsuario,
   CarteiraController.contarDoses
 );
 
@@ -105,7 +105,7 @@ DELETE /carteira/dose/:id
 */
 router.delete(
   "/dose/:id",
-  dosePertenceAoUsuario,
+  doseDoIdPertenceAoUsuario,
   CarteiraController.removerDose
 );
 
@@ -118,7 +118,7 @@ DELETE /carteira/registro/:id
 */
 router.delete(
   "/registro/:id",
-  registroPertenceAoUsuario("id"),
+  registroDoIdPertenceAoUsuario,
   CarteiraController.removerRegistro
 );
 

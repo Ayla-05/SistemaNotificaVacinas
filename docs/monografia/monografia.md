@@ -166,7 +166,7 @@ REST é um estilo arquitetural proposto por Fielding (2000) que organiza a inter
 
 ### 2.2.5 Persistência e modelagem relacional
 
-O modelo relacional (CODD, 1970), implementado em SQL, garante integridade por meio de chaves primárias, estrangeiras e restrições de unicidade. A escolha do SQLite, banco embarcado e baseado em arquivo, atende ao escopo acadêmico por dispensar servidor dedicado, e a camada *Repository* permite substituí-lo por PostgreSQL ou MySQL sem alterar as regras de negócio.
+O modelo relacional (CODD, 1970), implementado em SQL, garante integridade por meio de chaves primárias, estrangeiras e restrições de unicidade (no SQLite, as chaves estrangeiras precisam ser ativadas explicitamente em cada conexão, o que o sistema faz, conforme a Seção 4.3). A escolha do SQLite, banco embarcado e baseado em arquivo, atende ao escopo acadêmico por dispensar servidor dedicado, e a camada *Repository* permite substituí-lo por PostgreSQL ou MySQL sem alterar as regras de negócio.
 
 ## 2.3 Sistemas distribuídos e integração
 
@@ -267,6 +267,8 @@ Os principais casos de uso são: **UC01** Cadastrar-se e confirmar e-mail; **UC0
 
 O *Notifica Vacinas* segue uma arquitetura **cliente-servidor em três camadas lógicas**, com um *front end* de página única (SPA) que consome uma API REST, e um processo agendador no mesmo servidor de aplicação.
 
+**Figura 1 – Arquitetura do Notifica Vacinas**
+
 ```
 +-----------------------+        HTTPS / JSON        +--------------------------------+
 |  Navegador (SPA)      | <------------------------> |  Servidor de aplicação (Node)  |
@@ -287,6 +289,8 @@ O *Notifica Vacinas* segue uma arquitetura **cliente-servidor em três camadas l
                                                                          |  - Serviço de OCR (Docling) |
                                                                                                          +----------------------------+
 ```
+
+Fonte: elaborado pela autora (2026).
 
 ## 4.2 Organização do código
 
@@ -309,7 +313,11 @@ Essa separação reflete o padrão descrito por Fowler (2002) e permite testar o
 
 ## 4.3 Modelo de dados
 
-O modelo relacional possui dezesseis tabelas.
+O modelo relacional possui dezesseis tabelas, resumidas na Figura 2 (relacionamentos e principais colunas) e descritas no quadro a seguir. As cores agrupam as tabelas por assunto: acesso e sistema, pessoas, carteira e avisos, e catálogo vacinal.
+
+![Figura 2 – Modelo de dados (entidade-relacionamento) do Notifica Vacinas](figuras/figura-modelo-er.png){width=100%}
+
+Fonte: elaborado pela autora (2026).
 
 | Tabela | Finalidade | Relacionamentos principais |
 |---|---|---|
@@ -334,7 +342,36 @@ A separação entre `registros_vacinacao` (a vacina que a pessoa tem na carteira
 
 Os catálogos (vacinas, grupos especiais, calendário e regras) são carregados por *seeds* idempotentes na inicialização. O catálogo inicial contempla vacinas como BCG, hepatites A e B, pentavalente, poliomielite (VIP e VOP), rotavírus, febre amarela, tríplice viral, varicela, HPV, influenza, COVID-19, meningocócicas, pneumocócicas e dengue. O calendário inicial foi baseado nas cartilhas do PNI.
 
+### 4.3.1 Integridade referencial
+
+O SQLite, por padrão, **não aplica** chaves estrangeiras: elas podem ser declaradas no `CREATE TABLE` e mesmo assim ignoradas. Em teste durante esta revisão, uma pessoa ligada a um usuário inexistente foi gravada sem erro, o que permitiria registros órfãos. A conexão passou a executar `PRAGMA foreign_keys = ON` ao abrir o banco, e há um teste automatizado que tenta inserir um registro órfão e verifica a recusa.
+
+Como as tabelas foram criadas sem `ON DELETE CASCADE`, e o SQLite não altera chaves estrangeiras de tabelas existentes, a remoção de um registro com filhos passou a ser feita por uma função de remoção em cascata (`removerEmCascata`). Ela apaga os registros dependentes e, por último, o registro principal, **dentro de uma única transação** (`BEGIN IMMEDIATE ... COMMIT`, com `ROLLBACK` em caso de erro). Assim, remover uma vacina da carteira apaga suas doses; remover uma pessoa apaga carteira, agendamentos, avisos, grupos e vínculos de dependência; e remover um usuário apaga também suas sessões e seus pedidos de redefinição de senha. Uma remoção nunca fica pela metade.
+
+### 4.3.2 Índices e desempenho
+
+O SQLite cria índice automaticamente apenas para chaves primárias e restrições `UNIQUE`; colunas de chave estrangeira não são indexadas. Sem índices, consultas como "os agendamentos desta pessoa" ou "as doses deste registro" percorrem a tabela inteira, e o mesmo ocorre na verificação de chave estrangeira ao apagar um registro. Foram criados 19 índices (arquivo `database/indices.ts`) sobre as colunas de relacionamento e de filtro mais usadas, entre eles:
+
+* `agendamentos_vacina (pessoa_id, data_prevista)` e `(status, data_prevista)`, para a agenda da pessoa e a rotina diária de lembretes;
+* `registros_vacinacao (pessoa_id, vacina_id)`, `doses_vacina (registro_vacinacao_id, numero_dose)` e `pessoa_grupo_especial (pessoa_id, grupo_especial_id)`, **únicos**, que passam a garantir no banco o que o código já pressupunha (uma vacina por pessoa na carteira, uma dose de cada número por registro, um grupo especial por pessoa);
+* índices simples nas demais chaves estrangeiras (`pessoas.usuario_id`, `dependentes`, `calendario_vacinal`, `regras_vacinais`, `campanhas_vacinais`, `redefinicoes_senha`).
+
+Se uma base antiga já contiver duplicatas, o índice único não é criado: o erro é registrado e um índice comum equivalente é usado, de modo que a atualização nunca impede o sistema de subir. O uso dos índices foi conferido com `EXPLAIN QUERY PLAN`, que passou a mostrar buscas do tipo `SEARCH agendamentos_vacina USING INDEX idx_agendamento_pessoa_data (pessoa_id=?)` no lugar da varredura completa. Não foi feita medição de desempenho com grande volume de dados; o ganho é esperado, mas não quantificado neste trabalho.
+
+### 4.3.3 Configuração da conexão e criação da estrutura
+
+Além das chaves estrangeiras, a conexão define `busy_timeout = 5000` (espera até 5 segundos por um bloqueio, em vez de falhar na hora com `SQLITE_BUSY`) e, em banco de arquivo, `journal_mode = WAL` e `synchronous = NORMAL`. No modo WAL, leituras não bloqueiam a escrita, e cada gravação custa menos, o que combina com a rotina diária de notificações lendo o banco enquanto a API atende requisições.
+
+A estrutura é criada em `configurarBanco`, em ordem serial, e uma consulta final sinaliza que tudo terminou antes de executar as *seeds*. Antes, o código aguardava um segundo fixo, o que atrasava toda inicialização e podia falhar em máquina lenta. A evolução do esquema é feita por migrações aditivas (`ALTER TABLE ... ADD COLUMN`, com tratamento de coluna já existente), e o arquivo do banco é definido por `DATABASE_FILE`; nos testes automatizados usa-se o banco em memória (`:memory:`), o que isola cada execução. O arquivo `.db` não é versionado.
+
+Do ponto de vista de código, os 16 repositórios repetiam, em cada consulta, o mesmo bloco de criação de `Promise` e tratamento do *callback* do driver (cerca de 120 repetições). Esse trecho foi concentrado em quatro funções (`consultarTodos`, `consultarUm`, `inserir` e `alterar`), de modo que cada repositório descreve apenas o SQL e seus parâmetros, e o volume de código dessa camada caiu de 4.478 para cerca de 3.100 linhas, sem mudança de comportamento (verificada pela suíte de testes).
+
+
 ## 4.4 Fluxo de cálculo de pendências
+
+A Figura 3 resume o fluxo do cálculo de pendências.
+
+**Figura 3 – Fluxo do cálculo de pendências**
 
 ```
 pessoaId
@@ -356,6 +393,8 @@ calendário da faixa etária        carteira da pessoa
                       v
          resumo { pessoa, faixa, idade, em_dia[], pendentes[] }
 ```
+
+Fonte: elaborado pela autora (2026).
 
 ## 4.5 Principais endpoints
 
@@ -436,6 +475,18 @@ O `OcrService` envia o arquivo (JPEG, PNG, WebP ou PDF) ao serviço de OCR, um p
 * trata datas futuras como "próxima dose", e não como aplicação, e ignora a data de nascimento do titular;
 * devolve o registro mais recente, além do nome e da data de nascimento do titular, quando presentes. Campos não encontrados voltam como `null`.
 
+A Figura 4 mostra o percurso completo, da foto ao registro na carteira.
+
+![Figura 4 – Fluxo da leitura da carteirinha por OCR](figuras/figura-fluxo-ocr.png){width=85%}
+
+Fonte: elaborado pela autora (2026).
+
+**O serviço de OCR.** O `ocr-service` é um servidor FastAPI com duas rotas: `GET /saude`, para verificar se está no ar, e `POST /extrair`, que recebe o arquivo (JPEG, PNG, WebP ou PDF, até 5 MB) e responde `{ "texto": "<Markdown>" }`. O arquivo é gravado em um arquivo temporário, convertido e descartado; em caso de falha, a resposta não inclui detalhes do erro (o conteúdo pode ser dado pessoal), apenas o código: 415 (tipo não aceito), 413 (arquivo grande) ou 422 (arquivo ilegível). O Docling é configurado com três etapas: análise de *layout* da página, reconhecimento da estrutura de tabelas e OCR (EasyOCR, em português e inglês) para as regiões sem texto digital. Em PDFs gerados por sistemas, como a carteira digital do Meu SUS Digital, o texto já existe no arquivo e é aproveitado diretamente; em fotos, o OCR é o que lê as letras.
+
+Carregar os modelos de aprendizado de máquina é a parte cara do processo (na primeira vez na máquina, o Docling baixa alguns gigabytes, que depois ficam em cache). Por isso o conversor é criado uma única vez e carregado em segundo plano assim que o serviço sobe, para que a primeira leitura de um usuário não pague esse custo. A rota de extração é síncrona de propósito: o FastAPI a executa em um conjunto de *threads*, e o OCR, que usa o processador, não trava o servidor. Segundo a documentação do serviço, sem placa de vídeo a leitura de uma foto leva de alguns segundos a cerca de um minuto.
+
+**O cliente e o extrator.** No lado do Node, o `OcrService` envia o arquivo por HTTP com tempo limite de 120 segundos (configurável por `OCR_TIMEOUT_MS`) e traduz falhas de conexão em mensagens que dizem o que fazer (serviço fora do ar, endereço errado, tempo esgotado), todas respondidas ao usuário com 503, sem derrubar a API. O texto devolvido segue para o extrator, que é uma função pura, sem acesso a rede ou banco, e por isso testável de forma determinística: são testes unitários sobre textos de carteirinha de exemplo e testes de integração da rota `/scan/analisar` com o serviço de OCR simulado.
+
 Quatro decisões de projeto merecem destaque:
 
 1. **Humano no circuito.** O endpoint `/scan/analisar` apenas devolve a sugestão. A gravação ocorre em `/carteira/confirmar-scan`, após revisão do usuário. Isso trata o risco de erro de leitura (OCR em letra manuscrita, por exemplo), relevante porque um dado vacinal incorreto pode levar a uma conclusão errada de que a pessoa está protegida.
@@ -466,7 +517,22 @@ A história do projeto registra uma decisão pertinente: o envio foi trocado ent
 
 ## 5.6 Qualidade e testes
 
-A verificação foi feita por arquivos `.http` versionados (`backend/tests/`), que documentam e reproduzem os fluxos de cada módulo (pessoas, carteira, calendário, agendamentos, vacinas, CEP e fluxo completo do usuário), além de testes manuais na interface. O processo revelou e corrigiu defeitos, como a duplicação do calendário vacinal na *seed*, o cálculo incorreto de pendências ao registrar "Na dose N" e o seletor de dose que retornava ao estado inicial. Para os mecanismos de segurança, há testes automatizados (Vitest e Supertest) que cobrem a proteção CSRF, a abertura e a revogação de sessões, a rotação e a detecção de reuso do *refresh token*, o isolamento entre usuários, o bloqueio de conta e o fluxo de recuperação de senha, além de testes unitários das funções puras de segurança. Reconhece-se, porém, que **a cobertura automatizada ainda não alcança o cálculo de pendências nem o *front end*** (Seção 7.3).
+A verificação do sistema combina arquivos `.http` versionados (`backend/tests/`), que documentam e reproduzem os fluxos de cada módulo, testes manuais na interface e uma suíte automatizada (Vitest e Supertest) organizada em seis categorias, executada com `npm test` no diretório `backend`. A suíte tem 375 testes na data de fechamento desta versão:
+
+| Categoria | Testes | O que verifica |
+|---|---:|---|
+| Unitários | 75 | Funções puras: extrator da carteirinha, faixa etária, próximas doses, frequência de aviso, utilitários de segurança. |
+| Integração | 38 | Módulos com banco em memória: autenticação e sessões, avisos de dose, leitura por OCR (com o serviço simulado). |
+| Funcional (ponta a ponta) | 63 | O aplicativo completo, com CSRF, login e perfis: usuários, pessoas, vacinas, calendário, carteira, agendamentos, dependentes, grupos especiais, remoção em cascata e integridade do banco. |
+| Lógica de negócio | 135 | Validação de entradas, idade e datas-limite (fuso do Brasil, ano bissexto, véspera de aniversário), pendências e próximas doses conforme as doses registradas, concorrência (a mesma dose enviada várias vezes ao mesmo tempo é gravada uma só vez). |
+| Segurança | 47 | Itens do OWASP Top 10: sessão e JWT forjado, controle de acesso (IDOR e escalada de privilégio), injeção de SQL, exposição de dados, cabeçalhos, CORS, tratamento de erros. |
+| Arquitetura | 17 | Regras de camadas, ausência de ciclos de dependência, SQL parametrizado, ausência de segredos no código e varredura de **todas** as rotas declaradas (exigem login, perfil e cabeçalho anti-CSRF). |
+
+Os testes de arquitetura leem o código-fonte e comparam o que existe com o que o projeto promete: por exemplo, que controladores não acessam repositórios, que nenhuma consulta SQL concatena valores, e que nenhuma rota, entre as mais de 70 declaradas, fica sem a proteção devida. O comando `npm run test:relatorio` executa a suíte e gera o relatório `docs/relatorio-testes.md`, com o resultado de cada teste.
+
+A suíte revelou e levou à correção de 26 problemas, documentados um a um (problema, correção e teste que a comprova) em `docs/correcoes.md` e comentados no próprio código como `CORREÇÃO [COR-nn]`. Os mais graves foram: criação, edição e desativação de vacinas sem nenhuma autenticação; usuários logados lendo, alterando e apagando pessoas, carteiras e agendamentos de outras contas (IDOR); resposta que expunha o *hash* da senha de todos os usuários; chaves estrangeiras desligadas no banco; sessões que continuavam válidas após a desativação da conta; a possibilidade de o único administrador remover a si mesmo; a aceitação de datas de nascimento futuras, números de dose inválidos e e-mails malformados; e um erro no cálculo da idade, que em fuso do Brasil antecipava em um dia a troca de faixa etária. Além dos defeitos de segurança, foram corrigidos o código repetido nos repositórios e a espera fixa de um segundo na inicialização. Por fim, o processo anterior de verificação manual já havia corrigido a duplicação do calendário vacinal na *seed*, o cálculo incorreto de pendências ao registrar "Na dose N" e o seletor de dose que retornava ao estado inicial.
+
+Reconhece-se que a cobertura ainda tem lacunas: o *front end* não tem testes automatizados, a leitura real por OCR e o envio real de e-mail são exercitados apenas com simulações, não há integração contínua executando a suíte e não foram feitos testes de carga nem a auditoria de vulnerabilidades das dependências (`npm audit`) (Seção 7.3).
 
 \newpage
 
@@ -488,7 +554,13 @@ A verificação foi feita por arquivos `.http` versionados (`backend/tests/`), q
 | Acesso a dados de terceiros (IDOR) | *Middlewares* de posse do recurso. |
 | Escalada de privilégio | `exigirAdmin` em rotas administrativas. |
 | Vazamento de segredos | `.env` fora do Git, `.env.example` documentado, sem credenciais fixas. |
-| Banco versionado com dados reais | `vacinas.db` removido do controle de versão. |
+| Banco versionado com dados reais | `vacinas.db` removido do controle de versão e `*.db` no `.gitignore`. O histórico do Git ainda contém o arquivo antigo, por isso as senhas administrativas devem ser trocadas. |
+| Dados de saúde guardados em cache do navegador ou de *proxy* | `Cache-Control: no-store` em todas as respostas da API. |
+| Vazamento de detalhes internos em erros | Manipulador global de erros: respostas em JSON enxuto, sem pilha de execução, caminhos nem SQL; o detalhe fica só no registro do servidor. |
+| Troca do algoritmo de assinatura do token (`alg: none`) | Assinatura e verificação do JWT fixadas em HS256. |
+| Sistema sem administrador | Um administrador não remove, desativa nem rebaixa a si mesmo, nem o último administrador ativo. |
+| Conta desativada que continua em uso | Desativar a conta revoga as sessões abertas. |
+| Registros órfãos e remoções pela metade | Chaves estrangeiras ativas e remoção em cascata dentro de transação (Seção 4.3). |
 | Conta falsa ou e-mail de terceiros | Verificação de e-mail por código com expiração. |
 
 ## 6.2 Conformidade com a LGPD
@@ -502,7 +574,7 @@ Analisando o sistema pelas propriedades clássicas:
 * **Transparência de acesso e de localização:** o cliente conhece apenas a URL da API; a troca de banco ou de provedor de e-mail é invisível a ele.
 * **Tolerância a falhas parciais:** erros de SMTP ou do serviço de OCR geram mensagens de erro tratadas, e a rotina diária isola as falhas em `try/catch`.
 * **Escalabilidade:** a API é *stateless* (a sessão está no JWT), o que permite replicá-la atrás de um balanceador de carga. Contudo, o SQLite em arquivo local e o agendador no mesmo processo impedem a replicação horizontal imediata: com duas instâncias, o *job* rodaria duas vezes e os usuários receberiam e-mails duplicados. A solução é mover o banco para um SGBD cliente-servidor e executar o agendador em um único *worker* dedicado ou com *lock* distribuído.
-* **Consistência:** o registro da dose e o envio da confirmação não são atômicos. O desenho aceita **consistência eventual** para a notificação, mas a gravação da dose e de seu registro pai deve ocorrer em transação para evitar linhas órfãs.
+* **Consistência:** o registro da dose e o envio da confirmação não são atômicos. O desenho aceita **consistência eventual** para a notificação, as remoções em cascata já ocorrem em transação (Seção 4.3), mas a gravação da dose e de seu registro pai ainda são operações separadas e deveriam ocorrer em uma única transação para evitar linhas órfãs.
 * **Idempotência:** o envio de lembretes deve guardar a data do último disparo por agendamento para evitar duplicidade em reexecuções. É uma melhoria listada no Capítulo 8.
 * **Observabilidade:** o sistema usa `console.log`; a evolução natural é *logging* estruturado, métricas e rastreamento.
 
@@ -531,7 +603,7 @@ O *Notifica Vacinas* **não substitui** o registro oficial; atua como camada de 
 
 1. **Fonte de dados manual.** A confiabilidade da carteira depende do que o usuário lança. Não há validação cruzada com o SI-PNI.
 2. **Cobertura do calendário.** O cálculo usa o Calendário Nacional 2026 (idade, intervalo e grupo especial), mas não modela gestantes (o calendário próprio não foi incluído), imunocomprometidos, acamados, viajantes e áreas de risco, que dependem de avaliação do serviço de saúde. Onde o calendário não informa o intervalo entre doses (hepatite B e dengue), foram mantidos os valores que o sistema já utilizava.
-3. **Cobertura de testes parcial.** Os mecanismos de autenticação e sessão têm testes automatizados, mas o cálculo de pendências, a faixa etária e o *front end* ainda não, e não há integração contínua executando-os.
+3. **Cobertura de testes parcial.** O *back end* tem 375 testes automatizados (Seção 5.6), mas o *front end* não tem nenhum, a leitura real por OCR e o envio de e-mail só são testados com simulações, e não há integração contínua executando a suíte nem teste de carga.
 4. **Banco embarcado e agendador no mesmo processo** (Seção 6.3).
 5. **Canal único de notificação e ausência de segundo fator.** SMS não foi implementado, e e-mails podem cair em *spam* ou não ser lidos. O login depende apenas de e-mail e senha; autenticação em dois fatores (TOTP) permanece como melhoria futura, e deveria ser obrigatória para administradores.
 6. **Conformidade com a LGPD incompleta** (Seção 6.2).
@@ -667,9 +739,13 @@ UNIVERSIDADE DE SÃO PAULO. [Estudos sobre cobertura vacinal e hesitação vacin
 | `PORT` | Porta do servidor Express. |
 | `FRONTEND_URL` | Origem permitida pelo CORS. |
 | `JWT_SECRET` | Segredo de assinatura dos tokens (obrigatório). |
-| `DATABASE_URL` | Caminho do arquivo SQLite. |
+| `DATABASE_FILE` | Caminho do arquivo SQLite (padrão `./vacinas.db`; `:memory:` nos testes). |
 | `ADMIN_EMAIL`, `ADMIN_SENHA` | Criação do administrador inicial. |
 | `OCR_SERVICE_URL` | URL do serviço de OCR (Docling). |
+| `OCR_TIMEOUT_MS` | Tempo máximo de uma leitura de OCR (padrão 120000). |
+| `AVISO_DOSE_DIAS` | Antecedência, em dias, do aviso de dose (padrão 7). |
+| `TRUST_PROXY` | Número de *proxies* à frente do servidor (para o IP real nos limites de taxa). |
+| `FORCE_HTTPS` | `false` desliga o redirecionamento para HTTPS (padrão: ligado em produção). |
 | `EMAIL_USER`, `EMAIL_APP_PASSWORD`, `EMAIL_SERVICE`, `EMAIL_FROM` | Envio de e-mail. |
 | `NOTIFICACAO_CRON` | Expressão cron da verificação diária. |
 
@@ -698,3 +774,21 @@ Comparação entre o que o sistema guardava (`calendarioSeed.ts`, `regrasSeed.ts
 * **Dados:** 20 divergências, entre elas: hepatite B da criança com 3 doses (o calendário traz 1 dose ao nascer); poliomielite sem os reforços aos 15 meses e 4 anos; tríplice viral, febre amarela e varicela da criança com número de doses a menos; HPV com 2 doses (o calendário traz 1 dose, aos 9 anos); influenza, COVID-19 e dengue ausentes do calendário; pneumocócica 23-valente no idoso (o calendário traz a 20-valente, para grupos específicos).
 * **Lógica:** faixas etárias com limites diferentes (criança 0–10, e não 0–9; adulto a partir dos 20, e não dos 25); pendências sem considerar a idade em que cada dose é devida; reforços, intervalos e grupos especiais gravados, mas nunca lidos; nenhuma data prevista.
 * **Correção:** o cálculo de próximas doses (Seção 5.3) e a revisão dos limites das faixas etárias.
+
+# APÊNDICE D — TESTES E CORREÇÕES
+
+Os documentos completos estão no repositório:
+
+* `docs/relatorio-testes.md`: resultado de cada um dos testes da suíte, por categoria (gerado por `npm run test:relatorio`);
+* `docs/correcoes.md`: as 26 correções (`COR-01` a `COR-26`), cada uma com o problema, a forma de correção, o teste que a comprova e a gravidade, além das pendências conhecidas.
+
+Execução:
+
+```bash
+cd backend
+npm test                  # toda a suíte
+npm run test:seguranca    # somente segurança
+npm run test:arquitetura  # somente arquitetura
+npm run test:logica       # somente lógica de negócio
+npm run test:relatorio    # suíte + relatório em docs/relatorio-testes.md
+```

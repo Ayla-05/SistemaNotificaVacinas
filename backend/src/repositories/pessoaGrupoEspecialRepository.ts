@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -9,10 +9,8 @@ export function listarGruposDaPessoa(
   pessoaId: number
 ): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT
 
         ge.id,
@@ -30,19 +28,8 @@ export function listarGruposDaPessoa(
 
       ORDER BY ge.nome
       `,
-      [pessoaId],
-      (err, rows) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    [pessoaId]
+  );
 
 }
 
@@ -56,10 +43,8 @@ export function adicionarGrupoPessoa(
   grupoEspecialId: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO pessoa_grupo_especial (
 
         pessoa_id,
@@ -69,22 +54,11 @@ export function adicionarGrupoPessoa(
       )
       VALUES (?, ?)
       `,
-      [
+    [
         pessoaId,
         grupoEspecialId
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -98,10 +72,8 @@ export function existeGrupoNaPessoa(
   grupoEspecialId: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
 
       FROM pessoa_grupo_especial
@@ -109,22 +81,11 @@ export function existeGrupoNaPessoa(
       WHERE pessoa_id = ?
         AND grupo_especial_id = ?
       `,
-      [
+    [
         pessoaId,
         grupoEspecialId
-      ],
-      (err, row) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -138,31 +99,18 @@ export function removerGrupoPessoa(
   grupoEspecialId: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM pessoa_grupo_especial
 
       WHERE pessoa_id = ?
         AND grupo_especial_id = ?
       `,
-      [
+    [
         pessoaId,
         grupoEspecialId
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -175,26 +123,13 @@ export function removerTodosOsGruposPessoa(
   pessoaId: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM pessoa_grupo_especial
 
       WHERE pessoa_id = ?
       `,
-      [pessoaId],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [pessoaId]
+  );
 
 }

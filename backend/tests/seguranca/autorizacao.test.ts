@@ -4,23 +4,23 @@ import cookieParser from "cookie-parser";
 import request from "supertest";
 import bcrypt from "bcryptjs";
 
-import { configurarBanco } from "../src/database/configurarBanco";
-import { exigirCabecalhoCsrf } from "../src/middlewares/csrfMiddleware";
-import { autenticar, exigirAdmin } from "../src/middlewares/authMiddleware";
-import authRoutes from "../src/routes/authRoutes";
-import pessoaRoutes from "../src/routes/pessoaRoutes";
-import vacinaRoutes from "../src/routes/vacinaRoutes";
-import carteiraRoutes from "../src/routes/carteiraRoutes";
-import calendarioRoutes from "../src/routes/calendarioRoutes";
-import agendamentoRoutes from "../src/routes/agendamentoRoutes";
-import dependenteRoutes from "../src/routes/dependenteRoutes";
-import grupoEspecialPessoaRoutes from "../src/routes/grupoEspecialPessoaRoutes";
-import vacinalRoutes from "../src/routes/vacinalRoutes";
-import usuarioRoutes from "../src/routes/usuarioRoutes";
-import regraVacinalRoutes from "../src/routes/regraVacinalRoutes";
-import * as usuarioRepository from "../src/repositories/usuarioRepository";
-import * as pessoaRepository from "../src/repositories/pessoaRepository";
-import { CarteiraService } from "../src/services/carteiraService";
+import { configurarBanco } from "../../src/database/configurarBanco";
+import { exigirCabecalhoCsrf } from "../../src/middlewares/csrfMiddleware";
+import { autenticar, exigirAdmin } from "../../src/middlewares/authMiddleware";
+import authRoutes from "../../src/routes/authRoutes";
+import pessoaRoutes from "../../src/routes/pessoaRoutes";
+import vacinaRoutes from "../../src/routes/vacinaRoutes";
+import carteiraRoutes from "../../src/routes/carteiraRoutes";
+import calendarioRoutes from "../../src/routes/calendarioRoutes";
+import agendamentoRoutes from "../../src/routes/agendamentoRoutes";
+import dependenteRoutes from "../../src/routes/dependenteRoutes";
+import grupoEspecialPessoaRoutes from "../../src/routes/grupoEspecialPessoaRoutes";
+import vacinalRoutes from "../../src/routes/vacinalRoutes";
+import usuarioRoutes from "../../src/routes/usuarioRoutes";
+import regraVacinalRoutes from "../../src/routes/regraVacinalRoutes";
+import * as usuarioRepository from "../../src/repositories/usuarioRepository";
+import * as pessoaRepository from "../../src/repositories/pessoaRepository";
+import { CarteiraService } from "../../src/services/carteiraService";
 
 vi.mock("express-rate-limit", () => ({
   default: () => (_req: any, _res: any, next: any) => next(),

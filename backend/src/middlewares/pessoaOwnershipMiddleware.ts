@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 
 import * as pessoaRepository from "../repositories/pessoaRepository";
-import * as agendamentoVacinaRepository from "../repositories/agendamentoVacinaRepository";
 import * as registroVacinacaoRepository from "../repositories/registroVacinacaoRepository";
 import * as doseVacinaRepository from "../repositories/doseVacinaRepository";
+import * as agendamentoVacinaRepository from "../repositories/agendamentoVacinaRepository";
 
 /*
 ==================================================
@@ -123,53 +123,13 @@ export async function pessoaDoCorpoPertenceAoUsuario(
 
 }
 
-
 /*
-Para rotas com o :id de um agendamento na URL
-(ex.: PATCH /agendamentos/:id/confirmar). Resolve a
-pessoa dona do agendamento e valida a posse.
+CORREÇÃO [COR-04/06/07]: os middlewares abaixo estendem a checagem
+de posse (antes só havia por :pessoaId) para recursos
+identificados por id de pessoa, registro, dose e agendamento.
 */
-export async function agendamentoPertenceAoUsuario(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-
-  try {
-
-    const agendamento: any =
-      await agendamentoVacinaRepository
-        .buscarAgendamentoPorId(
-          Number(req.params.id)
-        );
-
-    if (!agendamento) {
-
-      return res.status(404).json({
-        erro: "Agendamento não encontrado."
-      });
-
-    }
-
-    await validarPosse(
-      agendamento.pessoa_id,
-      req,
-      res,
-      next
-    );
-
-  } catch (error: any) {
-
-    return res.status(400).json({
-      erro: error.message
-    });
-
-  }
-
-}
-
 /*
-Pessoa identificada pelo :id da própria URL
+Para rotas com :id da própria pessoa na URL
 (ex.: GET/PUT/DELETE /pessoas/:id).
 */
 export async function pessoaDoIdPertenceAoUsuario(
@@ -198,12 +158,14 @@ export async function pessoaDoIdPertenceAoUsuario(
 }
 
 /*
-Registro vacinal identificado por um parâmetro da URL
-(ex.: /carteira/registro/:registroId/doses). A posse é a
-da pessoa dona do registro.
+Para recursos que pertencem a uma pessoa de forma indireta
+(registro, dose, agendamento). O resolvedor devolve o
+pessoa_id dono do recurso; se o recurso não existe, só o
+administrador segue adiante (o controller responde "não
+encontrado"); os demais recebem 403, sem revelar se existe.
 */
-export function registroPertenceAoUsuario(
-  parametro: string
+function donoDoRecurso(
+  resolverPessoaId: (req: Request) => Promise<number | undefined>
 ) {
 
   return async (
@@ -214,24 +176,32 @@ export function registroPertenceAoUsuario(
 
     try {
 
-      const registro =
-        await registroVacinacaoRepository
-          .buscarRegistroPorId(
-            Number(req.params[parametro])
-          );
-
-      if (!registro) {
-        return res.status(404).json({
-          erro: "Registro vacinal não encontrado."
-        });
+      if (req.perfilUsuario === "ADMIN") {
+        return next();
       }
 
-      await validarPosse(
-        registro.pessoa_id,
-        req,
-        res,
-        next
-      );
+      const pessoaId =
+        await resolverPessoaId(req);
+
+      const pessoa =
+        pessoaId
+          ? await pessoaRepository.buscarPessoaPorId(
+              pessoaId
+            )
+          : undefined;
+
+      if (
+        !pessoa ||
+        pessoa.usuario_id !== req.usuarioId
+      ) {
+
+        return res.status(403).json({
+          erro: "Você não tem acesso a este recurso."
+        });
+
+      }
+
+      next();
 
     } catch (error: any) {
 
@@ -245,96 +215,39 @@ export function registroPertenceAoUsuario(
 
 }
 
-/*
-Registro vacinal informado no corpo da requisição
-(ex.: POST /carteira/dose com registroVacinacaoId).
-*/
-export async function registroDoCorpoPertenceAoUsuario(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+const pessoaDoRegistro = async (registroId: unknown) =>
+  (await registroVacinacaoRepository.buscarRegistroPorId(
+    Number(registroId)
+  ))?.pessoa_id as number | undefined;
 
-  try {
+/* :registroId na URL */
+export const registroDaUrlPertenceAoUsuario =
+  donoDoRecurso((req) => pessoaDoRegistro(req.params.registroId));
 
-    const registro =
-      await registroVacinacaoRepository
-        .buscarRegistroPorId(
-          Number(req.body?.registroVacinacaoId)
-        );
+/* :id na URL é um registro vacinal */
+export const registroDoIdPertenceAoUsuario =
+  donoDoRecurso((req) => pessoaDoRegistro(req.params.id));
 
-    if (!registro) {
-      return res.status(404).json({
-        erro: "Registro vacinal não encontrado."
-      });
-    }
+/* registroVacinacaoId no corpo */
+export const registroDoCorpoPertenceAoUsuario =
+  donoDoRecurso((req) => pessoaDoRegistro(req.body?.registroVacinacaoId));
 
-    await validarPosse(
-      registro.pessoa_id,
-      req,
-      res,
-      next
-    );
+/* :id na URL é uma dose */
+export const doseDoIdPertenceAoUsuario =
+  donoDoRecurso(async (req) => {
+    const dose: any =
+      await doseVacinaRepository.buscarDosePorId(
+        Number(req.params.id)
+      );
+    return dose
+      ? pessoaDoRegistro(dose.registro_vacinacao_id)
+      : undefined;
+  });
 
-  } catch (error: any) {
-
-    return res.status(400).json({
-      erro: error.message
-    });
-
-  }
-
-}
-
-/*
-Dose identificada pelo :id da URL (DELETE /carteira/dose/:id):
-a posse é a da pessoa dona do registro da dose.
-*/
-export async function dosePertenceAoUsuario(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-
-  try {
-
-    const dose =
-      await doseVacinaRepository
-        .buscarDosePorId(
-          Number(req.params.id)
-        );
-
-    if (!dose) {
-      return res.status(404).json({
-        erro: "Dose não encontrada."
-      });
-    }
-
-    const registro =
-      await registroVacinacaoRepository
-        .buscarRegistroPorId(
-          dose.registro_vacinacao_id
-        );
-
-    if (!registro) {
-      return res.status(404).json({
-        erro: "Registro vacinal não encontrado."
-      });
-    }
-
-    await validarPosse(
-      registro.pessoa_id,
-      req,
-      res,
-      next
-    );
-
-  } catch (error: any) {
-
-    return res.status(400).json({
-      erro: error.message
-    });
-
-  }
-
-}
+/* :id na URL é um agendamento */
+export const agendamentoDoIdPertenceAoUsuario =
+  donoDoRecurso(async (req) =>
+    (await agendamentoVacinaRepository.buscarAgendamentoPorId(
+      Number(req.params.id)
+    ))?.pessoa_id as number | undefined
+  );

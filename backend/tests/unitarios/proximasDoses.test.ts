@@ -7,7 +7,7 @@ import {
   diasEntre,
   idadeEmMeses,
   ProximaDose
-} from "../src/utils/proximasDoses";
+} from "../../src/utils/proximasDoses";
 
 const HOJE = "2026-10-31";
 

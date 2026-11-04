@@ -274,6 +274,7 @@ export class PessoaService {
       ...dados
     };
 
+
     return await pessoaRepository.atualizarPessoa(
       id,
       dadosCompletos

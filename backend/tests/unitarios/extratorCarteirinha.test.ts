@@ -5,7 +5,7 @@ import {
   extrairDatas,
   extrairDadosCarteirinha,
   extrairDose
-} from "../src/utils/extratorCarteirinha";
+} from "../../src/utils/extratorCarteirinha";
 
 /* Mesmos nomes do seed do catálogo (vacinasSeed.ts). */
 const CATALOGO = [

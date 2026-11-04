@@ -1,7 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 
 import { PessoaController } from "../controllers/pessoaController";
-import { exigirAdmin } from "../middlewares/authMiddleware";
 import { pessoaDoIdPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
@@ -35,16 +34,9 @@ function usuarioEDonoDaConta(
 }
 
 /*
-==================================================
-PESSOA ROUTES
-==================================================
-
-Rotas relacionadas às pessoas
-e dependentes vinculados ao usuário.
-*/
-/*
 Quem não é administrador só cria pessoas na própria conta: o usuario_id
-do corpo é ignorado e substituído pelo do usuário autenticado.
+do corpo é ignorado e substituído pelo do usuário autenticado
+(COR-05: antes era possível criar pessoa em outra conta).
 */
 function forcarDonoDaPessoa(
   req: Request,
@@ -63,6 +55,19 @@ function forcarDonoDaPessoa(
 
 }
 
+/*
+==================================================
+PESSOA ROUTES
+==================================================
+
+Rotas relacionadas às pessoas
+e dependentes vinculados ao usuário.
+*/
+/*
+CORREÇÃO [COR-04]: GET/PUT/DELETE /pessoas/:id não conferiam o
+dono (IDOR: dava para ler, alterar e apagar a pessoa de outra
+conta trocando o id). Agora passam por pessoaDoIdPertenceAoUsuario.
+*/
 const router = Router();
 
 /*
@@ -74,7 +79,6 @@ GET /pessoas
 */
 router.get(
   "/",
-  exigirAdmin,
   PessoaController.listar
 );
 

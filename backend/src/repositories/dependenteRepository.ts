@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -9,10 +9,8 @@ export function listarDependentes(
   responsavelId: number
 ): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT
 
         d.id,
@@ -38,19 +36,8 @@ export function listarDependentes(
 
       ORDER BY p.nome
       `,
-      [responsavelId],
-      (err, rows) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    [responsavelId]
+  );
 
 }
 
@@ -63,27 +50,14 @@ export function buscarDependentePorId(
   id: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM dependentes
       WHERE id = ?
       `,
-      [id],
-      (err, row) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -98,10 +72,8 @@ export function criarDependente(
   parentesco: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO dependentes (
 
         responsavel_id,
@@ -113,23 +85,12 @@ export function criarDependente(
       )
       VALUES (?, ?, ?)
       `,
-      [
+    [
         responsavelId,
         dependenteId,
         parentesco
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -143,10 +104,8 @@ export function verificarDependente(
   dependenteId: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
 
       FROM dependentes
@@ -154,22 +113,11 @@ export function verificarDependente(
       WHERE responsavel_id = ?
         AND dependente_id = ?
       `,
-      [
+    [
         responsavelId,
         dependenteId
-      ],
-      (err, row) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -183,30 +131,17 @@ export function atualizarParentesco(
   parentesco: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE dependentes
       SET parentesco = ?
       WHERE id = ?
       `,
-      [
+    [
         parentesco,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -219,26 +154,13 @@ export function removerDependente(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM dependentes
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -252,30 +174,17 @@ export function removerRelacionamentoDependente(
   dependenteId: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM dependentes
 
       WHERE responsavel_id = ?
         AND dependente_id = ?
       `,
-      [
+    [
         responsavelId,
         dependenteId
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }

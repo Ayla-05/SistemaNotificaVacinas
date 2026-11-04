@@ -7,7 +7,7 @@ import {
   gerarCodigoNumerico,
   gerarTokenOpaco,
   hashToken
-} from "../src/utils/seguranca";
+} from "../../src/utils/seguranca";
 
 describe("calcularBloqueioMinutos", () => {
 

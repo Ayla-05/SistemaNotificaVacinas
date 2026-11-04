@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeAll } from "vitest";
 
-import { configurarBanco } from "../src/database/configurarBanco";
-import { ProximasDosesService } from "../src/services/proximasDosesService";
-import { VacinalService } from "../src/services/vacinalService";
+import { configurarBanco } from "../../src/database/configurarBanco";
+import { ProximasDosesService } from "../../src/services/proximasDosesService";
+import { VacinalService } from "../../src/services/vacinalService";
 
-import * as usuarioRepository from "../src/repositories/usuarioRepository";
-import * as pessoaRepository from "../src/repositories/pessoaRepository";
-import * as vacinaRepository from "../src/repositories/vacinaRepository";
-import * as registroVacinacaoRepository from "../src/repositories/registroVacinacaoRepository";
-import * as doseVacinaRepository from "../src/repositories/doseVacinaRepository";
-import * as grupoEspecialRepository from "../src/repositories/grupoEspecialRepository";
-import * as pessoaGrupoEspecialRepository from "../src/repositories/pessoaGrupoEspecialRepository";
+import * as usuarioRepository from "../../src/repositories/usuarioRepository";
+import * as pessoaRepository from "../../src/repositories/pessoaRepository";
+import * as vacinaRepository from "../../src/repositories/vacinaRepository";
+import * as registroVacinacaoRepository from "../../src/repositories/registroVacinacaoRepository";
+import * as doseVacinaRepository from "../../src/repositories/doseVacinaRepository";
+import * as grupoEspecialRepository from "../../src/repositories/grupoEspecialRepository";
+import * as pessoaGrupoEspecialRepository from "../../src/repositories/pessoaGrupoEspecialRepository";
 
 /* Hoje, para o teste: 31/10/2026 (meio-dia, para o fuso não mudar o dia). */
 const HOJE = new Date(2026, 9, 31, 12, 0, 0);

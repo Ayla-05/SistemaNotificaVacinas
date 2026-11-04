@@ -25,6 +25,31 @@ Dependências:
 
 - UsuarioService
 */
+/*
+Nunca devolve o hash da senha nem o código de
+verificação de e-mail ao cliente.
+*/
+/*
+CORREÇÃO [COR-09]: GET /usuarios e /usuarios/:id devolviam a linha
+inteira, com o hash da senha e o código de verificação.
+*/
+function semSegredos(usuario: any) {
+
+  if (!usuario) {
+    return usuario;
+  }
+
+  const {
+    senha,
+    codigo_verificacao,
+    codigo_verificacao_expira,
+    ...seguro
+  } = usuario;
+
+  return seguro;
+
+}
+
 export class UsuarioController {
 
   /*
@@ -45,7 +70,7 @@ export class UsuarioController {
         await UsuarioService.listarTodos();
 
       return res.status(200).json(
-        usuarios
+        usuarios.map(semSegredos)
       );
 
     } catch (error: any) {
@@ -81,7 +106,7 @@ export class UsuarioController {
         );
 
       return res.status(200).json(
-        usuario
+        semSegredos(usuario)
       );
 
     } catch (error: any) {
@@ -247,7 +272,8 @@ export class UsuarioController {
 
       await UsuarioService.alterarPerfil(
         id,
-        perfil
+        perfil,
+        req.usuarioId
       );
 
       return res.status(200).json({
@@ -319,7 +345,8 @@ export class UsuarioController {
         Number(req.params.id);
 
       await UsuarioService.desativar(
-        id
+        id,
+        req.usuarioId
       );
 
       return res.status(200).json({
@@ -355,7 +382,8 @@ export class UsuarioController {
         Number(req.params.id);
 
       await UsuarioService.remover(
-        id
+        id,
+        req.usuarioId
       );
 
       return res.status(200).json({

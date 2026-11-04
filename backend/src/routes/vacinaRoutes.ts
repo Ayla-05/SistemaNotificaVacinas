@@ -11,6 +11,11 @@ VACINA ROUTES
 Rotas relacionadas ao cadastro
 e consulta de vacinas.
 */
+/*
+CORREÇÃO [COR-01]: criar, editar e desativar vacina eram
+públicos (sem login nem perfil). Agora exigem autenticação e
+perfil ADMIN; a leitura do catálogo segue pública.
+*/
 const router = Router();
 
 /*

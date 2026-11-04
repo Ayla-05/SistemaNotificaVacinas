@@ -2,20 +2,21 @@ import { describe, it, expect, beforeAll, vi } from "vitest";
 import express from "express";
 import cookieParser from "cookie-parser";
 import request from "supertest";
+import { hojeIso } from "../../src/utils/dataHoje";
 import bcrypt from "bcryptjs";
 
-import { configurarBanco } from "../src/database/configurarBanco";
-import { exigirCabecalhoCsrf } from "../src/middlewares/csrfMiddleware";
-import { autenticar } from "../src/middlewares/authMiddleware";
-import { tratarErros } from "../src/middlewares/erroMiddleware";
-import authRoutes from "../src/routes/authRoutes";
-import pessoaRoutes from "../src/routes/pessoaRoutes";
-import carteiraRoutes from "../src/routes/carteiraRoutes";
-import agendamentoRoutes from "../src/routes/agendamentoRoutes";
-import dependenteRoutes from "../src/routes/dependenteRoutes";
-import vacinalRoutes from "../src/routes/vacinalRoutes";
-import * as usuarioRepository from "../src/repositories/usuarioRepository";
-import * as pessoaRepository from "../src/repositories/pessoaRepository";
+import { configurarBanco } from "../../src/database/configurarBanco";
+import { exigirCabecalhoCsrf } from "../../src/middlewares/csrfMiddleware";
+import { autenticar } from "../../src/middlewares/authMiddleware";
+import { tratarErros } from "../../src/middlewares/erroMiddleware";
+import authRoutes from "../../src/routes/authRoutes";
+import pessoaRoutes from "../../src/routes/pessoaRoutes";
+import carteiraRoutes from "../../src/routes/carteiraRoutes";
+import agendamentoRoutes from "../../src/routes/agendamentoRoutes";
+import dependenteRoutes from "../../src/routes/dependenteRoutes";
+import vacinalRoutes from "../../src/routes/vacinalRoutes";
+import * as usuarioRepository from "../../src/repositories/usuarioRepository";
+import * as pessoaRepository from "../../src/repositories/pessoaRepository";
 
 vi.mock("express-rate-limit", () => ({
   default: () => (_req: any, _res: any, next: any) => next(),
@@ -50,7 +51,7 @@ beforeAll(async () => {
   const cookies = ((res.headers["set-cookie"] as unknown as string[]) ?? []).map((c) => c.split(";")[0]);
   const pessoaId = Number(await pessoaRepository.criarPessoa({ usuario_id: id, nome: "Val", data_nascimento: "1990-06-15" } as any));
   U = { id, cookies, pessoaId };
-  const { default: vacinaRepo } = { default: await import("../src/repositories/vacinaRepository") };
+  const { default: vacinaRepo } = { default: await import("../../src/repositories/vacinaRepository") };
   vacinaId = ((await vacinaRepo.listarVacinasAtivas()) as any[]).find((v) => v.nome === "BCG").id;
 });
 
@@ -149,9 +150,8 @@ describe("agendamentos", () => {
     const criado = await request(app).post("/agendamentos").set(h()).send(corpo({ numeroDose: 2, dataPrevista: "2099-03-03" }));
     expect(criado.status).toBe(201);
     // a confirmação só vale para datas que já chegaram; força a data para hoje
-    const d = new Date();
-    const hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const { db } = await import("../src/database/database");
+    const hoje = hojeIso(); // dia civil de São Paulo, como no sistema (COR-26)
+    const { db } = await import("../../src/database/database");
     await new Promise<void>((ok, ko) => db.run("UPDATE agendamentos_vacina SET data_prevista=? WHERE id=?", [hoje, criado.body.id], (e) => (e ? ko(e) : ok())));
     const a = await request(app).patch(`/agendamentos/${criado.body.id}/confirmar`).set(h());
     expect(a.status).toBe(200);

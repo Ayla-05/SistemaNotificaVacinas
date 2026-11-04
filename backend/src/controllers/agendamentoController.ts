@@ -42,7 +42,10 @@ export class AgendamentoController {
 
       const agendamentos =
         await AgendamentoService
-          .listarTodos();
+          .listarVisiveis(
+            req.usuarioId as number,
+            req.perfilUsuario
+          );
 
       return res.status(200).json(
         agendamentos

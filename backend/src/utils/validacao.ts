@@ -16,18 +16,17 @@ NÃO é responsável por:
   (unicidade de e-mail, posse, etc.)
 */
 
+import { hojeIso } from "./dataHoje";
+
 export const ANO_MINIMO_NASCIMENTO = 1900;
 export const MAX_NUMERO_DOSE = 20;
 
-/* Data local de hoje (AAAA-MM-DD), sem o deslocamento de fuso do toISOString(). */
+/*
+Data de hoje (AAAA-MM-DD) no dia civil de São Paulo, qualquer que seja o fuso
+do servidor (COR-26: ver utils/dataHoje.ts).
+*/
 export function hojeLocalISO(agora: Date = new Date()): string {
-
-  const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, "0");
-  const dia = String(agora.getDate()).padStart(2, "0");
-
-  return `${ano}-${mes}-${dia}`;
-
+  return hojeIso(agora);
 }
 
 /* "AAAA-MM-DD" existente no calendário (rejeita 2020-02-31, 2020-13-01...). */

@@ -40,6 +40,38 @@ Dependências:
 export class UsuarioService {
 
   /*
+  Impede ações que deixariam o sistema sem administrador:
+  agir sobre a própria conta e mexer no último admin ativo.
+  */
+  private static async garantirQueNaoPerdeOAdmin(
+    alvo: { id: number; perfil: string; ativo?: number },
+    atorId: number | undefined,
+    acao: "remover" | "desativar" | "rebaixar"
+  ) {
+
+    if (atorId !== undefined && alvo.id === atorId) {
+      throw new Error(
+        `Você não pode ${acao} a própria conta.`
+      );
+    }
+
+    const eAdminAtivo =
+      alvo.perfil === PerfilUsuario.ADMIN &&
+      alvo.ativo !== 0;
+
+    if (
+      eAdminAtivo &&
+      await usuarioRepository.contarAdministradoresAtivos() <= 1
+    ) {
+      throw new Error(
+        `Não é possível ${acao} o último administrador ativo.`
+      );
+    }
+
+  }
+
+
+  /*
   ==================================================
   VALIDAR SENHA (POLÍTICA)
   ==================================================
@@ -319,7 +351,8 @@ export class UsuarioService {
   */
   static async alterarPerfil(
     id: number,
-    perfil: PerfilUsuario
+    perfil: PerfilUsuario,
+    atorId?: number
   ) {
 
     const usuario =
@@ -342,6 +375,19 @@ export class UsuarioService {
       );
     }
 
+    /*
+    CORREÇÃO [COR-11]: um administrador não rebaixa a si mesmo
+    nem o último administrador ativo, para o sistema nunca ficar
+    sem quem o administre.
+    */
+    if (perfil !== PerfilUsuario.ADMIN) {
+      await this.garantirQueNaoPerdeOAdmin(
+        usuario,
+        atorId,
+        "rebaixar"
+      );
+    }
+
     return await usuarioRepository.atualizarPerfilUsuario(
       id,
       perfil
@@ -358,7 +404,8 @@ export class UsuarioService {
   sem excluir o cadastro.
   */
   static async desativar(
-    id: number
+    id: number,
+    atorId?: number
   ) {
 
     const usuario =
@@ -372,7 +419,22 @@ export class UsuarioService {
       );
     }
 
-    return await usuarioRepository.desativarUsuario(
+    await this.garantirQueNaoPerdeOAdmin(
+      usuario,
+      atorId,
+      "desativar"
+    );
+
+    await usuarioRepository.desativarUsuario(
+      id
+    );
+
+    /*
+    CORREÇÃO [COR-12]: desativar a conta encerra as sessões que
+    já estavam abertas. Antes, o token continuava valendo até
+    expirar, e a conta "desativada" seguia usando o sistema.
+    */
+    await sessaoRepository.revogarSessoesDoUsuario(
       id
     );
 
@@ -417,7 +479,8 @@ export class UsuarioService {
   Utilizar com cautela.
   */
   static async remover(
-    id: number
+    id: number,
+    atorId?: number
   ) {
 
     const usuario =
@@ -430,6 +493,12 @@ export class UsuarioService {
         "Usuário não encontrado."
       );
     }
+
+    await this.garantirQueNaoPerdeOAdmin(
+      usuario,
+      atorId,
+      "remover"
+    );
 
     return await usuarioRepository.removerUsuario(
       id

@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -7,28 +7,14 @@ LISTAR TODOS OS AGENDAMENTOS
 */
 export function listarAgendamentos(): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM agendamentos_vacina
       ORDER BY data_prevista
       `,
-      [],
-      (err, rows) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    []
+  );
 
 }
 
@@ -41,28 +27,14 @@ export function buscarAgendamentoPorId(
   id: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM agendamentos_vacina
       WHERE id = ?
       `,
-      [id],
-      (err, row) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -75,10 +47,8 @@ export function listarAgendamentosPessoa(
   pessoaId: number
 ): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT
 
         av.id,
@@ -108,20 +78,8 @@ export function listarAgendamentosPessoa(
 
       ORDER BY av.data_prevista
       `,
-      [pessoaId],
-      (err, rows) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    [pessoaId]
+  );
 
 }
 
@@ -138,10 +96,8 @@ export function criarAgendamento(
   observacao?: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO agendamentos_vacina (
 
         pessoa_id,
@@ -157,26 +113,14 @@ export function criarAgendamento(
       )
       VALUES (?, ?, ?, ?, ?)
       `,
-      [
+    [
         pessoaId,
         vacinaId,
         numeroDose,
         dataPrevista,
         observacao ?? null
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -190,30 +134,16 @@ export function atualizarStatusAgendamento(
   status: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE agendamentos_vacina
 
       SET status = ?
 
       WHERE id = ?
       `,
-      [status, id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [status, id]
+  );
 
 }
 
@@ -227,30 +157,16 @@ export function atualizarObservacaoAgendamento(
   observacao: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE agendamentos_vacina
 
       SET observacao = ?
 
       WHERE id = ?
       `,
-      [observacao, id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [observacao, id]
+  );
 
 }
 
@@ -263,27 +179,13 @@ export function removerAgendamento(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM agendamentos_vacina
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -296,29 +198,15 @@ export function contarAgendamentosPessoa(
   pessoaId: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT COUNT(*) AS total
 
       FROM agendamentos_vacina
 
       WHERE pessoa_id = ?
       `,
-      [pessoaId],
-      (err, row: any) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row?.total ?? 0);
-
-      }
-    );
-
-  });
+    [pessoaId]
+  ).then((row) => row?.total ?? 0);
 
 }

@@ -5,18 +5,7 @@ import * as vacinaRepository from "../repositories/vacinaRepository";
 import * as registroVacinacaoRepository from "../repositories/registroVacinacaoRepository";
 import * as doseVacinaRepository from "../repositories/doseVacinaRepository";
 import { NotificacaoService } from "./notificacaoService";
-
-/* Data de hoje (fuso local) no formato AAAA-MM-DD. */
-function hojeISO() {
-
-  const agora = new Date();
-
-  const mes = String(agora.getMonth() + 1).padStart(2, "0");
-  const dia = String(agora.getDate()).padStart(2, "0");
-
-  return `${agora.getFullYear()}-${mes}-${dia}`;
-
-}
+import { hojeIso } from "../utils/dataHoje";
 
 /*
 ==================================================
@@ -185,7 +174,7 @@ export class AgendamentoService {
       );
     }
 
-    if (dataPrevista.trim() < hojeISO()) {
+    if (dataPrevista.trim() < hojeIso()) {
       throw new Error(
         "Não é possível agendar em uma data que já passou."
       );
@@ -240,6 +229,24 @@ export class AgendamentoService {
     status: string
   ) {
 
+    /*
+    CORREÇÃO [COR-08]: o status era gravado sem validação
+    (qualquer texto entrava). Agora só os valores abaixo.
+    */
+    const STATUS_VALIDOS = [
+      "PENDENTE",
+      "AGENDADA",
+      "REALIZADA",
+      "CANCELADA",
+      "ATRASADA"
+    ];
+
+    if (!STATUS_VALIDOS.includes(status)) {
+      throw new Error(
+        `Status inválido. Use: ${STATUS_VALIDOS.join(", ")}.`
+      );
+    }
+
     const agendamento =
       await agendamentoVacinaRepository
         .buscarAgendamentoPorId(id);
@@ -292,7 +299,7 @@ export class AgendamentoService {
       );
     }
 
-    if (agendamento.data_prevista > hojeISO()) {
+    if (agendamento.data_prevista > hojeIso()) {
       throw new Error(
         "Só é possível confirmar a vacina a partir da data agendada."
       );
@@ -327,7 +334,7 @@ export class AgendamentoService {
         agendamento.numero_dose,
         `Dose ${agendamento.numero_dose}`,
         {
-          dataAplicacao: hojeISO(),
+          dataAplicacao: hojeIso(),
           observacao: "Confirmada pelo agendamento"
         }
       );
@@ -441,4 +448,40 @@ export class AgendamentoService {
 
   }
 
+
+  /*
+  ==================================================
+  LISTAR OS AGENDAMENTOS QUE O USUÁRIO PODE VER
+  ==================================================
+
+  CORREÇÃO [COR-07]: GET /agendamentos devolvia os agendamentos
+  de todos os usuários. Administrador vê tudo; usuário comum vê
+  só os das pessoas da própria conta.
+  */
+  static async listarVisiveis(
+    usuarioId: number,
+    perfil?: string
+  ) {
+
+    const agendamentos =
+      await this.listarTodos();
+
+    if (perfil === "ADMIN") {
+      return agendamentos;
+    }
+
+    const minhas =
+      await pessoaRepository.listarPessoasPorUsuario(
+        usuarioId
+      );
+
+    const ids = new Set(
+      minhas.map((p: any) => p.id)
+    );
+
+    return agendamentos.filter(
+      (a: any) => ids.has(a.pessoa_id)
+    );
+
+  }
 }

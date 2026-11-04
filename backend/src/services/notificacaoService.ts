@@ -1,6 +1,8 @@
 import { EmailService } from "./emailService";
 import { SmsService } from "./smsService";
 
+import { hojeIso } from "../utils/dataHoje";
+import { adicionarDias } from "../utils/proximasDoses";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as usuarioRepository from "../repositories/usuarioRepository";
 import { ProximasDosesService } from "./proximasDosesService";
@@ -388,10 +390,7 @@ export class NotificacaoService {
 
     try {
 
-      const hoje = new Date();
-
-      const dataHoje =
-        `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+      const dataHoje = hojeIso();
 
       if (
         !deveEnviarResumo(
@@ -406,7 +405,7 @@ export class NotificacaoService {
       const proximas =
         await ProximasDosesService.calcular(
           pessoa.id,
-          hoje
+          new Date()
         );
 
       const doses = proximas.filter(
@@ -469,12 +468,11 @@ export class NotificacaoService {
       await agendamentoVacinaRepository
         .listarAgendamentosPessoa(pessoa.id) as any[];
 
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const dataHoje = hojeIso();
 
-    const limite = new Date(hoje);
-    limite.setDate(
-      limite.getDate() + DIAS_ANTECEDENCIA_LEMBRETE
+    const dataLimite = adicionarDias(
+      dataHoje,
+      DIAS_ANTECEDENCIA_LEMBRETE
     );
 
     const proximos = agendamentos.filter((a) => {
@@ -483,11 +481,9 @@ export class NotificacaoService {
         return false;
       }
 
-      const dataPrevista = new Date(
-        a.data_prevista + "T00:00:00"
-      );
+      const dataPrevista = String(a.data_prevista).slice(0, 10);
 
-      return dataPrevista >= hoje && dataPrevista <= limite;
+      return dataPrevista >= dataHoje && dataPrevista <= dataLimite;
 
     });
 

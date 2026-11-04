@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { removerEmCascata, alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -29,28 +29,14 @@ LISTAR TODOS OS USUÁRIOS
 */
 export function listarUsuarios(): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM usuarios
       ORDER BY nome
       `,
-      [],
-      (err, rows) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    []
+  );
 
 }
 
@@ -63,28 +49,14 @@ export function buscarUsuarioPorId(
   id: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM usuarios
       WHERE id = ?
       `,
-      [id],
-      (err, row) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -97,28 +69,14 @@ export function buscarUsuarioPorEmail(
   email: string
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM usuarios
-      WHERE LOWER(email) = LOWER(?)
+      WHERE email = ?
       `,
-      [email.trim()],
-      (err, row) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [email.trim()]
+  );
 
 }
 
@@ -140,10 +98,8 @@ export function criarUsuario(
   emailVerificado: boolean = false
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO usuarios (
         nome,
         email,
@@ -153,26 +109,14 @@ export function criarUsuario(
       )
       VALUES (?, ?, ?, ?, ?)
       `,
-      [
+    [
         nome,
         email,
         senha,
         perfil,
         emailVerificado ? 1 : 0
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -189,34 +133,20 @@ export function definirCodigoVerificacao(
   expiraEm: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE usuarios
       SET
         codigo_verificacao = ?,
         codigo_verificacao_expira = ?
       WHERE id = ?
       `,
-      [
+    [
         codigo,
         expiraEm,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -232,10 +162,8 @@ export function confirmarEmailUsuario(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE usuarios
       SET
         email_verificado = 1,
@@ -243,20 +171,8 @@ export function confirmarEmailUsuario(
         codigo_verificacao_expira = NULL
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -271,34 +187,20 @@ export function atualizarUsuario(
   email: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE usuarios
       SET
         nome = ?,
         email = ?
       WHERE id = ?
       `,
-      [
+    [
         nome,
         email,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -312,31 +214,17 @@ export function atualizarSenhaUsuario(
   senha: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE usuarios
       SET senha = ?
       WHERE id = ?
       `,
-      [
+    [
         senha,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -355,31 +243,17 @@ export function atualizarPerfilUsuario(
   perfil: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE usuarios
       SET perfil = ?
       WHERE id = ?
       `,
-      [
+    [
         perfil,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -392,28 +266,14 @@ export function desativarUsuario(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE usuarios
       SET ativo = 0
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -426,28 +286,14 @@ export function ativarUsuario(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE usuarios
       SET ativo = 1
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -456,31 +302,48 @@ export function ativarUsuario(
 REMOVER USUÁRIO
 ==================================================
 */
+/*
+Quantos administradores ativos existem. Usado para nunca
+deixar o sistema sem ninguém que o administre.
+*/
+export async function contarAdministradoresAtivos(): Promise<number> {
+
+  const linha = await consultarUm(
+    `
+      SELECT COUNT(*) AS total
+      FROM usuarios
+      WHERE perfil = 'ADMIN' AND ativo = 1
+      `
+  );
+
+  return linha?.total ?? 0;
+
+}
+
+/*
+==================================================
+REMOVER USUÁRIO (E TUDO QUE É DELE)
+==================================================
+*/
 export function removerUsuario(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
-      DELETE FROM usuarios
-      WHERE id = ?
-      `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+  return removerEmCascata(
+    "usuarios",
+    id,
+    [
+    "DELETE FROM doses_vacina WHERE registro_vacinacao_id IN (SELECT id FROM registros_vacinacao WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID))",
+    "DELETE FROM registros_vacinacao WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
+    "DELETE FROM agendamentos_vacina WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
+    "DELETE FROM avisos_dose WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
+    "DELETE FROM pessoa_grupo_especial WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
+    "DELETE FROM dependentes WHERE responsavel_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID) OR dependente_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
+    "DELETE FROM pessoas WHERE usuario_id = $ID",
+    "DELETE FROM sessoes WHERE usuario_id = $ID",
+    "DELETE FROM redefinicoes_senha WHERE usuario_id = $ID"
+    ]
+  );
 
 }
 /*
@@ -494,29 +357,15 @@ export function registrarFalhaDeLogin(
   bloqueadoAte: string | null
 ): Promise<void> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE usuarios
       SET tentativas_falhas = ?,
           bloqueado_ate = ?
       WHERE id = ?
       `,
-      [tentativas, bloqueadoAte, id],
-      (err) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve();
-
-      }
-    );
-
-  });
+    [tentativas, bloqueadoAte, id]
+  ).then(() => undefined);
 
 }
 

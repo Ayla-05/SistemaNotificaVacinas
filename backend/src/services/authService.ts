@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 import * as usuarioRepository from "../repositories/usuarioRepository";
+import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as sessaoRepository from "../repositories/sessaoRepository";
 import * as redefinicaoSenhaRepository from "../repositories/redefinicaoSenhaRepository";
 
@@ -628,7 +629,10 @@ export class AuthService {
         const payload = jwt.verify(
           tokenAcesso,
           JWT_SECRET,
-          { ignoreExpiration: true }
+          {
+            ignoreExpiration: true,
+            algorithms: ["HS256"]
+          }
         ) as TokenPayload;
 
         if (payload.sid) {
@@ -856,7 +860,8 @@ export class AuthService {
       payload,
       JWT_SECRET,
       {
-        expiresIn: JWT_EXPIRA_EM
+        expiresIn: JWT_EXPIRA_EM,
+        algorithm: "HS256"
       }
     );
 
@@ -877,9 +882,16 @@ export class AuthService {
       );
     }
 
+    /*
+    CORREÇÃO [COR-15]: o algoritmo aceito é fixado em HS256.
+    Sem isso, a segurança dependia do comportamento padrão da
+    biblioteca diante de tokens "alg: none" ou de troca de
+    algoritmo.
+    */
     const payload = jwt.verify(
       token,
-      JWT_SECRET
+      JWT_SECRET,
+      { algorithms: ["HS256"] }
     ) as TokenPayload;
 
     /*
@@ -894,4 +906,87 @@ export class AuthService {
 
   }
 
+
+  /*
+  ==================================================
+  CÓDIGO DE VERIFICAÇÃO DE E-MAIL
+  ==================================================
+
+  CORREÇÃO [COR-23]: antes, o controller gerava o código e o
+  gravava direto pelo repositório, pulando a camada de serviço.
+  */
+  static async gerarEGravarCodigoVerificacao(
+    usuarioId: number
+  ): Promise<string> {
+
+    const { codigo, expiraEm } =
+      this.gerarCodigoVerificacao();
+
+    await usuarioRepository.definirCodigoVerificacao(
+      usuarioId,
+      codigo,
+      expiraEm
+    );
+
+    return codigo;
+
+  }
+
+  /*
+  Dados públicos do usuário logado (nunca o hash da senha).
+  Devolve undefined se a conta não existir mais.
+  */
+  static async buscarUsuarioAutenticado(
+    usuarioId: number
+  ) {
+
+    const usuario: any =
+      await usuarioRepository.buscarUsuarioPorId(
+        usuarioId
+      );
+
+    if (!usuario) {
+      return undefined;
+    }
+
+    return {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      perfil: usuario.perfil
+    };
+
+  }
+
+  /*
+  Para quem enviar o e-mail de boas-vindas definitivo: o
+  titular (primeira pessoa da conta) ou, na falta dele, o
+  próprio usuário.
+  */
+  static async destinatarioDasBoasVindas(
+    usuarioId: number
+  ) {
+
+    const usuario: any =
+      await usuarioRepository.buscarUsuarioPorId(
+        usuarioId
+      );
+
+    if (!usuario) {
+      return undefined;
+    }
+
+    const pessoas =
+      await pessoaRepository.listarPessoasPorUsuario(
+        usuario.id
+      );
+
+    const titular = pessoas[0];
+
+    return {
+      email: titular?.email || usuario.email,
+      nome: titular?.nome || usuario.nome
+    };
+
+  }
 }

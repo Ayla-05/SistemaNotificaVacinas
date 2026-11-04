@@ -23,6 +23,13 @@ Dependências:
 
 - PessoaService
 */
+/*
+CORREÇÃO [COR-03/05]: GET /pessoas devolvia todas as pessoas do
+sistema a qualquer logado, e POST /pessoas aceitava um usuario_id
+de outra conta. Agora o usuário comum só lista as pessoas da própria
+conta e, ao criar, o usuario_id do corpo é ignorado (a rota força o
+dono: ver forcarDonoDaPessoa em pessoaRoutes.ts).
+*/
 export class PessoaController {
 
   /*
@@ -39,8 +46,16 @@ export class PessoaController {
 
     try {
 
+      /*
+      Usuário comum só enxerga as pessoas da própria conta;
+      a lista geral é restrita ao administrador.
+      */
       const pessoas =
-        await PessoaService.listarTodas();
+        req.perfilUsuario === "ADMIN"
+          ? await PessoaService.listarTodas()
+          : await PessoaService.listarPorUsuario(
+              req.usuarioId as number
+            );
 
       return res.status(200).json(
         pessoas

@@ -9,13 +9,19 @@ Corpo malformado ou grande demais chega aqui como erro do
 body-parser. Sem este tratador, o Express responde com uma
 página HTML que mostra o stack trace (caminhos do servidor).
 Deve ser o ÚLTIMO middleware da aplicação.
+
+CORREÇÃO [COR-13]: sem este tratador, o erro vazava a pilha de execução.
 */
 export function tratarErros(
   erro: any,
   _req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ) {
+
+  if (res.headersSent) {
+    return next(erro);
+  }
 
   if (erro?.type === "entity.too.large") {
     return res.status(413).json({

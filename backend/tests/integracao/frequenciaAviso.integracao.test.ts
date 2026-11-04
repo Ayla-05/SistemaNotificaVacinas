@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 
-import { configurarBanco } from "../src/database/configurarBanco";
-import { NotificacaoService } from "../src/services/notificacaoService";
-import { EmailService } from "../src/services/emailService";
-import { PessoaService } from "../src/services/pessoaService";
+import { configurarBanco } from "../../src/database/configurarBanco";
+import { NotificacaoService } from "../../src/services/notificacaoService";
+import { EmailService } from "../../src/services/emailService";
+import { PessoaService } from "../../src/services/pessoaService";
 
-import * as usuarioRepository from "../src/repositories/usuarioRepository";
-import * as pessoaRepository from "../src/repositories/pessoaRepository";
+import * as usuarioRepository from "../../src/repositories/usuarioRepository";
+import * as pessoaRepository from "../../src/repositories/pessoaRepository";
 
 let usuarioId: number;
 

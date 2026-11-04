@@ -7,7 +7,8 @@ import "dotenv/config";
 
 import express, {
   Request,
-  Response
+  Response,
+  NextFunction
 } from "express";
 
 import cors from "cors";
@@ -170,6 +171,20 @@ app.use(
       includeSubDomains: true
     }
   })
+);
+
+/*
+CORREÇÃO [COR-14]: as respostas da API (carteira, pessoas,
+sessão) são dados de saúde e não podem ficar em cache do
+navegador nem de proxies — em computador compartilhado, o
+botão "voltar" mostraria a carteira de quem saiu.
+*/
+app.use(
+  (req: Request, res: Response, next: NextFunction) => {
+    res.set("Cache-Control", "no-store");
+    res.set("Pragma", "no-cache");
+    next();
+  }
 );
 
 /*
@@ -453,6 +468,8 @@ app.use(
 ==================================================
 TRATAMENTO DE ERROS (JSON)
 ==================================================
+
+Deve ser o último middleware (ver middlewares/erroMiddleware.ts).
 */
 app.use(tratarErros);
 
@@ -572,7 +589,16 @@ async function iniciarServidor() {
 BOOTSTRAP
 ==================================================
 */
-iniciarServidor();
+/*
+Em teste o app é importado sem abrir porta nem agendar jobs.
+*/
+/*
+CORREÇÃO [COR-10]: o servidor subia ao importar o arquivo, o que
+impedia testar o app inteiro. Agora o bootstrap é pulado em teste.
+*/
+if (process.env.NODE_ENV !== "test") {
+  iniciarServidor();
+}
 
 export default app;
 

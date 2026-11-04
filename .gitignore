@@ -41,3 +41,8 @@ temp/
 __pycache__/
 .venv/
 scripts/.catalogo.cjs
+
+# SQLite (modo WAL cria arquivos auxiliares)
+*.db-wal
+*.db-shm
+*.db
