@@ -282,6 +282,28 @@ export class UsuarioService {
       );
     }
 
+    validarTexto(nome, "Nome", { obrigatorio: true, max: 120 });
+
+    email = normalizarEmail(email ?? "");
+
+    if (!emailValido(email)) {
+      throw new Error(
+        "E-mail inválido."
+      );
+    }
+
+    /* O novo e-mail não pode ser de OUTRA conta. */
+    const dono =
+      await usuarioRepository.buscarUsuarioPorEmail(
+        email
+      );
+
+    if (dono && dono.id !== id) {
+      throw new Error(
+        "Já existe um usuário com este e-mail."
+      );
+    }
+
     return await usuarioRepository.atualizarUsuario(
       id,
       nome,

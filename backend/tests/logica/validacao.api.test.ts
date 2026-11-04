@@ -231,3 +231,16 @@ describe("cadastro e senha", () => {
   });
 
 });
+
+describe("serviço de usuários (admin)", () => {
+
+  it("atualizar e-mail não permite o e-mail de outra conta nem e-mail inválido", async () => {
+    const { UsuarioService } = await import("../../src/services/usuarioService");
+    const a = await usuarioRepository.criarUsuario("A", "dono.a@exemplo.com", await bcrypt.hash(SENHA, 4), "USUARIO", true);
+    const b = await usuarioRepository.criarUsuario("B", "dono.b@exemplo.com", await bcrypt.hash(SENHA, 4), "USUARIO", true);
+    await expect(UsuarioService.atualizar(b, "B", "DONO.A@exemplo.com")).rejects.toThrow(/já existe/i);
+    await expect(UsuarioService.atualizar(b, "B", "sem-arroba")).rejects.toThrow(/inválido/i);
+    await expect(UsuarioService.atualizar(a, "A", "Dono.A@Exemplo.com")).resolves.toBeDefined();
+  });
+
+});

@@ -58,6 +58,10 @@ def obter_conversor():
     )
 
 
+# Vira True quando o aquecimento termina (modelos carregados e primeira leitura feita).
+ESTADO = {"pronto": False}
+
+
 @app.on_event("startup")
 def aquecer():
     """
@@ -82,6 +86,7 @@ def aquecer():
                 conversor.convert(caminho_aquecimento)
             finally:
                 os.remove(caminho_aquecimento)
+            ESTADO["pronto"] = True
             log.info("Modelos de OCR carregados. Serviço pronto.")
         except Exception:
             log.exception("Falha ao carregar os modelos de OCR")
@@ -91,7 +96,9 @@ def aquecer():
 
 @app.get("/saude")
 def saude():
-    return {"status": "ok"}
+    # "pronto" indica se os modelos já foram carregados: antes disso a 1ª leitura
+    # pode levar vários minutos e estourar o tempo limite do back end.
+    return {"status": "ok", "pronto": ESTADO["pronto"]}
 
 
 # Endpoint síncrono de propósito: o FastAPI o executa em um pool de threads, e
