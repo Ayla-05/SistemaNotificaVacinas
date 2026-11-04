@@ -14,7 +14,7 @@ import { criarTabelaDependentes }
 import { criarTabelaGruposEspeciais }
   from "./tables/gruposEspeciaisTable";
 
-import { criarTabelaPessoaGrupoEspecial }
+import { criarTabelaPessoaGrupoEspecial, migrarColunaGestacao }
   from "./tables/pessoaGrupoEspecialTable";
 
 import { criarTabelaVacinas }
@@ -117,6 +117,7 @@ export async function configurarBanco() {
       criarTabelaDependentes(db);
       criarTabelaGruposEspeciais(db);
       criarTabelaPessoaGrupoEspecial(db);
+      migrarColunaGestacao(db);
       criarTabelaVacinas(db);
       criarTabelaCalendarioVacinal(db);
       criarTabelaRegrasVacinais(db);
