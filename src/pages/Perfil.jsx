@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { UserCog, Save, ShieldAlert, Check, Loader2, BellRing } from 'lucide-react';
+import CampoGestacao from '../components/CampoGestacao';
+import { inicioDaGestacao, semanasDeGestacao, semanasValidas } from '../utils/gestacao';
 import { useAuth } from '../context/AuthContext';
 import {
   obterPessoa,
@@ -67,6 +69,8 @@ export default function Perfil() {
   const [form, setForm] = useState(CAMPOS_VAZIOS);
   const [catalogoGrupos, setCatalogoGrupos] = useState([]);
   const [gruposDaPessoa, setGruposDaPessoa] = useState([]);
+  const [gestacaoInicio, setGestacaoInicio] = useState(null); // AAAA-MM-DD, grupo Gestante
+  const [semanasEdicao, setSemanasEdicao] = useState(null); // string quando o campo de semanas está aberto
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -90,6 +94,7 @@ export default function Perfil() {
         setForm({ ...CAMPOS_VAZIOS, ...pessoa });
         setCatalogoGrupos(catalogo);
         setGruposDaPessoa(grupos.map((g) => g.id));
+        setGestacaoInicio(grupos.find((g) => g.nome === 'GESTANTE')?.gestacao_inicio?.slice(0, 10) ?? null);
       } catch (erroCapturado) {
         setErro(erroCapturado.message);
       } finally {
@@ -125,17 +130,45 @@ export default function Perfil() {
     }
   }
 
+  const grupoGestante = catalogoGrupos.find((g) => g.nome === 'GESTANTE');
+
   async function alternarGrupo(grupoId) {
     const jaTem = gruposDaPessoa.includes(grupoId);
+
+    // Gestante pede as semanas antes de vincular (dTpa e VSR dependem delas).
+    if (!jaTem && grupoId === grupoGestante?.id) {
+      setSemanasEdicao('');
+      return;
+    }
 
     try {
       if (jaTem) {
         await desvincularGrupoEspecial(pessoaAtiva.id, grupoId);
         setGruposDaPessoa((atual) => atual.filter((id) => id !== grupoId));
+        if (grupoId === grupoGestante?.id) {
+          setGestacaoInicio(null);
+          setSemanasEdicao(null);
+        }
       } else {
         await vincularGrupoEspecial(pessoaAtiva.id, grupoId);
         setGruposDaPessoa((atual) => [...atual, grupoId]);
       }
+    } catch (erroCapturado) {
+      setErro(erroCapturado.message);
+    }
+  }
+
+  async function salvarGestacao() {
+    if (!semanasValidas(semanasEdicao)) return;
+
+    const inicio = inicioDaGestacao(semanasEdicao);
+
+    try {
+      await vincularGrupoEspecial(pessoaAtiva.id, grupoGestante.id, inicio);
+      setGruposDaPessoa((atual) => (atual.includes(grupoGestante.id) ? atual : [...atual, grupoGestante.id]));
+      setGestacaoInicio(inicio);
+      setSemanasEdicao(null);
+      setErro('');
     } catch (erroCapturado) {
       setErro(erroCapturado.message);
     }
@@ -327,6 +360,34 @@ export default function Perfil() {
               </label>
             ))}
           </div>
+
+          {/* Gestante: semanas de gestação (início guardado no servidor, semanas calculadas na hora) */}
+          {grupoGestante && gruposDaPessoa.includes(grupoGestante.id) && semanasEdicao === null && (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-pink-200 bg-pink-50 px-4 py-3">
+              <p className="text-base text-slate-800">
+                {gestacaoInicio
+                  ? <>Gestação de <strong>{semanasDeGestacao(gestacaoInicio)} semanas</strong> hoje.</>
+                  : <>Informe as semanas de gestação para ver dTpa e VSR no calendário.</>}
+              </p>
+              <button type="button" onClick={() => setSemanasEdicao(gestacaoInicio ? String(semanasDeGestacao(gestacaoInicio)) : '')} className="px-3 py-1.5 rounded-xl border border-pink-300 text-pink-900 text-sm font-semibold hover:bg-pink-100">
+                {gestacaoInicio ? 'Atualizar semanas' : 'Informar semanas'}
+              </button>
+            </div>
+          )}
+
+          {semanasEdicao !== null && (
+            <div className="mt-3 space-y-2">
+              <CampoGestacao semanas={semanasEdicao} onChange={setSemanasEdicao} />
+              <div className="flex gap-2">
+                <button type="button" onClick={salvarGestacao} disabled={!semanasValidas(semanasEdicao)} className="btn-primary disabled:opacity-60">
+                  Confirmar gestação
+                </button>
+                <button type="button" onClick={() => setSemanasEdicao(null)} className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 text-sm font-semibold hover:bg-slate-50 transition">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <button type="submit" disabled={salvando} className="btn-primary flex items-center gap-2 disabled:opacity-60">

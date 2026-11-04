@@ -307,3 +307,104 @@ describe("dose já tomada x próxima dose (texto da tela)", () => {
   });
 
 });
+
+describe("gestante", () => {
+
+  const NASC = "1996-03-10";
+  const dias = (n: number) => adicionarDias(HOJE, n);
+
+  function gestante(semanas: number, doses: Record<string, Array<{ numero: number; data: string | null }>> = {}, grupos = ["GESTANTE"]) {
+    return calcularProximasDoses({
+      nascimento: NASC,
+      hoje: HOJE,
+      doses,
+      grupos,
+      gestacaoInicio: dias(-semanas * 7)
+    });
+  }
+
+  it("não recebe sugestão de vacinas de vírus vivo (febre amarela, tríplice viral, varicela, tetraviral)", () => {
+    const sem = calcular(NASC, {}).map((d) => d.vacinaCodigo);
+    expect(sem).toContain("TRIPLICE_VIRAL_SCR");
+    expect(sem).toContain("FEBRE_AMARELA");
+
+    const grav = gestante(10).map((d) => d.vacinaCodigo);
+    for (const vivo of ["TRIPLICE_VIRAL_SCR", "FEBRE_AMARELA", "VARICELA", "TETRAVIRAL"]) {
+      expect(grav).not.toContain(vivo);
+    }
+  });
+
+  it("com 10 semanas: hepatite B, dT, influenza e COVID já; dTpa só na 20ª semana e VSR só na 28ª", () => {
+    const lista = gestante(10);
+
+    expect(de(lista, "HEPATITE_B")).toMatchObject({ rotulo: "1ª dose", status: "DISPONIVEL" });
+    expect(de(lista, "DT")).toMatchObject({ rotulo: "1ª dose (ao saber da gravidez)", status: "DISPONIVEL" });
+    expect(de(lista, "INFLUENZA")).toMatchObject({ rotulo: "1 dose por temporada", status: "DISPONIVEL" });
+    expect(de(lista, "COVID19")).toMatchObject({ rotulo: "1 dose a cada gestação", status: "DISPONIVEL" });
+
+    // início = 70 dias atrás; 20 semanas = início + 140 dias = hoje + 70
+    expect(de(lista, "DTPA")).toMatchObject({ dataPrevista: dias(70), status: "FUTURA" });
+    // 28 semanas = início + 196 dias = hoje + 126
+    expect(de(lista, "VSR")).toMatchObject({ dataPrevista: dias(126), status: "FUTURA" });
+  });
+
+  it("o dT da gestante (3 doses) substitui o reforço de adulto", () => {
+    const lista = gestante(10);
+    const dt = lista.filter((d) => d.vacinaCodigo === "DT");
+    expect(dt).toHaveLength(1);
+    expect(dt[0].numeroDose).toBe(1);
+
+    const depoisDaPrimeira = gestante(10, { DT: [{ numero: 1, data: dias(-10) }] });
+    expect(de(depoisDaPrimeira, "DT")).toMatchObject({ numeroDose: 2, dataPrevista: dias(50) });
+  });
+
+  it("com 25 semanas o dTpa já pode ser tomado (não é atraso) e o VSR está chegando", () => {
+    const lista = gestante(25);
+    expect(de(lista, "DTPA")).toMatchObject({ status: "DISPONIVEL", dataPrevista: null });
+    // 28ª semana = daqui a 21 dias
+    expect(de(lista, "VSR")).toMatchObject({ status: "PROXIMA", diasParaVencer: 21 });
+  });
+
+  it("com 30 semanas o VSR também pode ser tomado", () => {
+    expect(de(gestante(30), "VSR")).toMatchObject({ status: "DISPONIVEL" });
+  });
+
+  it("dose de dTpa desta gestação quita; a de gestação anterior não conta", () => {
+    const desta = gestante(30, { DTPA: [{ numero: 1, data: dias(-20) }] });
+    expect(de(desta, "DTPA")).toBeUndefined();
+
+    const anterior = gestante(30, { DTPA: [{ numero: 1, data: "2022-05-01" }] });
+    expect(de(anterior, "DTPA")).toMatchObject({ status: "DISPONIVEL" });
+  });
+
+  it("COVID-19 a cada gestação: dose anterior ao início não conta; a de agora conta", () => {
+    expect(de(gestante(10, { COVID19: [{ numero: 1, data: "2023-01-10" }] }), "COVID19")).toMatchObject({ status: "DISPONIVEL" });
+    expect(de(gestante(10, { COVID19: [{ numero: 1, data: dias(-5) }] }), "COVID19")).toBeUndefined();
+  });
+
+  it("gestação encerrada (início há mais de 300 dias): volta ao calendário comum", () => {
+    const lista = calcularProximasDoses({ nascimento: NASC, hoje: HOJE, doses: {}, grupos: ["GESTANTE"], gestacaoInicio: dias(-320) });
+    const codigos = lista.map((d) => d.vacinaCodigo);
+    expect(codigos).toContain("TRIPLICE_VIRAL_SCR");
+    expect(codigos).not.toContain("DTPA");
+    expect(codigos).not.toContain("VSR");
+  });
+
+  it("cadastro antigo sem data de início: dT e influenza valem; dTpa, VSR e COVID (dependem das semanas) não aparecem", () => {
+    const lista = calcularProximasDoses({ nascimento: NASC, hoje: HOJE, doses: {}, grupos: ["GESTANTE"] });
+    const codigos = lista.map((d) => d.vacinaCodigo);
+    expect(codigos).toContain("DT");
+    expect(codigos).toContain("INFLUENZA");
+    expect(codigos).not.toContain("DTPA");
+    expect(codigos).not.toContain("VSR");
+    expect(codigos).not.toContain("COVID19");
+  });
+
+  it("quem não é gestante não recebe nenhuma das regras da gestação", () => {
+    const codigos = calcular(NASC, {}).map((d) => d.vacinaCodigo);
+    for (const so of ["DTPA", "VSR", "COVID19", "INFLUENZA"]) {
+      expect(codigos).not.toContain(so);
+    }
+  });
+
+});

@@ -108,11 +108,12 @@ export class GrupoEspecialPessoaController {
         req.params.pessoaId
       );
 
-      const { grupoEspecialId } = req.body;
+      const { grupoEspecialId, gestacaoInicio } = req.body;
 
       await PessoaGrupoEspecialService.vincular(
         pessoaId,
-        Number(grupoEspecialId)
+        Number(grupoEspecialId),
+        gestacaoInicio
       );
 
       return res.status(201).json({
