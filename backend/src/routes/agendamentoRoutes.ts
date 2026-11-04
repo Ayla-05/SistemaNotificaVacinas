@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { AgendamentoController } from "../controllers/agendamentoController";
-import { pessoaPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
+import { pessoaPertenceAoUsuario, agendamentoPertenceAoUsuario, pessoaDoCorpoPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 ==================================================
@@ -59,6 +59,7 @@ POST /agendamentos
 */
 router.post(
   "/",
+  pessoaDoCorpoPertenceAoUsuario,
   AgendamentoController.criar
 );
 
@@ -72,6 +73,19 @@ PATCH /agendamentos/:id/status
 router.patch(
   "/:id/status",
   AgendamentoController.atualizarStatus
+);
+
+/*
+==================================================
+CONFIRMAR QUE A VACINA FOI TOMADA
+==================================================
+
+PATCH /agendamentos/:id/confirmar
+*/
+router.patch(
+  "/:id/confirmar",
+  agendamentoPertenceAoUsuario,
+  AgendamentoController.confirmar
 );
 
 /*
@@ -107,6 +121,7 @@ DELETE /agendamentos/:id
 */
 router.delete(
   "/:id",
+  agendamentoPertenceAoUsuario,
   AgendamentoController.remover
 );
 

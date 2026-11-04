@@ -56,24 +56,31 @@ export class VacinalService {
 
     const hoje = new Date();
 
-    const nascimento =
-      new Date(dataNascimento);
+    /*
+    Lê AAAA-MM-DD pelas partes (e não com new Date(texto),
+    que interpreta como UTC e, no Brasil, recua um dia —
+    fazendo a idade só mudar no dia seguinte ao aniversário).
+    */
+    const [anoNasc, mesNasc, diaNasc] =
+      dataNascimento
+        .slice(0, 10)
+        .split("-")
+        .map(Number);
 
     let idade =
-      hoje.getFullYear() -
-      nascimento.getFullYear();
+      hoje.getFullYear() - anoNasc;
 
     const mesAtual =
       hoje.getMonth();
 
     const mesNascimento =
-      nascimento.getMonth();
+      mesNasc - 1;
 
     const diaAtual =
       hoje.getDate();
 
     const diaNascimento =
-      nascimento.getDate();
+      diaNasc;
 
     if (
       mesAtual < mesNascimento ||

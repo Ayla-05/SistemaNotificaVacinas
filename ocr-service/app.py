@@ -68,7 +68,20 @@ def aquecer():
 
     def carregar():
         try:
-            obter_conversor()
+            conversor = obter_conversor()
+            # Só criar o conversor não basta: os modelos de OCR carregam na primeira
+            # conversão (~2 min). Converte uma imagem mínima já no start-up.
+            from PIL import Image, ImageDraw
+
+            imagem = Image.new("RGB", (400, 120), "white")
+            ImageDraw.Draw(imagem).text((20, 40), "aquecimento 01/01/2020", fill="black")
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as t:
+                imagem.save(t, "PNG")
+                caminho_aquecimento = t.name
+            try:
+                conversor.convert(caminho_aquecimento)
+            finally:
+                os.remove(caminho_aquecimento)
             log.info("Modelos de OCR carregados. Serviço pronto.")
         except Exception:
             log.exception("Falha ao carregar os modelos de OCR")
@@ -95,15 +108,22 @@ def extrair(arquivo: UploadFile = File(...)):
     if len(conteudo) > LIMITE_BYTES:
         raise HTTPException(status_code=413, detail="Arquivo muito grande.")
 
-    with tempfile.NamedTemporaryFile(suffix=extensao) as temporario:
+    # delete=False + fechar antes de ler: no Windows, um arquivo temporário ainda aberto
+    # não pode ser reaberto pelo Docling ("Permission denied"). Apagamos no finally.
+    with tempfile.NamedTemporaryFile(suffix=extensao, delete=False) as temporario:
         temporario.write(conteudo)
-        temporario.flush()
+        caminho = temporario.name
 
+    try:
+        resultado = obter_conversor().convert(caminho)
+    except Exception:
+        # Sem detalhes do erro na resposta: o conteúdo pode ser dado pessoal.
+        log.exception("Falha ao converter o arquivo")
+        raise HTTPException(status_code=422, detail="Não foi possível ler o arquivo.")
+    finally:
         try:
-            resultado = obter_conversor().convert(temporario.name)
-        except Exception:
-            # Sem detalhes do erro na resposta: o conteúdo pode ser dado pessoal.
-            log.exception("Falha ao converter o arquivo")
-            raise HTTPException(status_code=422, detail="Não foi possível ler o arquivo.")
+            os.remove(caminho)
+        except OSError:
+            pass
 
     return {"texto": resultado.document.export_to_markdown()}

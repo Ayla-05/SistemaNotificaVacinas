@@ -40,3 +40,4 @@ temp/
 # Python (ocr-service)
 __pycache__/
 .venv/
+scripts/.catalogo.cjs

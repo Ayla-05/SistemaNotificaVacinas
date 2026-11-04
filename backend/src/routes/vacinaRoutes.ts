@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { VacinaController } from "../controllers/vacinaController";
+import { autenticar, exigirAdmin } from "../middlewares/authMiddleware";
 
 /*
 ==================================================
@@ -81,6 +82,8 @@ POST /vacinas
 */
 router.post(
   "/",
+  autenticar,
+  exigirAdmin,
   VacinaController.criar
 );
 
@@ -93,6 +96,8 @@ PUT /vacinas/:id
 */
 router.put(
   "/:id",
+  autenticar,
+  exigirAdmin,
   VacinaController.atualizar
 );
 
@@ -105,6 +110,8 @@ PATCH /vacinas/:id/desativar
 */
 router.patch(
   "/:id/desativar",
+  autenticar,
+  exigirAdmin,
   VacinaController.desativar
 );
 

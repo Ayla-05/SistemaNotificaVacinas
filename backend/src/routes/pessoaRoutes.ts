@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from "express";
 
 import { PessoaController } from "../controllers/pessoaController";
+import { exigirAdmin } from "../middlewares/authMiddleware";
+import { pessoaDoIdPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 Garante que um usuário só liste as pessoas
@@ -40,6 +42,27 @@ PESSOA ROUTES
 Rotas relacionadas às pessoas
 e dependentes vinculados ao usuário.
 */
+/*
+Quem não é administrador só cria pessoas na própria conta: o usuario_id
+do corpo é ignorado e substituído pelo do usuário autenticado.
+*/
+function forcarDonoDaPessoa(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) {
+
+  if (req.perfilUsuario !== "ADMIN") {
+    req.body = {
+      ...req.body,
+      usuario_id: req.usuarioId
+    };
+  }
+
+  next();
+
+}
+
 const router = Router();
 
 /*
@@ -51,6 +74,7 @@ GET /pessoas
 */
 router.get(
   "/",
+  exigirAdmin,
   PessoaController.listar
 );
 
@@ -63,6 +87,7 @@ GET /pessoas/:id
 */
 router.get(
   "/:id",
+  pessoaDoIdPertenceAoUsuario,
   PessoaController.buscarPorId
 );
 
@@ -88,6 +113,7 @@ POST /pessoas
 */
 router.post(
   "/",
+  forcarDonoDaPessoa,
   PessoaController.criar
 );
 
@@ -100,6 +126,7 @@ PUT /pessoas/:id
 */
 router.put(
   "/:id",
+  pessoaDoIdPertenceAoUsuario,
   PessoaController.atualizar
 );
 
@@ -112,6 +139,7 @@ DELETE /pessoas/:id
 */
 router.delete(
   "/:id",
+  pessoaDoIdPertenceAoUsuario,
   PessoaController.remover
 );
 

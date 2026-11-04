@@ -114,7 +114,7 @@ Data de nascimento: 14/05/1990
 
     const dados = extrairDadosCarteirinha(texto, CATALOGO, HOJE);
 
-    expect(dados).toEqual({
+    expect(dados).toMatchObject({
       vacina: "dT",
       dose: "Reforço",
       dataAplicacao: "2024-08-22",
@@ -181,7 +181,7 @@ Febre Amarela - Dose única - 15/01/2022 - Lote: 211VFA042Z - Local: UBS Jardim 
   it("devolve campos nulos quando o OCR não leu o que não existe", () => {
     const dados = extrairDadosCarteirinha("Varicela", CATALOGO, HOJE);
 
-    expect(dados).toEqual({
+    expect(dados).toMatchObject({
       vacina: "Varicela",
       dose: "Não identificada",
       dataAplicacao: null,
@@ -283,6 +283,46 @@ Carteira Nacional de Vacinação Digital
       dose: "Reforço",
       dataAplicacao: "2022-07-08"
     });
+  });
+
+  it("lê TODAS as vacinas e doses de uma carteira do Meu SUS Digital (PDF lido pelo OCR)", () => {
+    const cab = "| Vacina/Profilaxia | Data | Dose | Lote | Estratégia | * CNES | Estabelecimento de Saúde | Município | UF |";
+    const sep = "|---|---|---|---|---|---|---|---|---|";
+    const linhaSus = (v: string, d: string, dose: string, lote: string, ubs: string) =>
+      `| ${v} | ${d} | ${dose} | ${lote} | - | 2072327 | ${ubs} | GUARULHOS | SP |`;
+
+    const texto = [
+      "## Carteira Nacional de Vacinação Digital",
+      "| Nome AYLA PEDROGA ROSSI | Data de nascimento 12/05/2005 | CPF/CNS 523.343.628-08 |",
+      "|---|---|---|",
+      "| Nome da Mãe | Nacionalidade | Sexo |",
+      "| VACINAÇÃO COVID-19 - Vacina/Profilaxia | VACINAÇÃO COVID-19 - Data | VACINAÇÃO COVID-19 - Dose | VACINAÇÃO COVID-19 - Lote |",
+      sep,
+      linhaSus("COVID-19 PFIZER - COMIRNATY", "08/07/2022", "Reforço", "FN9607", "UBS TRANQUILIDADE"),
+      linhaSus("COVID-19 PFIZER - COMIRNATY", "26/11/2021", "2/2", "FM3355", "UBS JARDIM VILA GALVAO"),
+      linhaSus("COVID-19 PFIZER - COMIRNATY", "01/09/2021", "1/2", "28235BD", "UBS TRANQUILIDADE"),
+      cab,
+      sep,
+      linhaSus("VACINA DIFTERIA E TÉTANO ADULTO", "06/05/2019", "Revacinação", "221502516A", "UBS TRANQUILIDADE"),
+      linhaSus("VACINA FEBRE AMARELA", "21/12/2017", "Dose Inicial", "174VFC047Z", "UBS DR JOSE TOLEDO PIZA"),
+      linhaSus("VACINA HPV QUADRIVALENTE", "13/01/2016", "2ª Dose", "L548", "UBS TRANQUILIDADE"),
+      linhaSus("VACINA HPV QUADRIVALENTE", "29/06/2015", "1ª Dose", "Não informado", "UBS TRANQUILIDADE")
+    ].join("\n");
+
+    const dados = extrairDadosCarteirinha(texto, CATALOGO, HOJE);
+
+    expect(dados.dataNascimentoTitular).toBe("2005-05-12");
+    expect(dados.registros.map((r) => [r.vacina, r.dose, r.dataAplicacao])).toEqual([
+      ["COVID-19", "Reforço", "2022-07-08"],
+      ["COVID-19", "2ª dose", "2021-11-26"],
+      ["COVID-19", "1ª dose", "2021-09-01"],
+      ["dT", "Reforço", "2019-05-06"],
+      ["Febre Amarela", "1ª dose", "2017-12-21"],
+      ["HPV4", "2ª dose", "2016-01-13"],
+      ["HPV4", "1ª dose", "2015-06-29"]
+    ]);
+    expect(dados.registros.find((r) => r.dataAplicacao === "2015-06-29")?.lote).toBeNull();
+    expect(dados.registros[0].localAplicacao).toBe("UBS TRANQUILIDADE");
   });
 
 });

@@ -103,9 +103,9 @@ export function buscarUsuarioPorEmail(
       `
       SELECT *
       FROM usuarios
-      WHERE email = ?
+      WHERE LOWER(email) = LOWER(?)
       `,
-      [email],
+      [email.trim()],
       (err, row) => {
 
         if (err) {

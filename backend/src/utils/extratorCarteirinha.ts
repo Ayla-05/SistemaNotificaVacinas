@@ -27,14 +27,23 @@ Letra manuscrita tende a sair com erros no OCR; por isso
 o usuário sempre revisa os campos antes de gravar.
 */
 
-export interface DadosExtraidosCarteirinha {
+export interface RegistroExtraidoCarteirinha {
   vacina: string;
   dose: string;
   dataAplicacao: string | null;
   lote: string | null;
   localAplicacao: string | null;
+}
+
+/*
+Os campos de nível superior repetem o registro mais recente (formato
+original do Scan, de uma única vacina); "registros" traz TODOS os
+registros encontrados no documento, do mais recente ao mais antigo.
+*/
+export interface DadosExtraidosCarteirinha extends RegistroExtraidoCarteirinha {
   nomeTitular: string | null;
   dataNascimentoTitular: string | null;
+  registros: RegistroExtraidoCarteirinha[];
 }
 
 /*
@@ -394,6 +403,14 @@ function extrairTitular(
 
   }
 
+  /* "Nome AYLA PEDROGA ROSSI" na mesma célula (Meu SUS Digital em PDF). */
+  const nomeNaCelula =
+    /(?:^|\|)\s*nome\s+(?!da\s|do\s|completo\b)([^|\n]+?)\s*(?:\||$)/im.exec(texto);
+
+  if (nomeNaCelula && !doRotulo.nomeTitular) {
+    return { ...doRotulo, nomeTitular: nomeNaCelula[1].trim() };
+  }
+
   return doRotulo;
 
 }
@@ -421,7 +438,7 @@ export function extrairDadosCarteirinha(
 
   const candidatos: Array<{
     ordem: number;
-    registro: Omit<DadosExtraidosCarteirinha, "nomeTitular" | "dataNascimentoTitular">;
+    registro: RegistroExtraidoCarteirinha;
   }> = [];
 
   /*
@@ -550,9 +567,23 @@ export function extrairDadosCarteirinha(
 
   });
 
+  /* Mesma vacina + dose + data repetida (ex.: tabela impressa duas vezes) vale uma vez só. */
+  const vistos = new Set<string>();
+  /* Linha de cabeçalho que cita a vacina (ex.: "VACINAÇÃO COVID-19 - Data") não tem data: descarta. */
+  const comData = candidatos.filter((c) => c.registro.dataAplicacao);
+  const registros = (comData.length > 0 ? comData : candidatos)
+    .map((c) => c.registro)
+    .filter((r) => {
+      const chave = `${r.vacina}|${r.dose}|${r.dataAplicacao}`;
+      if (vistos.has(chave)) return false;
+      vistos.add(chave);
+      return true;
+    });
+
   return {
     ...candidatos[0].registro,
-    ...titular
+    ...titular,
+    registros
   };
 
 }

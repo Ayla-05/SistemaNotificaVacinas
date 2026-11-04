@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { CalendarioController } from "../controllers/calendarioController";
+import { exigirAdmin } from "../middlewares/authMiddleware";
 
 /*
 ==================================================
@@ -68,6 +69,7 @@ POST /calendario
 */
 router.post(
   "/",
+  exigirAdmin,
   CalendarioController.criar
 );
 
@@ -80,6 +82,7 @@ PUT /calendario/:id
 */
 router.put(
   "/:id",
+  exigirAdmin,
   CalendarioController.atualizar
 );
 
@@ -92,6 +95,7 @@ DELETE /calendario/:id
 */
 router.delete(
   "/:id",
+  exigirAdmin,
   CalendarioController.remover
 );
 

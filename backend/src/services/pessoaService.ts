@@ -1,3 +1,4 @@
+import { validarDadosPessoa } from "../utils/validacao";
 import { frequenciaValida, FREQUENCIAS_AVISO } from "../utils/frequenciaAviso";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as usuarioRepository from "../repositories/usuarioRepository";
@@ -173,6 +174,8 @@ export class PessoaService {
 
     this.validarFrequenciaAviso(dados.frequencia_aviso);
 
+    validarDadosPessoa(dados, true);
+
     if (!dados.nome?.trim()) {
       throw new Error(
         "Nome é obrigatório."
@@ -245,6 +248,8 @@ export class PessoaService {
   ) {
 
     this.validarFrequenciaAviso(dados.frequencia_aviso);
+
+    validarDadosPessoa(dados, false);
 
     const pessoa =
       await pessoaRepository.buscarPessoaPorId(

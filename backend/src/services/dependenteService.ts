@@ -1,3 +1,4 @@
+import { validarDadosPessoa } from "../utils/validacao";
 import * as dependenteRepository from "../repositories/dependenteRepository";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 
@@ -26,6 +27,11 @@ Dependências:
 - dependenteRepository
 - pessoaRepository
 */
+const PARENTESCOS_ACEITOS = [
+  "filho", "filha", "pai", "mae", "mãe", "conjuge", "cônjuge",
+  "irmao", "irmão", "irma", "irmã", "avo", "avô", "avó", "neto", "neta", "tutelado", "outro"
+];
+
 export class DependenteService {
 
   /*
@@ -81,6 +87,14 @@ export class DependenteService {
         "Parentesco é obrigatório."
       );
     }
+
+    if (!PARENTESCOS_ACEITOS.includes(dados.parentesco.trim().toLowerCase())) {
+      throw new Error(
+        "Parentesco inválido."
+      );
+    }
+
+    validarDadosPessoa(dados, true);
 
     const responsavel =
       await pessoaRepository.buscarPessoaPorId(

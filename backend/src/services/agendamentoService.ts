@@ -1,6 +1,22 @@
+import { dataIsoExiste, validarNumeroDose, validarTexto } from "../utils/validacao";
 import * as agendamentoVacinaRepository from "../repositories/agendamentoVacinaRepository";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as vacinaRepository from "../repositories/vacinaRepository";
+import * as registroVacinacaoRepository from "../repositories/registroVacinacaoRepository";
+import * as doseVacinaRepository from "../repositories/doseVacinaRepository";
+import { NotificacaoService } from "./notificacaoService";
+
+/* Data de hoje (fuso local) no formato AAAA-MM-DD. */
+function hojeISO() {
+
+  const agora = new Date();
+
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+
+  return `${agora.getFullYear()}-${mes}-${dia}`;
+
+}
 
 /*
 ==================================================
@@ -116,6 +132,7 @@ export class AgendamentoService {
   - Pessoa deve existir
   - Vacina deve existir
   - Dose deve ser maior que zero
+  - Data não pode ser retroativa (anterior a hoje)
   */
   static async criar(
     pessoaId: number,
@@ -147,15 +164,50 @@ export class AgendamentoService {
       );
     }
 
-    if (numeroDose <= 0) {
-      throw new Error(
-        "Número da dose inválido."
-      );
-    }
+    validarNumeroDose(numeroDose);
+    validarTexto(observacao, "Observação", { max: 300 });
 
     if (!dataPrevista?.trim()) {
       throw new Error(
         "Data prevista não informada."
+      );
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataPrevista.trim())) {
+      throw new Error(
+        "Data prevista inválida. Use o formato AAAA-MM-DD."
+      );
+    }
+
+    if (!dataIsoExiste(dataPrevista)) {
+      throw new Error(
+        "Data prevista inválida."
+      );
+    }
+
+    if (dataPrevista.trim() < hojeISO()) {
+      throw new Error(
+        "Não é possível agendar em uma data que já passou."
+      );
+    }
+
+    /* Mesma vacina, dose e data já agendadas e ainda abertas: não duplica. */
+    const existentes =
+      await agendamentoVacinaRepository.listarAgendamentosPessoa(
+        pessoaId
+      );
+
+    const jaAgendado = existentes.some(
+      (a: any) =>
+        a.vacina_id === vacinaId &&
+        a.numero_dose === numeroDose &&
+        a.data_prevista === dataPrevista.trim() &&
+        a.status !== "CANCELADA"
+    );
+
+    if (jaAgendado) {
+      throw new Error(
+        "Esta dose já está agendada para essa data."
       );
     }
 
@@ -203,6 +255,101 @@ export class AgendamentoService {
         id,
         status
       );
+
+  }
+
+  /*
+  ==================================================
+  CONFIRMAR QUE A VACINA FOI TOMADA
+  ==================================================
+
+  Marca o agendamento como REALIZADA e registra a
+  dose na carteira vacinal (data de aplicação = hoje).
+  */
+  static async confirmarRealizacao(
+    id: number
+  ) {
+
+    const agendamento: any =
+      await agendamentoVacinaRepository
+        .buscarAgendamentoPorId(id);
+
+    if (!agendamento) {
+      throw new Error(
+        "Agendamento não encontrado."
+      );
+    }
+
+    if (agendamento.status === "REALIZADA") {
+      throw new Error(
+        "Este agendamento já foi confirmado."
+      );
+    }
+
+    if (agendamento.status === "CANCELADA") {
+      throw new Error(
+        "Este agendamento foi cancelado."
+      );
+    }
+
+    if (agendamento.data_prevista > hojeISO()) {
+      throw new Error(
+        "Só é possível confirmar a vacina a partir da data agendada."
+      );
+    }
+
+    let registro: any =
+      await registroVacinacaoRepository
+        .buscarRegistroPessoaVacina(
+          agendamento.pessoa_id,
+          agendamento.vacina_id
+        );
+
+    const registroId: number =
+      registro
+        ? registro.id
+        : await registroVacinacaoRepository
+            .criarRegistroVacinacao(
+              agendamento.pessoa_id,
+              agendamento.vacina_id
+            );
+
+    const doseExistente =
+      await doseVacinaRepository.buscarDose(
+        registroId,
+        agendamento.numero_dose
+      );
+
+    if (!doseExistente) {
+
+      await doseVacinaRepository.registrarDose(
+        registroId,
+        agendamento.numero_dose,
+        `Dose ${agendamento.numero_dose}`,
+        {
+          dataAplicacao: hojeISO(),
+          observacao: "Confirmada pelo agendamento"
+        }
+      );
+
+    }
+
+    await agendamentoVacinaRepository
+      .atualizarStatusAgendamento(
+        id,
+        "REALIZADA"
+      );
+
+    const vacina: any =
+      await vacinaRepository.buscarVacinaPorId(
+        agendamento.vacina_id
+      );
+
+    NotificacaoService.notificarRegistroDose(
+      agendamento.pessoa_id,
+      vacina?.nome ?? "Vacina",
+      `Dose ${agendamento.numero_dose}`
+    );
 
   }
 

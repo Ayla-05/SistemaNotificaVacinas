@@ -261,14 +261,31 @@ export default function CompletarCadastro() {
         await recarregarPessoas();
       }
 
-      await confirmarScanNaCarteira({
-        pessoaId: pessoaIdDestino,
+      // O primeiro registro (o mais recente) é o que aparece para revisão; os demais
+      // vêm da mesma carteirinha. Salva todos, do mais antigo ao mais novo, para as
+      // doses (1ª, 2ª, reforço) saírem na ordem certa.
+      const editado = {
         vacina: dadosExtraidos.vacina,
         dose: dadosExtraidos.dose,
         dataAplicacao: dadosExtraidos.dataAplicacao,
         lote: dadosExtraidos.lote,
         localAplicacao: dadosExtraidos.localAplicacao
-      });
+      };
+      const outros = (dadosExtraidos.registros ?? []).slice(1);
+      const todos = [editado, ...outros].sort((x, y) =>
+        (x.dataAplicacao ?? '').localeCompare(y.dataAplicacao ?? '')
+      );
+
+      for (const registro of todos) {
+        await confirmarScanNaCarteira({
+          pessoaId: pessoaIdDestino,
+          vacina: registro.vacina,
+          dose: registro.dose,
+          dataAplicacao: registro.dataAplicacao,
+          lote: registro.lote,
+          localAplicacao: registro.localAplicacao
+        });
+      }
 
       setConcluidoUpload(true);
     } catch (erroCapturado) {
@@ -702,6 +719,11 @@ function CartaoCarteirinha({ dono, processando, dados, imagem, onClickVazio }) {
         </div>
         <span className="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-full">{dados.dose}</span>
       </div>
+      {dados.registros?.length > 1 && (
+        <p className="mt-3 text-xs font-semibold text-white/90">
+          + {dados.registros.length - 1} outro(s) registro(s) desta carteirinha serão salvos junto.
+        </p>
+      )}
     </div>
   );
 }

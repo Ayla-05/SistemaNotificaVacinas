@@ -11,6 +11,7 @@ import express, {
 } from "express";
 
 import cors from "cors";
+import { tratarErros } from "./middlewares/erroMiddleware";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 
@@ -447,6 +448,13 @@ app.use(
 
   }
 );
+
+/*
+==================================================
+TRATAMENTO DE ERROS (JSON)
+==================================================
+*/
+app.use(tratarErros);
 
 /*
 ==================================================

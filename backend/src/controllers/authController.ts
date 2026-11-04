@@ -1,3 +1,4 @@
+import { validarDataNascimento } from "../utils/validacao";
 import { Request, Response } from "express";
 
 import {
@@ -155,6 +156,12 @@ export class AuthController {
         senha,
         dataNascimento
       } = req.body;
+
+      /*
+      Valida tudo antes de criar a conta: um nascimento inválido não pode
+      deixar um usuário órfão (sem pessoa) e com o e-mail já "ocupado".
+      */
+      validarDataNascimento(dataNascimento);
 
       const usuarioId =
         await UsuarioService.criar(
