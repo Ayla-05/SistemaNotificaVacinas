@@ -34,6 +34,28 @@ function usuarioEDonoDaConta(
 }
 
 /*
+Quem não é administrador só cria pessoas na própria conta: o usuario_id
+do corpo é ignorado e substituído pelo do usuário autenticado
+(COR-05: antes era possível criar pessoa em outra conta).
+*/
+function forcarDonoDaPessoa(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) {
+
+  if (req.perfilUsuario !== "ADMIN") {
+    req.body = {
+      ...req.body,
+      usuario_id: req.usuarioId
+    };
+  }
+
+  next();
+
+}
+
+/*
 ==================================================
 PESSOA ROUTES
 ==================================================
@@ -95,6 +117,7 @@ POST /pessoas
 */
 router.post(
   "/",
+  forcarDonoDaPessoa,
   PessoaController.criar
 );
 

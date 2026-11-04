@@ -1,5 +1,5 @@
+import { validarDadosPessoa } from "../utils/validacao";
 import { frequenciaValida, FREQUENCIAS_AVISO } from "../utils/frequenciaAviso";
-import { dataNascimentoValida, emailValido } from "../utils/validacao";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as usuarioRepository from "../repositories/usuarioRepository";
 
@@ -34,31 +34,6 @@ export class PessoaService {
   Frequência dos avisos de dose por e-mail (ver utils/frequenciaAviso.ts).
   Ausente = não alterar.
   */
-  /*
-  CORREÇÃO [COR-25]: nascimento (formato, futuro, idade absurda) e
-  e-mail eram aceitos sem conferência.
-  */
-  private static validarDadosCadastrais(
-    dados: { data_nascimento?: string; email?: string }
-  ) {
-
-    if (
-      dados.data_nascimento !== undefined &&
-      !dataNascimentoValida(dados.data_nascimento)
-    ) {
-      throw new Error(
-        "Data de nascimento inválida. Use AAAA-MM-DD, sem datas futuras."
-      );
-    }
-
-    if (dados.email && !emailValido(dados.email)) {
-      throw new Error(
-        "E-mail inválido."
-      );
-    }
-
-  }
-
   private static validarFrequenciaAviso(
     valor: unknown
   ) {
@@ -199,6 +174,8 @@ export class PessoaService {
 
     this.validarFrequenciaAviso(dados.frequencia_aviso);
 
+    validarDadosPessoa(dados, true);
+
     if (!dados.nome?.trim()) {
       throw new Error(
         "Nome é obrigatório."
@@ -210,8 +187,6 @@ export class PessoaService {
         "Data de nascimento é obrigatória."
       );
     }
-
-    this.validarDadosCadastrais(dados);
 
     const usuario =
       await usuarioRepository.buscarUsuarioPorId(
@@ -274,6 +249,8 @@ export class PessoaService {
 
     this.validarFrequenciaAviso(dados.frequencia_aviso);
 
+    validarDadosPessoa(dados, false);
+
     const pessoa =
       await pessoaRepository.buscarPessoaPorId(
         id
@@ -297,13 +274,6 @@ export class PessoaService {
       ...dados
     };
 
-    if (!dadosCompletos.nome?.trim()) {
-      throw new Error(
-        "Nome é obrigatório."
-      );
-    }
-
-    this.validarDadosCadastrais(dadosCompletos);
 
     return await pessoaRepository.atualizarPessoa(
       id,

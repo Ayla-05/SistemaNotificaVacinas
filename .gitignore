@@ -40,6 +40,7 @@ temp/
 # Python (ocr-service)
 __pycache__/
 .venv/
+scripts/.catalogo.cjs
 
 # SQLite (modo WAL cria arquivos auxiliares)
 *.db-wal

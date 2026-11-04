@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Mail, Lock, User, Calendar, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { CenaLogin } from '../components/IlustracaoSaude';
 
 /**
  * Tela de Login / Cadastro
@@ -58,23 +59,46 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen overflow-hidden">
+      <CenaLogin />
 
-        {/* Marca */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="icon-chip w-14 h-14 mb-3 shadow-md shadow-emerald-900/10">
-            <ShieldCheck className="w-7 h-7" />
+      {/* Mancha branca orgânica atrás do formulário (telas largas) */}
+      <svg
+        className="hidden lg:block absolute left-0 top-0 h-full w-[58vw] drop-shadow-2xl"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M10 0 L70 0 C90 16 97 32 86 50 C75 68 64 86 36 100 L10 100 C3 80 10 62 5 44 C1 28 7 14 10 0 Z"
+          fill="white"
+        />
+      </svg>
+
+      <p className="hidden lg:block absolute bottom-10 right-12 max-w-xs text-right text-white font-semibold text-lg drop-shadow">
+        Sua carteira de vacinação, sempre em dia.
+      </p>
+
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-6 lg:justify-start lg:pl-[9vw]">
+        <div className="w-full max-w-sm bg-white/90 backdrop-blur rounded-3xl p-7 shadow-xl lg:bg-transparent lg:backdrop-blur-none lg:shadow-none lg:p-0 lg:max-w-[22rem]">
+
+          {/* Marca */}
+          <div className="flex items-center gap-2 mb-8">
+            <div className="icon-chip w-10 h-10">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <span className="font-bold text-emerald-800 tracking-wide">Notifica Vacinas</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-wide">Notifica Vacinas</h1>
-          <p className="text-sm text-slate-500 mt-1">Sua carteira de vacinação, sempre em dia.</p>
-        </div>
 
-        {/* Card de vidro */}
-        <div className="card-glass p-8">
+          <h1 className="text-3xl text-slate-700 leading-tight">
+            Olá,
+            <span className="block font-bold text-emerald-900">
+              {modo === 'login' ? 'bem-vindo(a) de volta!' : 'vamos criar sua conta!'}
+            </span>
+          </h1>
 
           {/* Alternância Entrar / Criar conta */}
-          <div className="flex bg-slate-100/70 rounded-2xl p-1 mb-6">
+          <div className="flex bg-emerald-50 rounded-2xl p-1 my-6">
             <button
               type="button"
               onClick={() => setModo('login')}
@@ -179,11 +203,11 @@ export default function Login() {
             </button>
 
           </form>
-        </div>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
-          Seus dados de saúde são protegidos e visíveis só para você.
-        </p>
+          <p className="text-xs text-slate-400 mt-6">
+            Seus dados de saúde são protegidos e visíveis só para você.
+          </p>
+        </div>
       </div>
     </div>
   );

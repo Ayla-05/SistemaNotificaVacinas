@@ -12,6 +12,7 @@ import express, {
 } from "express";
 
 import cors from "cors";
+import { tratarErros } from "./middlewares/erroMiddleware";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 
@@ -465,50 +466,12 @@ app.use(
 
 /*
 ==================================================
-TRATAMENTO DE ERROS
+TRATAMENTO DE ERROS (JSON)
 ==================================================
 
-CORREÇÃO [COR-13]: sem este manipulador, o Express responde
-erros não tratados (por exemplo, JSON malformado) com uma
-página HTML contendo a pilha de execução, que revela
-caminhos de arquivo e versões de bibliotecas. Aqui todo erro
-vira JSON enxuto; o detalhe técnico fica só no log do servidor.
+Deve ser o último middleware (ver middlewares/erroMiddleware.ts).
 */
-app.use(
-  (
-    erro: any,
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-
-    if (res.headersSent) {
-      return next(erro);
-    }
-
-    if (erro?.type === "entity.parse.failed") {
-      return res.status(400).json({
-        erro: "Corpo da requisição inválido (JSON malformado)."
-      });
-    }
-
-    if (erro?.type === "entity.too.large") {
-      return res.status(413).json({
-        erro: "Corpo da requisição grande demais."
-      });
-    }
-
-    console.error(
-      "Erro não tratado:",
-      erro
-    );
-
-    return res.status(500).json({
-      erro: "Erro interno do servidor."
-    });
-
-  }
-);
+app.use(tratarErros);
 
 /*
 ==================================================

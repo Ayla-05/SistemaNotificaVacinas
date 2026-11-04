@@ -156,3 +156,32 @@
     animation: pulse-dot 2s ease-in-out infinite;
   }
 }
+/* ============================================
+   CARROSSEL AUTOMÁTICO (Dashboard)
+   Roda sozinho e pausa com o mouse em cima.
+   A lista é renderizada duas vezes, então -50% fecha o laço.
+   ============================================ */
+.marquee {
+  overflow: hidden;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee var(--duracao, 40s) linear infinite;
+}
+
+.marquee:hover .marquee-track,
+.marquee:focus-within .marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee { overflow-x: auto; }
+  .marquee-track { animation: none; }
+}

@@ -517,15 +517,15 @@ A história do projeto registra uma decisão pertinente: o envio foi trocado ent
 
 ## 5.6 Qualidade e testes
 
-A verificação do sistema combina arquivos `.http` versionados (`backend/tests/`), que documentam e reproduzem os fluxos de cada módulo, testes manuais na interface e uma suíte automatizada (Vitest e Supertest) organizada em seis categorias, executada com `npm test` no diretório `backend`. A suíte tem 347 testes na data de fechamento desta versão:
+A verificação do sistema combina arquivos `.http` versionados (`backend/tests/`), que documentam e reproduzem os fluxos de cada módulo, testes manuais na interface e uma suíte automatizada (Vitest e Supertest) organizada em seis categorias, executada com `npm test` no diretório `backend`. A suíte tem 375 testes na data de fechamento desta versão:
 
 | Categoria | Testes | O que verifica |
 |---|---:|---|
-| Unitários | 74 | Funções puras: extrator da carteirinha, faixa etária, próximas doses, frequência de aviso, utilitários de segurança. |
+| Unitários | 75 | Funções puras: extrator da carteirinha, faixa etária, próximas doses, frequência de aviso, utilitários de segurança. |
 | Integração | 38 | Módulos com banco em memória: autenticação e sessões, avisos de dose, leitura por OCR (com o serviço simulado). |
 | Funcional (ponta a ponta) | 63 | O aplicativo completo, com CSRF, login e perfis: usuários, pessoas, vacinas, calendário, carteira, agendamentos, dependentes, grupos especiais, remoção em cascata e integridade do banco. |
-| Lógica de negócio | 124 | Validação de entradas, idade e datas-limite (fuso do Brasil, ano bissexto, véspera de aniversário), pendências e próximas doses conforme as doses registradas, concorrência (a mesma dose enviada várias vezes ao mesmo tempo é gravada uma só vez). |
-| Segurança | 31 | Itens do OWASP Top 10: sessão e JWT forjado, controle de acesso (IDOR e escalada de privilégio), injeção de SQL, exposição de dados, cabeçalhos, CORS, tratamento de erros. |
+| Lógica de negócio | 135 | Validação de entradas, idade e datas-limite (fuso do Brasil, ano bissexto, véspera de aniversário), pendências e próximas doses conforme as doses registradas, concorrência (a mesma dose enviada várias vezes ao mesmo tempo é gravada uma só vez). |
+| Segurança | 47 | Itens do OWASP Top 10: sessão e JWT forjado, controle de acesso (IDOR e escalada de privilégio), injeção de SQL, exposição de dados, cabeçalhos, CORS, tratamento de erros. |
 | Arquitetura | 17 | Regras de camadas, ausência de ciclos de dependência, SQL parametrizado, ausência de segredos no código e varredura de **todas** as rotas declaradas (exigem login, perfil e cabeçalho anti-CSRF). |
 
 Os testes de arquitetura leem o código-fonte e comparam o que existe com o que o projeto promete: por exemplo, que controladores não acessam repositórios, que nenhuma consulta SQL concatena valores, e que nenhuma rota, entre as mais de 70 declaradas, fica sem a proteção devida. O comando `npm run test:relatorio` executa a suíte e gera o relatório `docs/relatorio-testes.md`, com o resultado de cada teste.
@@ -603,7 +603,7 @@ O *Notifica Vacinas* **não substitui** o registro oficial; atua como camada de 
 
 1. **Fonte de dados manual.** A confiabilidade da carteira depende do que o usuário lança. Não há validação cruzada com o SI-PNI.
 2. **Cobertura do calendário.** O cálculo usa o Calendário Nacional 2026 (idade, intervalo e grupo especial), mas não modela gestantes (o calendário próprio não foi incluído), imunocomprometidos, acamados, viajantes e áreas de risco, que dependem de avaliação do serviço de saúde. Onde o calendário não informa o intervalo entre doses (hepatite B e dengue), foram mantidos os valores que o sistema já utilizava.
-3. **Cobertura de testes parcial.** O *back end* tem 347 testes automatizados (Seção 5.6), mas o *front end* não tem nenhum, a leitura real por OCR e o envio de e-mail só são testados com simulações, e não há integração contínua executando a suíte nem teste de carga.
+3. **Cobertura de testes parcial.** O *back end* tem 375 testes automatizados (Seção 5.6), mas o *front end* não tem nenhum, a leitura real por OCR e o envio de e-mail só são testados com simulações, e não há integração contínua executando a suíte nem teste de carga.
 4. **Banco embarcado e agendador no mesmo processo** (Seção 6.3).
 5. **Canal único de notificação e ausência de segundo fator.** SMS não foi implementado, e e-mails podem cair em *spam* ou não ser lidos. O login depende apenas de e-mail e senha; autenticação em dois fatores (TOTP) permanece como melhoria futura, e deveria ser obrigatória para administradores.
 6. **Conformidade com a LGPD incompleta** (Seção 6.2).

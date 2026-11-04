@@ -1,5 +1,5 @@
+import { validarDadosPessoa } from "../utils/validacao";
 import * as dependenteRepository from "../repositories/dependenteRepository";
-import { dataNascimentoValida, emailValido, parentescoValido } from "../utils/validacao";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 
 /*
@@ -27,6 +27,11 @@ Dependências:
 - dependenteRepository
 - pessoaRepository
 */
+const PARENTESCOS_ACEITOS = [
+  "filho", "filha", "pai", "mae", "mãe", "conjuge", "cônjuge",
+  "irmao", "irmão", "irma", "irmã", "avo", "avô", "avó", "neto", "neta", "tutelado", "outro"
+];
+
 export class DependenteService {
 
   /*
@@ -83,24 +88,13 @@ export class DependenteService {
       );
     }
 
-    /* CORREÇÃO [COR-25]: dados do dependente passam pelas mesmas regras. */
-    if (!dataNascimentoValida(dados.data_nascimento)) {
+    if (!PARENTESCOS_ACEITOS.includes(dados.parentesco.trim().toLowerCase())) {
       throw new Error(
-        "Data de nascimento inválida. Use AAAA-MM-DD, sem datas futuras."
+        "Parentesco inválido."
       );
     }
 
-    if (!parentescoValido(dados.parentesco)) {
-      throw new Error(
-        "Parentesco inválido. Use: filho, filha, pai, mãe, cônjuge, avô/avó, neto, irmão/irmã ou outro."
-      );
-    }
-
-    if (dados.email && !emailValido(dados.email)) {
-      throw new Error(
-        "E-mail inválido."
-      );
-    }
+    validarDadosPessoa(dados, true);
 
     const responsavel =
       await pessoaRepository.buscarPessoaPorId(

@@ -18,7 +18,7 @@ acessa ou altera o que não é seu), **Média** (robustez, vazamento limitado, i
 | COR-02 | Alta | `POST/PUT/DELETE /calendario`: qualquer usuário logado alterava o calendário vacinal. | `calendarioRoutes.ts`: `exigirAdmin` na escrita. | `ARQ-15`, funcional "calendário legível por logados, só admin altera" |
 | COR-03 | Alta | `GET /pessoas` devolvia todas as pessoas do sistema a qualquer logado. | `pessoaController.listar`: usuário comum recebe só as pessoas da própria conta; admin vê todas. | funcional "usuário comum não lista todas as pessoas" |
 | COR-04 | Alta | `GET/PUT/DELETE /pessoas/:id` sem checagem de dono (IDOR): ler, alterar e apagar a pessoa de outra conta. | Novo middleware `pessoaDoIdPertenceAoUsuario` (reaproveita `validarPosse`) nas três rotas. | funcional (IDOR/altera/remove pessoa alheia) |
-| COR-05 | Alta | `POST /pessoas` aceitava `usuario_id` de outra conta. | `pessoaController.criar`: 403 se `usuario_id` ≠ usuário logado (admin liberado). | funcional "não cria pessoa em nome de outro usuário" |
+| COR-05 | Alta | `POST /pessoas` aceitava `usuario_id` de outra conta. | Middleware `forcarDonoDaPessoa` (`pessoaRoutes.ts`): para quem não é admin, o `usuario_id` do corpo é **ignorado** e a pessoa nasce na conta de quem pediu. | funcional "ao criar pessoa, o usuario_id do corpo é ignorado", `seguranca/autorizacao.test.ts` |
 | COR-06 | Alta | Rotas de dose/registro da carteira (`/carteira/dose`, `/registro/:id/doses`, `/contar-doses`, `DELETE dose/registro`) sem posse. | Middlewares `registroDaUrl…`, `registroDoId…`, `registroDoCorpo…`, `doseDoId…PertenceAoUsuario` (fábrica `donoDoRecurso`: resolve o `pessoa_id` dono e confere a conta; inexistente → 403 para o usuário comum). | funcional (carteira vacinal › "não lê/registra/remove…") |
 | COR-07 | Alta | Agendamentos por id (ver, alterar status/observação, remover), criação para pessoa alheia e `GET /agendamentos` (lista de todos). | `agendamentoDoIdPertenceAoUsuario`, `pessoaDoCorpoPertenceAoUsuario` nas rotas; `AgendamentoService.listarVisiveis` filtra a listagem pelas pessoas da conta. | funcional (agendamentos › …) |
 | COR-08 | Média | Status do agendamento aceitava qualquer texto. | `AgendamentoService.atualizarStatus` valida contra `PENDENTE, AGENDADA, REALIZADA, CANCELADA, ATRASADA` (400). | funcional "recusa status inválido" |
@@ -53,12 +53,30 @@ acessa ou altera o que não é seu), **Média** (robustez, vazamento limitado, i
 
 | Código | Sev. | Problema encontrado | Como foi corrigido | Teste |
 |---|---|---|---|---|
-| COR-25 | Alta | **Validação de entrada ausente.** A API aceitava data de nascimento futura, "abc", "14/05/1990" ou do ano 1800; e-mail inválido; atualização de pessoa com nome vazio; número de dose 0, negativo, decimal, texto ou 99; dose sem número (devolvia o erro cru do SQLite, `SQLITE_CONSTRAINT: NOT NULL…`); datas impossíveis em agendamento (30/02, "ontem"); qualquer texto como parentesco; data de aplicação futura no scan. Dado ruim na carteira vacinal distorce pendências. | Novo `utils/validacao.ts` (funções puras: `dataIsoValida`, `dataNascimentoValida`, `dataNaoFutura`, `emailValido`, `numeroDoseValido` 1–20, `parentescoValido`, tolerante a acento/caixa, como o front envia) aplicado em `PessoaService`, `DependenteService`, `CarteiraService` (dose e confirmar-scan) e `AgendamentoService`. Erros voltam como 400 com mensagem clara. | `LOG-12` a `LOG-22`, `tests/logica/validacao.test.ts` |
+| COR-25 | Alta | **Validação de entrada ausente.** A API aceitava data de nascimento futura, "abc", "14/05/1990" ou do ano 1800; e-mail inválido; atualização de pessoa com nome vazio; número de dose 0, negativo, decimal, texto ou 99; dose sem número (devolvia o erro cru do SQLite, `SQLITE_CONSTRAINT: NOT NULL…`); datas impossíveis em agendamento (30/02, "ontem"); qualquer texto como parentesco; data de aplicação futura no scan. Dado ruim na carteira vacinal distorce pendências. | Camada `utils/validacao.ts` (funções puras que lançam erro em português: `dataIsoExiste`, `validarDataNascimento`, `validarDataAplicacao` (não futura e não anterior ao nascimento), `validarNumeroDose` 1–20, `validarTexto` com limite de tamanho, `validarDadosPessoa`, `emailValido`; dependente com lista de parentescos aceitos, com/sem acento) aplicada em `PessoaService`, `DependenteService`, `CarteiraService` (dose e confirmar-scan) e `AgendamentoService` (inclui recusar agendamento retroativo ou duplicado). Erros voltam como 400 com mensagem clara. | `LOG-12` a `LOG-22`, `tests/logica/validacao.test.ts`, `validacao.api.test.ts` |
 | COR-26 | Alta | **Idade errada em fuso do Brasil.** `calcularIdade` fazia `new Date("1990-05-14")` (meia-noite UTC) e lia mês/dia no fuso local: em UTC−3 a data "recuava" um dia, e a pessoa ficava um ano mais velha **na véspera** do aniversário (36 em vez de 35), antecipando a troca de faixa etária (10, 25, 60 anos) e as pendências. Em servidor UTC o erro não aparecia. Também havia "hoje" em UTC (vira o dia às 21h de Brasília) e em fuso local, de forma inconsistente. | Novo `utils/dataHoje.ts`: `hojeIso()` (dia civil de `America/Sao_Paulo`, via `Intl`) e `idadeEmAnos()` (compara texto AAAA-MM-DD, sem `Date`). Usados em `VacinalService`, `ProximasDosesService`, `NotificacaoService` (resumo e lembrete de agendamento), extrator da carteirinha e validação. A suíte passa em 4 fusos (UTC, São Paulo, Auckland, Honolulu). | `LOG-07`, `tests/logica/datas.test.ts` |
 
 Também verificado, **sem defeito**: o esquema avança dose a dose (Hepatite B de adulto: 1ª → 2ª → 3ª → em dia), dose
 única (Febre Amarela) fica em dia, remover a dose devolve a pendência, 8 requisições simultâneas da mesma dose/vacina
 gravam uma só (graças aos índices únicos, COR-18), e o cadastro público já recusava nascimento futuro (`LOG-01` a `LOG-11`, `LOG-22`).
+
+## 3c. Integração com o trabalho local da autora
+
+Em 04/11/2026, a branch `feat/interface-mascotes-e-painel-notificacoes` (interface com mascotes, painel de
+notificações, ajustes de OCR e materiais da monografia) foi integrada à `main`. Ela continha correções
+**paralelas** às COR-01 a COR-26 (autorização, validação, tratador de erros e o mesmo defeito de idade em fuso).
+Resolução dos conflitos, arquivo a arquivo:
+
+| Assunto | Decisão |
+|---|---|
+| Validação de entrada | Mantida a camada da branch da autora (`utils/validacao.ts`), mais completa (limites de texto, estado com 2 letras, aplicação não anterior ao nascimento, agendamento retroativo/duplicado). Única alteração: o "hoje" dela passou a vir de `utils/dataHoje.ts` (dia civil de São Paulo, COR-26). Os validadores duplicados da outra versão foram removidos. |
+| Posse de recursos | Mantidos os middlewares da `main` (resposta 403 uniforme, sem revelar se o recurso existe); a rota `PATCH /agendamentos/:id/confirmar` da branch da autora foi religada a eles. |
+| Funcionalidade nova | Preservados `confirmarRealizacao` (confirma o agendamento e registra a dose na carteira), `forcarDonoDaPessoa` e o texto de erro de parentesco. |
+| Tratador de erros | Mantido o `erroMiddleware.ts` (arquivo separado, mais limpo); acrescentada a guarda `res.headersSent`. |
+| Idade | Mantida a versão `idadeEmAnos` (`dataHoje.ts`); a versão da branch corrigia o mesmo bug de fuso. |
+| Testes | Os dois testes da branch foram movidos para `tests/seguranca/autorizacao.test.ts` e `tests/logica/validacao.api.test.ts`; um deles deixou de assumir o fuso da máquina. O teste unitário de validação foi reescrito sobre a camada adotada. |
+
+Resultado: 375 testes passando (UTC, São Paulo e Auckland) e o front end compila (`npm run build`).
 
 ## 4. Falsos alarmes (testes escritos, sem defeito)
 

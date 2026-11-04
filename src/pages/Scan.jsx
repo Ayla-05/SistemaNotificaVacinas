@@ -75,7 +75,10 @@ export default function Scan() {
         mediaType
       });
 
-      setExtractedData(dados);
+      // O backend devolve todos os registros do documento em "registros"
+      // (e, por compatibilidade, o mais recente nos campos de nível superior).
+      const lista = dados.registros?.length ? dados.registros : [dados];
+      setExtractedData(lista.map((r) => ({ ...r, selecionado: true })));
       setShowReviewModal(true);
     } catch (erroCapturado) {
       setErro(erroCapturado.message);
@@ -96,28 +99,63 @@ export default function Scan() {
     e.target.value = '';
   }
 
+  function atualizarRegistro(indice, campos) {
+    setExtractedData((atual) => atual.map((r, i) => (i === indice ? { ...r, ...campos } : r)));
+  }
+
   async function handleSalvar() {
+    const escolhidos = extractedData.filter((r) => r.selecionado);
+
+    if (escolhidos.length === 0) {
+      setErro('Marque pelo menos um registro para salvar.');
+      return;
+    }
+
     setIsSalvando(true);
     setErro('');
 
-    try {
-      await confirmarScanNaCarteira({
-        pessoaId: pessoaAtiva.id,
-        vacina: extractedData.vacina,
-        dose: extractedData.dose,
-        dataAplicacao: extractedData.dataAplicacao,
-        lote: extractedData.lote,
-        localAplicacao: extractedData.localAplicacao
-      });
+    // Salva um a um; os que falharem continuam na tela, com o motivo.
+    const falhas = [];
+    const restantes = [];
 
+    // Do mais antigo ao mais novo: a numeração das doses depende dessa ordem
+    // (a 1ª dose precisa entrar antes da 2ª e do reforço).
+    const ordemCronologica = [...extractedData].sort((x, y) =>
+      (x.dataAplicacao ?? '').localeCompare(y.dataAplicacao ?? '')
+    );
+
+    for (const registro of ordemCronologica) {
+      if (!registro.selecionado) {
+        restantes.push(registro);
+        continue;
+      }
+
+      try {
+        await confirmarScanNaCarteira({
+          pessoaId: pessoaAtiva.id,
+          vacina: registro.vacina,
+          dose: registro.dose,
+          dataAplicacao: registro.dataAplicacao,
+          lote: registro.lote,
+          localAplicacao: registro.localAplicacao
+        });
+      } catch (erroCapturado) {
+        falhas.push(`${registro.vacina} (${registro.dose}): ${erroCapturado.message}`);
+        restantes.push({ ...registro, erroAoSalvar: erroCapturado.message });
+      }
+    }
+
+    setIsSalvando(false);
+
+    if (falhas.length === 0) {
       setShowReviewModal(false);
       setExtractedData(null);
       setImagemPreview(null);
-    } catch (erroCapturado) {
-      setErro(erroCapturado.message);
-    } finally {
-      setIsSalvando(false);
+      return;
     }
+
+    setExtractedData(restantes);
+    setErro(`Alguns registros não foram salvos: ${falhas.join(' | ')}`);
   }
 
   return (
@@ -192,6 +230,7 @@ export default function Scan() {
               <span className="bg-slate-100 px-2 py-1 rounded">PNG</span>
               <span className="bg-slate-100 px-2 py-1 rounded">JPG</span>
               <span className="bg-slate-100 px-2 py-1 rounded">WEBP</span>
+              <span className="bg-slate-100 px-2 py-1 rounded">PDF</span>
             </div>
           </>
         )}
@@ -230,6 +269,10 @@ export default function Scan() {
                   <FileText className="w-3.5 h-3.5 text-sky-400" /> Documento Enviado
                 </div>
 
+                {!imagemPreview && (
+                  <p className="text-slate-300 text-sm text-center px-4">Documento em PDF recebido e lido.</p>
+                )}
+
                 {imagemPreview && (
                   <img
                     src={imagemPreview}
@@ -243,70 +286,61 @@ export default function Scan() {
                 </button>
               </div>
 
-              {/* COLUNA DIREITA: Formulário com Dados Extraídos */}
+              {/* COLUNA DIREITA: um cartão por registro encontrado */}
               <div className="space-y-4">
-                {/* Indicador de sucesso da leitura */}
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-emerald-800">
-                    <strong>Sucesso:</strong> 1 novo registro identificado para <strong>{pessoaAtiva?.nome ?? '—'}</strong>.
+                    <strong>Sucesso:</strong> {extractedData.length} {extractedData.length === 1 ? 'novo registro identificado' : 'registros identificados'} para <strong>{pessoaAtiva?.nome ?? '—'}</strong>.
                     <br />
-                    <span className="text-emerald-600">Revise os campos antes de salvar.</span>
+                    <span className="text-emerald-600">Desmarque o que não quiser salvar e revise os campos.</span>
                   </p>
                 </div>
 
-                {/* Campos Editáveis */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Nome da Vacina</label>
-                    <input
-                      type="text"
-                      value={extractedData.vacina}
-                      onChange={(e) => setExtractedData({ ...extractedData, vacina: e.target.value })}
-                      className="campo-input"
-                    />
-                  </div>
+                <div className="space-y-3 max-h-[46vh] overflow-y-auto pr-1">
+                  {extractedData.map((registro, i) => (
+                    <div
+                      key={i}
+                      className={`rounded-xl border p-3 space-y-2 ${registro.selecionado ? 'border-emerald-200 bg-white' : 'border-slate-200 bg-slate-50 opacity-70'}`}
+                    >
+                      <label className="flex items-center gap-2 text-sm font-bold text-slate-800 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={registro.selecionado}
+                          onChange={(e) => atualizarRegistro(i, { selecionado: e.target.checked })}
+                          className="w-4 h-4 accent-emerald-600"
+                        />
+                        {registro.vacina} — {registro.dose}
+                      </label>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Dose</label>
-                    <input
-                      type="text"
-                      value={extractedData.dose}
-                      onChange={(e) => setExtractedData({ ...extractedData, dose: e.target.value })}
-                      className="campo-input"
-                    />
-                  </div>
+                      {registro.erroAoSalvar && (
+                        <p className="text-xs text-rose-600">{registro.erroAoSalvar}</p>
+                      )}
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Data da Aplicação</label>
-                      <input
-                        type="date"
-                        value={extractedData.dataAplicacao ?? ''}
-                        onChange={(e) => setExtractedData({ ...extractedData, dataAplicacao: e.target.value })}
-                        className="campo-input"
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Nome da Vacina</label>
+                          <input type="text" value={registro.vacina} onChange={(e) => atualizarRegistro(i, { vacina: e.target.value })} className="campo-input" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Dose</label>
+                          <input type="text" value={registro.dose} onChange={(e) => atualizarRegistro(i, { dose: e.target.value })} className="campo-input" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Data da Aplicação</label>
+                          <input type="date" value={registro.dataAplicacao ?? ''} onChange={(e) => atualizarRegistro(i, { dataAplicacao: e.target.value })} className="campo-input" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Lote</label>
+                          <input type="text" value={registro.lote ?? ''} onChange={(e) => atualizarRegistro(i, { lote: e.target.value })} className="campo-input" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Local / Unidade de Saúde</label>
+                        <input type="text" value={registro.localAplicacao ?? ''} onChange={(e) => atualizarRegistro(i, { localAplicacao: e.target.value })} className="campo-input" />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Lote</label>
-                      <input
-                        type="text"
-                        value={extractedData.lote ?? ''}
-                        onChange={(e) => setExtractedData({ ...extractedData, lote: e.target.value })}
-                        className="campo-input"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Local / Unidade de Saúde</label>
-                    <input
-                      type="text"
-                      value={extractedData.localAplicacao ?? ''}
-                      onChange={(e) => setExtractedData({ ...extractedData, localAplicacao: e.target.value })}
-                      className="campo-input"
-                    />
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -324,7 +358,7 @@ export default function Scan() {
                 disabled={isSalvando}
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition"
               >
-                <Check className="w-4 h-4" /> {isSalvando ? 'Salvando...' : 'Salvar na Carteira'}
+                <Check className="w-4 h-4" /> {isSalvando ? 'Salvando...' : `Salvar ${extractedData.filter((r) => r.selecionado).length} na Carteira`}
               </button>
             </div>
 

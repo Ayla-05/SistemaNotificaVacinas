@@ -218,11 +218,13 @@ describe("pessoas", () => {
     expect((await enviar("delete", ana, `/pessoas/${biaPessoaId}`)).status).toBe(403);
   });
 
-  it("não cria pessoa em nome de outro usuário", async () => {
+  it("ao criar pessoa, o usuario_id do corpo é ignorado: ela nasce na conta de quem pediu", async () => {
     const res = await enviar("post", ana, "/pessoas", {
       usuario_id: bia.id, nome: "Intrusa", data_nascimento: "2000-01-01"
     });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(201);
+    expect((await get(ana, `/pessoas/${res.body.id}`)).body.usuario_id).toBe(ana.id);
+    expect((await get(bia, `/pessoas/${res.body.id}`)).status).toBe(403);
   });
 
   it("não lista pessoas de outro usuário", async () => {

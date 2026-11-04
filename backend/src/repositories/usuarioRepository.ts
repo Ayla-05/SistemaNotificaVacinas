@@ -75,7 +75,7 @@ export function buscarUsuarioPorEmail(
       FROM usuarios
       WHERE email = ?
       `,
-    [email]
+    [email.trim()]
   );
 
 }

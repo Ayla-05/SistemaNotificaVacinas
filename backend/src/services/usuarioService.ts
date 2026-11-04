@@ -1,3 +1,4 @@
+import { normalizarEmail, emailValido, validarTexto } from "../utils/validacao";
 import bcrypt from "bcryptjs";
 
 import { PerfilUsuario } from "../enums/perfilUsuario";
@@ -200,6 +201,16 @@ export class UsuarioService {
     if (!email?.trim()) {
       throw new Error(
         "E-mail é obrigatório."
+      );
+    }
+
+    validarTexto(nome, "Nome", { obrigatorio: true, max: 120 });
+
+    email = normalizarEmail(email);
+
+    if (!emailValido(email)) {
+      throw new Error(
+        "E-mail inválido."
       );
     }
 
