@@ -486,9 +486,124 @@ def figura_casos_de_uso():
 
 
 
+# ----------------------------------------------------------------------------
+# FLUXO DO CÁLCULO DE PENDÊNCIAS
+# ----------------------------------------------------------------------------
+_DEFS_SETA = ('<defs><marker id="pt" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">'
+              '<path d="M0,0 L10,4 L0,8 Z" fill="#333"/></marker></defs>')
+
+
+def _caixa_p(x, y, w, h, titulo, linhas, cor, fundo="#ffffff", cab=True, tam=13.5):
+    s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="9" fill="{fundo}" stroke="{cor}" stroke-width="2"/>']
+    ty = y + 24
+    if titulo:
+        s.append(f'<text x="{x+w/2}" y="{ty}" text-anchor="middle" font-size="15" font-weight="bold" fill="{cor}">{escape(titulo)}</text>')
+        ty += 22
+    for l in linhas:
+        s.append(f'<text x="{x+w/2}" y="{ty}" text-anchor="middle" font-size="{tam}" fill="{COR_TXT}">{escape(l)}</text>')
+        ty += 19
+    return "\n".join(s)
+
+
+def _seta_p(x1, y1, x2, y2, rot=None):
+    r = f'<text x="{(x1+x2)/2+8}" y="{(y1+y2)/2+4}" font-size="12.5" fill="#333">{escape(rot)}</text>' if rot else ""
+    return f'<path d="M{x1},{y1} L{x2},{y2}" stroke="#333" stroke-width="2" fill="none" marker-end="url(#pt)"/>{r}'
+
+
+def _linha_p(x1, y1, x2, y2):
+    return f'<path d="M{x1},{y1} L{x2},{y2}" stroke="#333" stroke-width="2" fill="none"/>'
+
+
+def figura_pendencias():
+    """Fluxo atual: cálculo orientado a datas sobre o Calendário Nacional 2026."""
+    L, A = 1100, 930
+    o = []
+    o.append(_caixa_p(430, 16, 240, 44, None, ["pessoaId"], "#1f3a5f", "#eef2f8", tam=15))
+    o.append(_seta_p(550, 60, 550, 88))
+    o.append(_caixa_p(270, 88, 560, 66, "Obter a pessoa e calcular a idade", [
+        "idade em anos completos no dia civil de São Paulo → faixa etária"], "#2e7d6b", "#eef7f4"))
+    o.append(_seta_p(550, 154, 550, 182))
+    fontes = [("Carteira da pessoa", ["registros e doses", "com data de aplicação"], "#b5651d", "#fbf2e8"),
+              ("Grupos especiais", ["gestante, idoso etc.", "(com o início da gestação)"], "#7a4fa0", "#f4eef8"),
+              ("Esquema vacinal 2026", ["doses, idades e intervalos", "por grupo; campanhas ativas"], "#6b7a8f", "#f1f3f6")]
+    xs = [27, 385, 743]
+    for x, (t, ls, c, f) in zip(xs, fontes):
+        o.append(_caixa_p(x, 182, 330, 92, t, ls, c, f))
+        o.append(_linha_p(x + 165, 274, x + 165, 296))
+    o.append(_linha_p(xs[0] + 165, 296, xs[2] + 165, 296))
+    o.append(_seta_p(550, 296, 550, 322))
+    # função pura
+    o.append(f'<rect x="100" y="322" width="900" height="352" rx="12" fill="#fffaf0" stroke="#c9a227" stroke-width="2"/>')
+    o.append(f'<text x="550" y="350" text-anchor="middle" font-size="16" font-weight="bold" fill="#8a6d0b">calcularProximasDoses (função pura)</text>')
+    passos = [
+        ("1", ["Filtrar as doses que valem para a pessoa: idade e janela de idade,", "grupo especial (regras da gestante; vacinas vivas fora do esquema)"]),
+        ("2", ["Em cada vacina, achar a próxima dose ainda não cumprida", "(equivalências entre vacinas; doses \"a cada gestação\")"]),
+        ("3", ["data prevista = maior entre (nascimento + idade recomendada)", "e (data da última dose + intervalo mínimo)"]),
+        ("4", ["Classificar: ATRASADA · DISPONÍVEL (sem data) ·", "PRÓXIMA (vence em até 30 dias) · FUTURA"]),
+    ]
+    y = 368
+    for n, ls in passos:
+        o.append(f'<rect x="130" y="{y}" width="840" height="62" rx="8" fill="#fff" stroke="#c9a227" stroke-width="1.4"/>'
+                 f'<circle cx="162" cy="{y+31}" r="14" fill="#c9a227"/>'
+                 f'<text x="162" y="{y+36}" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">{n}</text>'
+                 + "".join(f'<text x="190" y="{y+26+i*19}" font-size="13.5" fill="{COR_TXT}">{escape(l)}</text>' for i, l in enumerate(ls)))
+        if n != "4":
+            o.append(_seta_p(550, y + 62, 550, y + 74))
+        y += 74
+    # saídas
+    saidas = [("Pendentes", ["ATRASADA + DISPONÍVEL", "(faltam doses)"], "#c0392b", "#fbeeec", 27),
+              ("Próximas doses", ["PRÓXIMA + FUTURA", "com data prevista"], "#b5651d", "#fbf2e8", 385),
+              ("Em dia", ["vacinas sem dose", "pendente"], "#2e7d6b", "#eef7f4", 743)]
+    for t, ls, c, f, x in saidas:
+        o.append(_seta_p(x + 165 if x != 385 else 550, 674, x + 165, 706))
+        o.append(_caixa_p(x, 706, 330, 82, t, ls, c, f))
+        o.append(_seta_p(x + 165, 788, x + 165 if x != 385 else 550, 818))
+    o.append(_caixa_p(60, 818, 980, 92, "Resposta da API", [
+        "GET /pendencias/:pessoaId  →  { pessoa, faixa_etaria, idade, em_dia[], pendentes[] }",
+        "GET /pendencias/:pessoaId/proximas-doses  →  próximas doses com data prevista e status"],
+        "#1f3a5f", "#eef2f8", tam=13.5))
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{L}" height="{A}" viewBox="0 0 {L} {A}" font-family="{FONTE}">'
+            f'<rect width="100%" height="100%" fill="#ffffff"/>{_DEFS_SETA}{"".join(o)}</svg>')
+
+
+def figura_pendencias_v1():
+    """Fluxo da primeira versão (compara o maior nº de dose com as doses exigidas da faixa)."""
+    L, A = 1000, 900
+    o = []
+    for i, (t, x) in enumerate([("pessoaId", 60), ("obter pessoa", 290), ("calcular idade", 520), ("obterFaixaEtaria(idade)", 750)]):
+        w = 200 if i < 3 else 215
+        o.append(_caixa_p(x, 30, w, 50, None, [t], "#1f3a5f", "#eef2f8", tam=14))
+        if i < 3:
+            o.append(_seta_p(x + w, 55, x + 230, 55))
+    o.append(_seta_p(857, 80, 857, 130))
+    o.append(_seta_p(160, 80, 160, 130))
+    o.append(_caixa_p(60, 130, 330, 90, "Carteira da pessoa", ["(registros + maior número de dose)"], "#b5651d", "#fbf2e8"))
+    o.append(_caixa_p(560, 130, 380, 90, "Calendário da faixa etária", ["(vacina, doses exigidas)"], "#7a4fa0", "#f4eef8"))
+    o.append(_linha_p(225, 220, 225, 262)); o.append(_linha_p(750, 220, 750, 262))
+    o.append(_linha_p(225, 262, 750, 262)); o.append(_seta_p(488, 262, 488, 292))
+    o.append(f'<rect x="90" y="292" width="800" height="300" rx="12" fill="#fffaf0" stroke="#c9a227" stroke-width="2"/>')
+    o.append(f'<text x="490" y="322" text-anchor="middle" font-size="16" font-weight="bold" fill="#8a6d0b">para cada vacina do calendário</text>')
+    regras = [("sem registro", "pendente (faltam = doses exigidas)", "#c0392b"),
+              ("maior dose < exigidas", "pendente (faltam = exigidas − maior dose)", "#c0392b"),
+              ("maior dose ≥ exigidas", "em dia", "#2e7d6b")]
+    y = 346
+    for a, b, c in regras:
+        o.append(f'<rect x="130" y="{y}" width="720" height="64" rx="8" fill="#fff" stroke="{c}" stroke-width="1.6"/>'
+                 f'<text x="160" y="{y+38}" font-size="15" font-weight="bold" fill="{COR_TXT}">{escape(a)}</text>'
+                 f'<path d="M370,{y+32} L420,{y+32}" stroke="#333" stroke-width="2" marker-end="url(#pt)"/>'
+                 f'<text x="435" y="{y+38}" font-size="15" fill="{c}" font-weight="bold">{escape(b)}</text>')
+        y += 76
+    o.append(_seta_p(490, 592, 490, 640))
+    o.append(_caixa_p(160, 640, 660, 80, "Resumo", ["{ pessoa, faixa, idade, em_dia[], pendentes[] }"], "#1f3a5f", "#eef2f8", tam=15))
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{L}" height="{A-130}" viewBox="0 0 {L} {A-130}" font-family="{FONTE}">'
+            f'<rect width="100%" height="100%" fill="#ffffff"/>{_DEFS_SETA}{"".join(o)}</svg>')
+
+
 if __name__ == "__main__":
     (DESTINO / "figura-modelo-er.svg").write_text(figura_er(), encoding="utf-8")
     (DESTINO / "figura-fluxo-ocr.svg").write_text(figura_ocr(), encoding="utf-8")
     (DESTINO / "figura-casos-de-uso.svg").write_text(figura_casos_de_uso(), encoding="utf-8")
     (DESTINO / "figura-arquitetura.svg").write_text(figura_arquitetura(), encoding="utf-8")
+    (DESTINO / "figura-fluxo-pendencias.svg").write_text(figura_pendencias(), encoding="utf-8")
+    (DESTINO / "figura-fluxo-pendencias-v1.svg").write_text(figura_pendencias_v1(), encoding="utf-8")
     print("SVG gerados em", DESTINO)

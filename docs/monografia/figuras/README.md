@@ -4,6 +4,7 @@
 - `figura-fluxo-ocr.*`: fluxo da leitura da carteirinha por OCR — Figura 4.
 - `figura-casos-de-uso.*`: diagrama de casos de uso (19 casos, 5 atores).
 - `figura-arquitetura.*`: arquitetura do sistema (navegador, servidor em camadas, SQLite, OCR, e-mail e ViaCEP).
+- `figura-fluxo-pendencias.*`: fluxo atual do cálculo de pendências e próximas doses; `figura-fluxo-pendencias-v1.*` é o fluxo da primeira versão (histórico).
 
 Os `.svg` são gerados por `python3 gerar_figuras.py` (só biblioteca padrão). Os `.png` usados no Word são
 renderizados a partir dos SVG (por exemplo, abrindo o SVG no Chromium/Playwright com escala 2x).
