@@ -1,4 +1,5 @@
 import * as dependenteRepository from "../repositories/dependenteRepository";
+import { dataNascimentoValida, emailValido, parentescoValido } from "../utils/validacao";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 
 /*
@@ -79,6 +80,25 @@ export class DependenteService {
     if (!dados.parentesco?.trim()) {
       throw new Error(
         "Parentesco é obrigatório."
+      );
+    }
+
+    /* CORREÇÃO [COR-25]: dados do dependente passam pelas mesmas regras. */
+    if (!dataNascimentoValida(dados.data_nascimento)) {
+      throw new Error(
+        "Data de nascimento inválida. Use AAAA-MM-DD, sem datas futuras."
+      );
+    }
+
+    if (!parentescoValido(dados.parentesco)) {
+      throw new Error(
+        "Parentesco inválido. Use: filho, filha, pai, mãe, cônjuge, avô/avó, neto, irmão/irmã ou outro."
+      );
+    }
+
+    if (dados.email && !emailValido(dados.email)) {
+      throw new Error(
+        "E-mail inválido."
       );
     }
 

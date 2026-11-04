@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 export interface RegraVacinal {
   id: number;
@@ -31,30 +31,14 @@ export function listarRegrasVacinais(): Promise<
   RegraVacinal[]
 > {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM regras_vacinais
       ORDER BY vacina_id
       `,
-      [],
-      (
-        err,
-        rows: RegraVacinal[]
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows);
-
-      }
-    );
-
-  });
+    []
+  );
 
 }
 
@@ -69,30 +53,14 @@ export function buscarRegraPorId(
   RegraVacinal | undefined
 > {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM regras_vacinais
       WHERE id = ?
       `,
-      [id],
-      (
-        err,
-        row: RegraVacinal
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -107,31 +75,15 @@ export function buscarRegraPorVacina(
   RegraVacinal | undefined
 > {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM regras_vacinais
       WHERE vacina_id = ?
         AND grupo_especial_id IS NULL
       `,
-      [vacinaId],
-      (
-        err,
-        row: RegraVacinal
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [vacinaId]
+  );
 
 }
 
@@ -147,34 +99,18 @@ export function buscarRegraPorVacinaEGrupo(
   RegraVacinal | undefined
 > {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM regras_vacinais
       WHERE vacina_id = ?
         AND grupo_especial_id = ?
       `,
-      [
+    [
         vacinaId,
         grupoEspecialId
-      ],
-      (
-        err,
-        row: RegraVacinal
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -189,31 +125,15 @@ export function listarRegrasDaVacina(
   RegraVacinal[]
 > {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM regras_vacinais
       WHERE vacina_id = ?
       ORDER BY grupo_especial_id
       `,
-      [vacinaId],
-      (
-        err,
-        rows: RegraVacinal[]
-      ) => {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(rows);
-
-      }
-    );
-
-  });
+    [vacinaId]
+  );
 
 }
 
@@ -234,10 +154,8 @@ export function criarRegraVacinal(
   observacao: string | null
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO regras_vacinais (
 
         vacina_id,
@@ -261,7 +179,7 @@ export function criarRegraVacinal(
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
-      [
+    [
         vacinaId,
         grupoEspecialId,
         intervaloDose12,
@@ -271,19 +189,8 @@ export function criarRegraVacinal(
         reforcoAnos,
         campanhaAnual,
         observacao
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -304,10 +211,8 @@ export function atualizarRegraVacinal(
   observacao: string | null
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE regras_vacinais
       SET
 
@@ -329,7 +234,7 @@ export function atualizarRegraVacinal(
 
       WHERE id = ?
       `,
-      [
+    [
         grupoEspecialId,
         intervaloDose12,
         intervaloDose23,
@@ -339,19 +244,8 @@ export function atualizarRegraVacinal(
         campanhaAnual,
         observacao,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -364,25 +258,12 @@ export function removerRegraVacinal(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM regras_vacinais
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          return reject(err);
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }

@@ -1,3 +1,4 @@
+import { dataIsoValida, numeroDoseValido, MAIOR_NUMERO_DOSE } from "../utils/validacao";
 import * as agendamentoVacinaRepository from "../repositories/agendamentoVacinaRepository";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as vacinaRepository from "../repositories/vacinaRepository";
@@ -147,15 +148,22 @@ export class AgendamentoService {
       );
     }
 
-    if (numeroDose <= 0) {
+    /* CORREÇÃO [COR-25]: dose inteira de 1 a 20 e data que existe no calendário. */
+    if (!numeroDoseValido(numeroDose)) {
       throw new Error(
-        "Número da dose inválido."
+        `Número da dose inválido. Use um inteiro de 1 a ${MAIOR_NUMERO_DOSE}.`
       );
     }
 
     if (!dataPrevista?.trim()) {
       throw new Error(
         "Data prevista não informada."
+      );
+    }
+
+    if (!dataIsoValida(dataPrevista)) {
+      throw new Error(
+        "Data prevista inválida. Use AAAA-MM-DD."
       );
     }
 
@@ -187,6 +195,24 @@ export class AgendamentoService {
     id: number,
     status: string
   ) {
+
+    /*
+    CORREÇÃO [COR-08]: o status era gravado sem validação
+    (qualquer texto entrava). Agora só os valores abaixo.
+    */
+    const STATUS_VALIDOS = [
+      "PENDENTE",
+      "AGENDADA",
+      "REALIZADA",
+      "CANCELADA",
+      "ATRASADA"
+    ];
+
+    if (!STATUS_VALIDOS.includes(status)) {
+      throw new Error(
+        `Status inválido. Use: ${STATUS_VALIDOS.join(", ")}.`
+      );
+    }
 
     const agendamento =
       await agendamentoVacinaRepository
@@ -294,4 +320,40 @@ export class AgendamentoService {
 
   }
 
+
+  /*
+  ==================================================
+  LISTAR OS AGENDAMENTOS QUE O USUÁRIO PODE VER
+  ==================================================
+
+  CORREÇÃO [COR-07]: GET /agendamentos devolvia os agendamentos
+  de todos os usuários. Administrador vê tudo; usuário comum vê
+  só os das pessoas da própria conta.
+  */
+  static async listarVisiveis(
+    usuarioId: number,
+    perfil?: string
+  ) {
+
+    const agendamentos =
+      await this.listarTodos();
+
+    if (perfil === "ADMIN") {
+      return agendamentos;
+    }
+
+    const minhas =
+      await pessoaRepository.listarPessoasPorUsuario(
+        usuarioId
+      );
+
+    const ids = new Set(
+      minhas.map((p: any) => p.id)
+    );
+
+    return agendamentos.filter(
+      (a: any) => ids.has(a.pessoa_id)
+    );
+
+  }
 }

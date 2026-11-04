@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -9,29 +9,15 @@ export function listarDosesRegistro(
   registroVacinacaoId: number
 ): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM doses_vacina
       WHERE registro_vacinacao_id = ?
       ORDER BY numero_dose
       `,
-      [registroVacinacaoId],
-      (err, rows) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    [registroVacinacaoId]
+  );
 
 }
 
@@ -44,28 +30,14 @@ export function buscarDosePorId(
   id: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM doses_vacina
       WHERE id = ?
       `,
-      [id],
-      (err, row) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -79,32 +51,18 @@ export function buscarDose(
   numeroDose: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT *
       FROM doses_vacina
       WHERE registro_vacinacao_id = ?
         AND numero_dose = ?
       `,
-      [
+    [
         registroVacinacaoId,
         numeroDose
-      ],
-      (err, row) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -124,10 +82,8 @@ export function registrarDose(
   }
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO doses_vacina (
         registro_vacinacao_id,
         numero_dose,
@@ -138,27 +94,15 @@ export function registrarDose(
       )
       VALUES (?, ?, ?, ?, ?, ?)
       `,
-      [
+    [
         registroVacinacaoId,
         numeroDose,
         tipo,
         detalhes?.dataAplicacao ?? null,
         detalhes?.lote ?? null,
         detalhes?.observacao ?? null
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -173,34 +117,20 @@ export function atualizarDose(
   tipo: string
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE doses_vacina
       SET
         numero_dose = ?,
         tipo = ?
       WHERE id = ?
       `,
-      [
+    [
         numeroDose,
         tipo,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -213,27 +143,13 @@ export function removerDose(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM doses_vacina
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -246,28 +162,14 @@ export function contarDoses(
   registroVacinacaoId: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT COUNT(*) AS total
       FROM doses_vacina
       WHERE registro_vacinacao_id = ?
       `,
-      [registroVacinacaoId],
-      (err, row: any) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row?.total ?? 0);
-
-      }
-    );
-
-  });
+    [registroVacinacaoId]
+  ).then((row) => row?.total ?? 0);
 
 }
 
@@ -287,27 +189,13 @@ export function obterMaiorNumeroDose(
   registroVacinacaoId: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT MAX(numero_dose) AS maior
       FROM doses_vacina
       WHERE registro_vacinacao_id = ?
       `,
-      [registroVacinacaoId],
-      (err, row: any) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row?.maior ?? 0);
-
-      }
-    );
-
-  });
+    [registroVacinacaoId]
+  ).then((row) => row?.maior ?? 0);
 
 }

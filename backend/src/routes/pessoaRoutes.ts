@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 
 import { PessoaController } from "../controllers/pessoaController";
+import { pessoaDoIdPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 Garante que um usuário só liste as pessoas
@@ -40,6 +41,11 @@ PESSOA ROUTES
 Rotas relacionadas às pessoas
 e dependentes vinculados ao usuário.
 */
+/*
+CORREÇÃO [COR-04]: GET/PUT/DELETE /pessoas/:id não conferiam o
+dono (IDOR: dava para ler, alterar e apagar a pessoa de outra
+conta trocando o id). Agora passam por pessoaDoIdPertenceAoUsuario.
+*/
 const router = Router();
 
 /*
@@ -63,6 +69,7 @@ GET /pessoas/:id
 */
 router.get(
   "/:id",
+  pessoaDoIdPertenceAoUsuario,
   PessoaController.buscarPorId
 );
 
@@ -100,6 +107,7 @@ PUT /pessoas/:id
 */
 router.put(
   "/:id",
+  pessoaDoIdPertenceAoUsuario,
   PessoaController.atualizar
 );
 
@@ -112,6 +120,7 @@ DELETE /pessoas/:id
 */
 router.delete(
   "/:id",
+  pessoaDoIdPertenceAoUsuario,
   PessoaController.remover
 );
 

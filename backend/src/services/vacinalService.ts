@@ -1,6 +1,7 @@
 import { obterFaixaEtaria } from "../utils/faixaEtaria";
 
 import { ProximasDosesService } from "./proximasDosesService";
+import { hojeIso, idadeEmAnos } from "../utils/dataHoje";
 import * as registroVacinacaoRepo from "../repositories/registroVacinacaoRepository";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as vacinaRepository from "../repositories/vacinaRepository";
@@ -51,41 +52,14 @@ export class VacinalService {
   Calcula a idade atual da pessoa.
   */
   static calcularIdade(
-    dataNascimento: string
+    dataNascimento: string,
+    hoje: Date = new Date()
   ): number {
 
-    const hoje = new Date();
-
-    const nascimento =
-      new Date(dataNascimento);
-
-    let idade =
-      hoje.getFullYear() -
-      nascimento.getFullYear();
-
-    const mesAtual =
-      hoje.getMonth();
-
-    const mesNascimento =
-      nascimento.getMonth();
-
-    const diaAtual =
-      hoje.getDate();
-
-    const diaNascimento =
-      nascimento.getDate();
-
-    if (
-      mesAtual < mesNascimento ||
-      (
-        mesAtual === mesNascimento &&
-        diaAtual < diaNascimento
-      )
-    ) {
-      idade--;
-    }
-
-    return idade;
+    return idadeEmAnos(
+      dataNascimento,
+      hojeIso(hoje)
+    );
 
   }
 

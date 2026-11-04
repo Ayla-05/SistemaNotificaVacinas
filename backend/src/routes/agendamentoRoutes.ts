@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { AgendamentoController } from "../controllers/agendamentoController";
-import { pessoaPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
+import { pessoaPertenceAoUsuario, pessoaDoCorpoPertenceAoUsuario, agendamentoDoIdPertenceAoUsuario } from "../middlewares/pessoaOwnershipMiddleware";
 
 /*
 ==================================================
@@ -10,6 +10,11 @@ AGENDAMENTO ROUTES
 
 Rotas relacionadas aos agendamentos
 de vacinação.
+*/
+/*
+CORREÇÃO [COR-07]: ver, alterar status/observação e remover
+agendamento por id (e agendar para pessoa alheia) não conferiam o
+dono. Agora passam pelos middlewares de posse.
 */
 const router = Router();
 
@@ -34,6 +39,7 @@ GET /agendamentos/:id
 */
 router.get(
   "/:id",
+  agendamentoDoIdPertenceAoUsuario,
   AgendamentoController.buscarPorId
 );
 
@@ -59,6 +65,7 @@ POST /agendamentos
 */
 router.post(
   "/",
+  pessoaDoCorpoPertenceAoUsuario,
   AgendamentoController.criar
 );
 
@@ -71,6 +78,7 @@ PATCH /agendamentos/:id/status
 */
 router.patch(
   "/:id/status",
+  agendamentoDoIdPertenceAoUsuario,
   AgendamentoController.atualizarStatus
 );
 
@@ -83,6 +91,7 @@ PATCH /agendamentos/:id/observacao
 */
 router.patch(
   "/:id/observacao",
+  agendamentoDoIdPertenceAoUsuario,
   AgendamentoController.atualizarObservacao
 );
 
@@ -107,6 +116,7 @@ DELETE /agendamentos/:id
 */
 router.delete(
   "/:id",
+  agendamentoDoIdPertenceAoUsuario,
   AgendamentoController.remover
 );
 

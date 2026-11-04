@@ -1,29 +1,26 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 
-import { configurarBanco } from "../src/database/configurarBanco";
-import { executarCalendarioSeed } from "../src/database/seeds/calendarioSeed";
-import { NotificacaoService } from "../src/services/notificacaoService";
-import { EmailService } from "../src/services/emailService";
-import { ProximasDosesService, escolherCampanha } from "../src/services/proximasDosesService";
+import { configurarBanco } from "../../src/database/configurarBanco";
+import { executarCalendarioSeed } from "../../src/database/seeds/calendarioSeed";
+import { NotificacaoService } from "../../src/services/notificacaoService";
+import { EmailService } from "../../src/services/emailService";
+import { ProximasDosesService, escolherCampanha } from "../../src/services/proximasDosesService";
 
-import * as usuarioRepository from "../src/repositories/usuarioRepository";
-import * as pessoaRepository from "../src/repositories/pessoaRepository";
-import * as vacinaRepository from "../src/repositories/vacinaRepository";
-import * as calendarioVacinalRepository from "../src/repositories/calendarioVacinalRepository";
-import * as campanhaVacinalRepository from "../src/repositories/campanhaVacinalRepository";
-import * as configuracaoRepository from "../src/repositories/configuracaoRepository";
+import * as usuarioRepository from "../../src/repositories/usuarioRepository";
+import * as pessoaRepository from "../../src/repositories/pessoaRepository";
+import * as vacinaRepository from "../../src/repositories/vacinaRepository";
+import * as calendarioVacinalRepository from "../../src/repositories/calendarioVacinalRepository";
+import * as campanhaVacinalRepository from "../../src/repositories/campanhaVacinalRepository";
+import { hojeIso } from "../../src/utils/dataHoje";
+import { adicionarDias, adicionarMeses } from "../../src/utils/proximasDoses";
+import * as configuracaoRepository from "../../src/repositories/configuracaoRepository";
 
 let usuarioId: number;
 
 /* Data de nascimento que faz a 1ª dose da penta (2 meses) vencer daqui a `dias` dias. */
 function nascimentoParaVencerEm(dias: number): string {
-  const alvo = new Date();
-  alvo.setHours(12, 0, 0, 0);
-  alvo.setDate(alvo.getDate() + dias);
-  alvo.setMonth(alvo.getMonth() - 2);
-  const mes = String(alvo.getMonth() + 1).padStart(2, "0");
-  const dia = String(alvo.getDate()).padStart(2, "0");
-  return `${alvo.getFullYear()}-${mes}-${dia}`;
+  // "hoje" é o dia civil de São Paulo, como no sistema (independe do fuso da máquina)
+  return adicionarMeses(adicionarDias(hojeIso(), dias), -2);
 }
 
 async function criarBebe(nome: string, dias: number) {

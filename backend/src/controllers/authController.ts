@@ -11,8 +11,6 @@ import { UsuarioService } from "../services/usuarioService";
 import { PessoaService } from "../services/pessoaService";
 import { NotificacaoService } from "../services/notificacaoService";
 import { PerfilUsuario } from "../enums/perfilUsuario";
-import * as usuarioRepository from "../repositories/usuarioRepository";
-import * as pessoaRepository from "../repositories/pessoaRepository";
 
 /*
 ==================================================
@@ -184,14 +182,10 @@ export class AuthController {
       POST /auth/confirmar-email. Não define cookie
       de sessão aqui.
       */
-      const { codigo, expiraEm } =
-        AuthService.gerarCodigoVerificacao();
-
-      await usuarioRepository.definirCodigoVerificacao(
-        usuarioId,
-        codigo,
-        expiraEm
-      );
+      const codigo =
+        await AuthService.gerarEGravarCodigoVerificacao(
+          usuarioId
+        );
 
       /*
       Não bloqueia o cadastro se o e-mail falhar
@@ -704,7 +698,7 @@ export class AuthController {
     try {
 
       const usuario =
-        await usuarioRepository.buscarUsuarioPorId(
+        await AuthService.buscarUsuarioAutenticado(
           req.usuarioId as number
         );
 
@@ -716,12 +710,9 @@ export class AuthController {
 
       }
 
-      return res.status(200).json({
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email,
-        perfil: usuario.perfil
-      });
+      return res.status(200).json(
+        usuario
+      );
 
     } catch (error: any) {
 
@@ -755,12 +746,12 @@ export class AuthController {
 
     try {
 
-      const usuario =
-        await usuarioRepository.buscarUsuarioPorId(
+      const destino =
+        await AuthService.destinatarioDasBoasVindas(
           req.usuarioId as number
         );
 
-      if (!usuario) {
+      if (!destino) {
 
         return res.status(401).json({
           erro: "Não autenticado."
@@ -768,18 +759,9 @@ export class AuthController {
 
       }
 
-      const pessoas =
-        await pessoaRepository.listarPessoasPorUsuario(
-          usuario.id
-        );
+      const emailDestino = destino.email;
 
-      const titular = pessoas[0];
-
-      const emailDestino =
-        titular?.email || usuario.email;
-
-      const nomeDestino =
-        titular?.nome || usuario.nome;
+      const nomeDestino = destino.nome;
 
       /*
       Não bloqueia a resposta se o e-mail falhar

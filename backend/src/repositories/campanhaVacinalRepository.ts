@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -7,10 +7,8 @@ LISTAR TODAS AS CAMPANHAS
 */
 export function listarCampanhasVacinais(): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT
         cv.*,
         v.codigo AS vacina_codigo,
@@ -20,20 +18,8 @@ export function listarCampanhasVacinais(): Promise<any[]> {
         ON v.id = cv.vacina_id
       ORDER BY cv.data_inicio DESC
       `,
-      [],
-      (err, rows) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    []
+  );
 
 }
 
@@ -46,10 +32,8 @@ export function buscarCampanhaPorId(
   id: number
 ): Promise<any> {
 
-  return new Promise((resolve, reject) => {
-
-    db.get(
-      `
+  return consultarUm(
+    `
       SELECT
         cv.*,
         v.codigo AS vacina_codigo,
@@ -59,20 +43,8 @@ export function buscarCampanhaPorId(
         ON v.id = cv.vacina_id
       WHERE cv.id = ?
       `,
-      [id],
-      (err, row) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(row);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -83,10 +55,8 @@ LISTAR CAMPANHAS ATIVAS
 */
 export function listarCampanhasAtivas(): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT
         cv.*,
         v.codigo AS vacina_codigo,
@@ -97,20 +67,8 @@ export function listarCampanhasAtivas(): Promise<any[]> {
       WHERE cv.ativa = 1
       ORDER BY cv.data_inicio DESC
       `,
-      [],
-      (err, rows) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    []
+  );
 
 }
 
@@ -123,29 +81,15 @@ export function listarCampanhasPorVacina(
   vacinaId: number
 ): Promise<any[]> {
 
-  return new Promise((resolve, reject) => {
-
-    db.all(
-      `
+  return consultarTodos(
+    `
       SELECT *
       FROM campanhas_vacinais
       WHERE vacina_id = ?
       ORDER BY data_inicio DESC
       `,
-      [vacinaId],
-      (err, rows) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(rows || []);
-
-      }
-    );
-
-  });
+    [vacinaId]
+  );
 
 }
 
@@ -164,10 +108,8 @@ export function criarCampanhaVacinal(
   ultimaAtualizacao: string | null
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return inserir(
+    `
       INSERT INTO campanhas_vacinais (
         vacina_id,
         nome,
@@ -179,7 +121,7 @@ export function criarCampanhaVacinal(
       )
       VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
-      [
+    [
         vacinaId,
         nome,
         dataInicio,
@@ -187,20 +129,8 @@ export function criarCampanhaVacinal(
         publicoAlvo,
         fonte,
         ultimaAtualizacao
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.lastID);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -219,10 +149,8 @@ export function atualizarCampanhaVacinal(
   ultimaAtualizacao: string | null
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE campanhas_vacinais
       SET
         nome = ?,
@@ -233,7 +161,7 @@ export function atualizarCampanhaVacinal(
         ultima_atualizacao = ?
       WHERE id = ?
       `,
-      [
+    [
         nome,
         dataInicio,
         dataFim,
@@ -241,20 +169,8 @@ export function atualizarCampanhaVacinal(
         fonte,
         ultimaAtualizacao,
         id
-      ],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+      ]
+  );
 
 }
 
@@ -267,28 +183,14 @@ export function ativarCampanha(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE campanhas_vacinais
       SET ativa = 1
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -301,28 +203,14 @@ export function desativarCampanha(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       UPDATE campanhas_vacinais
       SET ativa = 0
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }
 
@@ -335,26 +223,12 @@ export function removerCampanha(
   id: number
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM campanhas_vacinais
       WHERE id = ?
       `,
-      [id],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes);
-
-      }
-    );
-
-  });
+    [id]
+  );
 
 }

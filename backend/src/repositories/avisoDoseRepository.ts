@@ -1,4 +1,4 @@
-import { db } from "../database/database";
+import { alterar } from "../database/database";
 
 /*
 ==================================================
@@ -23,29 +23,15 @@ export function registrarAviso(
   dataPrevista: string
 ): Promise<boolean> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       INSERT OR IGNORE INTO avisos_dose (
         pessoa_id, vacina_codigo, numero_dose, data_prevista
       )
       VALUES (?, ?, ?, ?)
       `,
-      [pessoaId, vacinaCodigo, numeroDose, dataPrevista],
-      function (err) {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve(this.changes === 1);
-
-      }
-    );
-
-  });
+    [pessoaId, vacinaCodigo, numeroDose, dataPrevista]
+  ).then((changes) => changes === 1);
 
 }
 
@@ -57,27 +43,13 @@ export function removerAviso(
   dataPrevista: string
 ): Promise<void> {
 
-  return new Promise((resolve, reject) => {
-
-    db.run(
-      `
+  return alterar(
+    `
       DELETE FROM avisos_dose
       WHERE pessoa_id = ? AND vacina_codigo = ?
         AND numero_dose = ? AND data_prevista = ?
       `,
-      [pessoaId, vacinaCodigo, numeroDose, dataPrevista],
-      (err) => {
-
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        resolve();
-
-      }
-    );
-
-  });
+    [pessoaId, vacinaCodigo, numeroDose, dataPrevista]
+  ).then(() => undefined);
 
 }

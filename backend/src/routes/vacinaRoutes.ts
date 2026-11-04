@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { VacinaController } from "../controllers/vacinaController";
+import { autenticar, exigirAdmin } from "../middlewares/authMiddleware";
 
 /*
 ==================================================
@@ -9,6 +10,11 @@ VACINA ROUTES
 
 Rotas relacionadas ao cadastro
 e consulta de vacinas.
+*/
+/*
+CORREÇÃO [COR-01]: criar, editar e desativar vacina eram
+públicos (sem login nem perfil). Agora exigem autenticação e
+perfil ADMIN; a leitura do catálogo segue pública.
 */
 const router = Router();
 
@@ -81,6 +87,8 @@ POST /vacinas
 */
 router.post(
   "/",
+  autenticar,
+  exigirAdmin,
   VacinaController.criar
 );
 
@@ -93,6 +101,8 @@ PUT /vacinas/:id
 */
 router.put(
   "/:id",
+  autenticar,
+  exigirAdmin,
   VacinaController.atualizar
 );
 
@@ -105,6 +115,8 @@ PATCH /vacinas/:id/desativar
 */
 router.patch(
   "/:id/desativar",
+  autenticar,
+  exigirAdmin,
   VacinaController.desativar
 );
 

@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { CalendarioController } from "../controllers/calendarioController";
+import { exigirAdmin } from "../middlewares/authMiddleware";
 
 /*
 ==================================================
@@ -8,6 +9,11 @@ CALENDARIO ROUTES
 ==================================================
 
 Rotas relacionadas ao calendário vacinal.
+*/
+/*
+CORREÇÃO [COR-02]: qualquer usuário logado podia criar, editar e
+apagar o calendário vacinal. Agora a escrita exige ADMIN; a
+leitura continua liberada a quem está autenticado.
 */
 const router = Router();
 
@@ -68,6 +74,7 @@ POST /calendario
 */
 router.post(
   "/",
+  exigirAdmin,
   CalendarioController.criar
 );
 
@@ -80,6 +87,7 @@ PUT /calendario/:id
 */
 router.put(
   "/:id",
+  exigirAdmin,
   CalendarioController.atualizar
 );
 
@@ -92,6 +100,7 @@ DELETE /calendario/:id
 */
 router.delete(
   "/:id",
+  exigirAdmin,
   CalendarioController.remover
 );
 

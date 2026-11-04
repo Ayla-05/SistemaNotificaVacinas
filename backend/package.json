@@ -8,7 +8,11 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:relatorio": "node tests/relatorio/gerarRelatorio.mjs",
+    "test:seguranca": "vitest run tests/seguranca",
+    "test:arquitetura": "vitest run tests/arquitetura",
+    "test:logica": "vitest run tests/logica"
   },
   "keywords": [
     "vacina",

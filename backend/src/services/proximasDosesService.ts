@@ -3,6 +3,7 @@ import {
   ProximaDose
 } from "../utils/proximasDoses";
 
+import { hojeIso } from "../utils/dataHoje";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as registroVacinacaoRepository from "../repositories/registroVacinacaoRepository";
 import * as doseVacinaRepository from "../repositories/doseVacinaRepository";
@@ -46,15 +47,6 @@ export interface ProximaDoseComNome extends ProximaDose {
   campanha: PeriodoCampanha | null;
 }
 
-/* Data de hoje no fuso do servidor (e não em UTC, que vira o dia de noite). */
-function hojeIso(hoje: Date): string {
-
-  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
-  const dia = String(hoje.getDate()).padStart(2, "0");
-
-  return `${hoje.getFullYear()}-${mes}-${dia}`;
-
-}
 
 /*
 Campanha da vacina que ainda não terminou: a que está em andamento

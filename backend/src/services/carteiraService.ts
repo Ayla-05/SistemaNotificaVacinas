@@ -1,3 +1,4 @@
+import { dataNaoFutura, numeroDoseValido, MAIOR_NUMERO_DOSE } from "../utils/validacao";
 import * as pessoaRepository from "../repositories/pessoaRepository";
 import * as vacinaRepository from "../repositories/vacinaRepository";
 import * as registroVacinacaoRepository from "../repositories/registroVacinacaoRepository";
@@ -133,6 +134,22 @@ export class CarteiraService {
     numeroDose: number,
     tipo: string
   ) {
+
+    /*
+    CORREÇÃO [COR-25]: aceitava dose 0, negativa, decimal, texto e
+    99; e dose sem número devolvia o erro cru do SQLite.
+    */
+    if (!numeroDoseValido(numeroDose)) {
+      throw new Error(
+        `Número da dose inválido. Use um inteiro de 1 a ${MAIOR_NUMERO_DOSE}.`
+      );
+    }
+
+    if (typeof tipo !== "string" || !tipo.trim() || tipo.length > 60) {
+      throw new Error(
+        "Tipo da dose inválido."
+      );
+    }
 
     const registro =
       await registroVacinacaoRepository
@@ -301,6 +318,16 @@ export class CarteiraService {
       localAplicacao?: string | null;
     }
   ) {
+
+    /* CORREÇÃO [COR-25]: a data de aplicação lida/editada deve existir e não ser futura. */
+    if (
+      dados.dataAplicacao &&
+      !dataNaoFutura(dados.dataAplicacao)
+    ) {
+      throw new Error(
+        "Data de aplicação inválida. Use AAAA-MM-DD, sem datas futuras."
+      );
+    }
 
     const pessoa =
       await pessoaRepository.buscarPessoaPorId(
