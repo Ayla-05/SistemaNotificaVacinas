@@ -247,7 +247,8 @@ describe("adulto e idoso", () => {
     );
 
     expect(de(comum, "TRIPLICE_VIRAL_SCR")).toBeUndefined();
-    expect(de(trabalhador, "TRIPLICE_VIRAL_SCR")).toMatchObject({ numeroDose: 2, status: "DISPONIVEL" });
+    // 2ª dose = 4 semanas depois da 1ª (calendário SP): a de 2015 venceu em 2015
+    expect(de(trabalhador, "TRIPLICE_VIRAL_SCR")).toMatchObject({ numeroDose: 2, dataPrevista: "2015-01-29", status: "ATRASADA" });
   });
 
   it("idoso: influenza anual e covid semestral a partir da última dose", () => {
@@ -339,7 +340,7 @@ describe("gestante", () => {
 
     expect(de(lista, "HEPATITE_B")).toMatchObject({ rotulo: "1ª dose", status: "DISPONIVEL" });
     expect(de(lista, "DT")).toMatchObject({ rotulo: "1ª dose (ao saber da gravidez)", status: "DISPONIVEL" });
-    expect(de(lista, "INFLUENZA")).toMatchObject({ rotulo: "1 dose por temporada", status: "DISPONIVEL" });
+    expect(de(lista, "INFLUENZA")).toMatchObject({ rotulo: "1 dose por temporada (em cada gestação)", status: "DISPONIVEL" });
     expect(de(lista, "COVID19")).toMatchObject({ rotulo: "1 dose a cada gestação", status: "DISPONIVEL" });
 
     // início = 70 dias atrás; 20 semanas = início + 140 dias = hoje + 70
@@ -390,11 +391,11 @@ describe("gestante", () => {
     expect(codigos).not.toContain("VSR");
   });
 
-  it("cadastro antigo sem data de início: dT e influenza valem; dTpa, VSR e COVID (dependem das semanas) não aparecem", () => {
+  it("cadastro antigo sem data de início: o dT vale; dTpa, VSR, COVID e influenza (dependem das semanas) não aparecem", () => {
     const lista = calcularProximasDoses({ nascimento: NASC, hoje: HOJE, doses: {}, grupos: ["GESTANTE"] });
     const codigos = lista.map((d) => d.vacinaCodigo);
     expect(codigos).toContain("DT");
-    expect(codigos).toContain("INFLUENZA");
+    expect(codigos).not.toContain("INFLUENZA");
     expect(codigos).not.toContain("DTPA");
     expect(codigos).not.toContain("VSR");
     expect(codigos).not.toContain("COVID19");
@@ -405,6 +406,103 @@ describe("gestante", () => {
     for (const so of ["DTPA", "VSR", "COVID19", "INFLUENZA"]) {
       expect(codigos).not.toContain(so);
     }
+  });
+
+});
+
+describe("conferência com o calendário do Estado de SP (out/2026)", () => {
+
+  it("hepatite B: 2ª dose com 4 semanas; 3ª dose 2 meses após a 2ª, mas só depois de 4 meses da 1ª", () => {
+    const aposPrimeira = calcular("1990-01-01", { HEPATITE_B: [{ numero: 1, data: "2026-10-01" }] });
+    expect(de(aposPrimeira, "HEPATITE_B")).toMatchObject({ numeroDose: 2, dataPrevista: "2026-10-29" });
+
+    // 2ª dose com 4 semanas: 2 meses depois seria 2026-12-29, mas só após 4 meses da 1ª (2027-02-01)
+    const aposSegunda = calcular("1990-01-01", {
+      HEPATITE_B: [{ numero: 1, data: "2026-10-01" }, { numero: 2, data: "2026-10-29" }]
+    });
+    expect(de(aposSegunda, "HEPATITE_B")).toMatchObject({ numeroDose: 3, dataPrevista: "2027-02-01" });
+
+    // 2ª dose bem depois: vale os 2 meses após a 2ª
+    const segundaTardia = calcular("1990-01-01", {
+      HEPATITE_B: [{ numero: 1, data: "2026-01-01" }, { numero: 2, data: "2026-08-15" }]
+    });
+    expect(de(segundaTardia, "HEPATITE_B")).toMatchObject({ numeroDose: 3, dataPrevista: "2026-10-14" });
+  });
+
+  it("dengue: 2ª dose 12 semanas (84 dias) depois da 1ª", () => {
+    const lista = calcular("2015-01-01", { DENGUE_DNG4: [{ numero: 1, data: "2026-10-01" }] });
+    expect(de(lista, "DENGUE_DNG4")).toMatchObject({ numeroDose: 2, dataPrevista: "2026-12-24" });
+  });
+
+  it("meningo ACWY: a dose de 12 meses não dispensa a dos 11 anos", () => {
+    // 12 anos hoje; só tem o reforço dos 12 meses
+    const so12meses = calcular("2014-05-01", { MENINGOCOCICA_ACWY: [{ numero: 1, data: "2015-05-01" }] });
+    expect(de(so12meses, "MENINGOCOCICA_ACWY")).toMatchObject({ numeroDose: 1, rotulo: "Dose única" });
+
+    // quem tomou a dose dos 11 anos está em dia
+    const dos11 = calcular("2014-05-01", { MENINGOCOCICA_ACWY: [{ numero: 1, data: "2025-06-01" }] });
+    expect(de(dos11, "MENINGOCOCICA_ACWY")).toBeUndefined();
+  });
+
+  it("gestante: dT com 2 meses entre a 1ª e a 2ª e 3ª dose só após 4 meses da 1ª", () => {
+    const lista = calcularProximasDoses({
+      nascimento: "1996-03-10",
+      hoje: "2026-10-31",
+      grupos: ["GESTANTE"],
+      gestacaoInicio: "2026-08-01",
+      doses: { DT: [{ numero: 1, data: "2026-09-01" }, { numero: 2, data: "2026-11-01" }].slice(0, 2).map((d, i) => (i === 1 ? { ...d, data: "2026-10-31" } : d)) }
+    });
+    // 2ª dose em 31/10; 3ª dose: 2 meses depois (31/12), mas só 4 meses após a 1ª (01/01/2027)
+    expect(lista.find((d) => d.vacinaCodigo === "DT")).toMatchObject({ numeroDose: 3, dataPrevista: "2027-01-01" });
+  });
+
+});
+
+describe("limites de idade do calendário de rotina (SP, out/2026) e dT da gestante", () => {
+
+  it("hepatite A, pneumocócica, meningo C e ACWY só são cobradas até 4a11m29d", () => {
+    // 3 anos: ainda cobra; 6 anos: já não
+    const aos3 = calcular("2023-06-01", {}).map((d) => d.vacinaCodigo);
+    expect(aos3).toContain("HEPATITE_A");
+
+    const aos6 = calcular("2020-06-01", {}).map((d) => d.vacinaCodigo);
+    for (const v of ["HEPATITE_A", "PNEUMOCOCICA_20V", "PNEUMOCOCICA_10V", "MENINGOCOCICA_C", "MENINGOCOCICA_ACWY"]) {
+      expect(aos6, v).not.toContain(v);
+    }
+  });
+
+  it("penta, VIP, varicela e DTP vão até 6a11m29d", () => {
+    const aos6 = calcular("2020-06-01", {}).map((d) => d.vacinaCodigo);
+    for (const v of ["PENTAVALENTE", "POLIO_VIP", "VARICELA", "DTP"]) {
+      expect(aos6, v).toContain(v);
+    }
+    const aos8 = calcular("2018-06-01", {}).map((d) => d.vacinaCodigo);
+    for (const v of ["PENTAVALENTE", "POLIO_VIP", "VARICELA", "DTP"]) {
+      expect(aos8, v).not.toContain(v);
+    }
+  });
+
+  it("gestante com 3 doses de DTP/penta na infância não precisa da série de dT (só do dTpa)", () => {
+    const lista = calcularProximasDoses({
+      nascimento: "1996-03-10",
+      hoje: "2026-10-31",
+      grupos: ["GESTANTE"],
+      gestacaoInicio: "2026-08-01",
+      doses: {
+        PENTAVALENTE: [{ numero: 1, data: "1996-05-10" }, { numero: 2, data: "1996-07-10" }, { numero: 3, data: "1996-09-10" }]
+      }
+    });
+    expect(lista.find((d) => d.vacinaCodigo === "DT")).toBeUndefined();
+    expect(lista.find((d) => d.vacinaCodigo === "DTPA")).toBeDefined();
+
+    const poucas = calcularProximasDoses({
+      nascimento: "1996-03-10",
+      hoje: "2026-10-31",
+      grupos: ["GESTANTE"],
+      gestacaoInicio: "2026-08-01",
+      doses: { PENTAVALENTE: [{ numero: 1, data: "1996-05-10" }, { numero: 2, data: "1996-07-10" }] }
+    });
+    expect(poucas.find((d) => d.vacinaCodigo === "DT")).toBeDefined();
   });
 
 });

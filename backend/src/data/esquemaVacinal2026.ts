@@ -47,6 +47,10 @@ export interface DoseEsquema {
   grupo: string | null;
   /* só vale a partir desta semana de gestação (ex.: dTpa 20, VSR 28) */
   semanasGestacao: number | null;
+  /* também só libera depois de N meses da 1ª dose da série (ex.: hepatite B: 3ª dose >= 4 meses após a 1ª) */
+  desdePrimeiraDoseMeses: number | null;
+  /* só contam as doses aplicadas a partir desta idade (ex.: meningo ACWY dos 11 anos vale mesmo com a dose dos 12 meses) */
+  contaDesdeIdadeMeses: number | null;
   /* "em cada gestação": só contam as doses aplicadas depois do início da gestação atual */
   porGestacao: boolean;
   fonte: string;
@@ -89,6 +93,8 @@ interface Opcoes {
   grupo?: string;
   semanas?: number;
   porGestacao?: boolean;
+  desdePrimeira?: number;
+  contaDesde?: number;
 }
 
 function dose(
@@ -112,6 +118,8 @@ function dose(
     reforco: /refor/i.test(rotulo),
     grupo: o.grupo ?? null,
     semanasGestacao: o.semanas ?? null,
+    desdePrimeiraDoseMeses: o.desdePrimeira ?? null,
+    contaDesdeIdadeMeses: o.contaDesde ?? null,
     porGestacao: o.porGestacao ?? false,
     fonte
   };
@@ -136,6 +144,10 @@ function periodica(
 /* Idade em meses COMPLETOS: 119 = 9 anos e 11 meses. */
 const ATE_CRIANCA = ANOS(10) - 1;
 
+/* Limites de idade do calendário de rotina (Estado de SP, out/2026): depois deles a vacina deixa de ser cobrada. */
+const ATE_4_ANOS = 59; /* até 4 anos, 11 meses e 29 dias */
+const ATE_6_ANOS = 83; /* até 6 anos, 11 meses e 29 dias */
+
 export const ESQUEMA_2026: DoseEsquema[] = [
 
   /* ---------------- CRIANÇA (0 a 9 anos, 11 meses e 29 dias) ---------------- */
@@ -143,39 +155,39 @@ export const ESQUEMA_2026: DoseEsquema[] = [
   dose("HEPATITE_B", 1, "Dose ao nascer", CRIANCA, { ideal: 0, max: ATE_CRIANCA }),
   dose("BCG", 1, "Dose única", CRIANCA, { ideal: 0, max: ATE_CRIANCA }),
 
-  dose("PENTAVALENTE", 1, "1ª dose", CRIANCA, { ideal: 2, max: ATE_CRIANCA }),
-  dose("PENTAVALENTE", 2, "2ª dose", CRIANCA, { ideal: 4, max: ATE_CRIANCA }),
-  dose("PENTAVALENTE", 3, "3ª dose", CRIANCA, { ideal: 6, max: ATE_CRIANCA }),
+  dose("PENTAVALENTE", 1, "1ª dose", CRIANCA, { ideal: 2, max: ATE_6_ANOS }),
+  dose("PENTAVALENTE", 2, "2ª dose", CRIANCA, { ideal: 4, max: ATE_6_ANOS }),
+  dose("PENTAVALENTE", 3, "3ª dose", CRIANCA, { ideal: 6, max: ATE_6_ANOS }),
 
-  dose("POLIO_VIP", 1, "1ª dose", CRIANCA, { ideal: 2, max: ATE_CRIANCA }),
-  dose("POLIO_VIP", 2, "2ª dose", CRIANCA, { ideal: 4, max: ATE_CRIANCA }),
-  dose("POLIO_VIP", 3, "3ª dose", CRIANCA, { ideal: 6, max: ATE_CRIANCA }),
-  dose("POLIO_VIP", 4, "1ª dose de reforço", CRIANCA, { ideal: 15, max: ATE_CRIANCA }),
-  dose("POLIO_VIP", 5, "2ª dose de reforço", CRIANCA, { ideal: 48, max: ATE_CRIANCA }),
+  dose("POLIO_VIP", 1, "1ª dose", CRIANCA, { ideal: 2, max: ATE_6_ANOS }),
+  dose("POLIO_VIP", 2, "2ª dose", CRIANCA, { ideal: 4, max: ATE_6_ANOS }),
+  dose("POLIO_VIP", 3, "3ª dose", CRIANCA, { ideal: 6, max: ATE_6_ANOS }),
+  dose("POLIO_VIP", 4, "1ª dose de reforço", CRIANCA, { ideal: 15, max: ATE_6_ANOS }),
+  dose("POLIO_VIP", 5, "2ª dose de reforço", CRIANCA, { ideal: 48, max: ATE_6_ANOS }),
 
   /* Rotavírus: 1ª dose até 11m29d e 2ª até 23m29d; depois disso perde-se a oportunidade. */
   dose("ROTAVIRUS", 1, "1ª dose", CRIANCA, { ideal: 2, max: 11 }),
   dose("ROTAVIRUS", 2, "2ª dose", CRIANCA, { ideal: 4, intervalo: 60, max: 23 }),
 
   /* O calendário lista a 20-valente aos 2 meses e a 10-valente aos 4 meses (2ª dose). */
-  dose("PNEUMOCOCICA_20V", 1, "1ª dose", CRIANCA, { ideal: 2, max: ATE_CRIANCA }),
-  dose("PNEUMOCOCICA_10V", 2, "2ª dose", CRIANCA, { ideal: 4, max: ATE_CRIANCA }),
-  dose("PNEUMOCOCICA_20V", 2, "Dose de reforço", CRIANCA, { ideal: 12, max: ATE_CRIANCA }),
+  dose("PNEUMOCOCICA_20V", 1, "1ª dose", CRIANCA, { ideal: 2, max: ATE_4_ANOS }),
+  dose("PNEUMOCOCICA_10V", 2, "2ª dose", CRIANCA, { ideal: 4, max: ATE_4_ANOS }),
+  dose("PNEUMOCOCICA_20V", 2, "Dose de reforço", CRIANCA, { ideal: 12, max: ATE_4_ANOS }),
 
-  dose("MENINGOCOCICA_C", 1, "1ª dose", CRIANCA, { ideal: 3, max: ATE_CRIANCA }),
-  dose("MENINGOCOCICA_C", 2, "2ª dose", CRIANCA, { ideal: 5, max: ATE_CRIANCA }),
-  dose("MENINGOCOCICA_ACWY", 1, "Dose única", CRIANCA, { ideal: 12, max: ATE_CRIANCA }),
+  dose("MENINGOCOCICA_C", 1, "1ª dose", CRIANCA, { ideal: 3, max: ATE_4_ANOS }),
+  dose("MENINGOCOCICA_C", 2, "2ª dose", CRIANCA, { ideal: 5, max: ATE_4_ANOS }),
+  dose("MENINGOCOCICA_ACWY", 1, "Reforço (aos 12 meses)", CRIANCA, { ideal: 12, max: ATE_4_ANOS }),
 
   dose("TRIPLICE_VIRAL_SCR", 1, "1ª dose", CRIANCA, { ideal: 12, max: ATE_CRIANCA }),
   dose("TRIPLICE_VIRAL_SCR", 2, "2ª dose", CRIANCA, { ideal: 15, max: ATE_CRIANCA }),
 
-  dose("HEPATITE_A", 1, "Dose única", CRIANCA, { ideal: 15, max: ATE_CRIANCA }),
+  dose("HEPATITE_A", 1, "Dose única", CRIANCA, { ideal: 15, max: ATE_4_ANOS }),
 
-  dose("VARICELA", 1, "1ª dose", CRIANCA, { ideal: 15, max: ATE_CRIANCA }),
-  dose("VARICELA", 2, "2ª dose", CRIANCA, { ideal: 48, max: ATE_CRIANCA }),
+  dose("VARICELA", 1, "1ª dose", CRIANCA, { ideal: 15, max: ATE_6_ANOS }),
+  dose("VARICELA", 2, "2ª dose", CRIANCA, { ideal: 48, max: ATE_6_ANOS }),
 
-  dose("DTP", 1, "1ª dose de reforço", CRIANCA, { ideal: 15, max: ATE_CRIANCA }),
-  dose("DTP", 2, "2ª dose de reforço", CRIANCA, { ideal: 48, max: ATE_CRIANCA }),
+  dose("DTP", 1, "1ª dose de reforço", CRIANCA, { ideal: 15, max: ATE_6_ANOS }),
+  dose("DTP", 2, "2ª dose de reforço", CRIANCA, { ideal: 48, max: ATE_6_ANOS }),
 
   dose("FEBRE_AMARELA", 1, "Dose inicial", CRIANCA, { ideal: 9, max: ATE_CRIANCA }),
   dose("FEBRE_AMARELA", 2, "Dose de reforço", CRIANCA, { ideal: 48, max: ATE_CRIANCA }),
@@ -185,8 +197,8 @@ export const ESQUEMA_2026: DoseEsquema[] = [
   dose("COVID19", 2, "2ª dose", CRIANCA, { ideal: 7, intervalo: 28, max: 59 }),
   dose("COVID19", 3, "3ª dose", CRIANCA, { ideal: 9, intervalo: 56, max: 59 }),
 
-  /* Influenza: todo ano dos 6 meses aos 5a11m29d (na 1ª vez, 2 doses com 30 dias de intervalo). */
-  dose("INFLUENZA", 1, "1ª dose (na 1ª vez, são 2 doses com 30 dias de intervalo)", CRIANCA, { ideal: 6, min: 6, max: 71 }),
+  /* Influenza: todo ano dos 6 meses aos 5a11m29d (na 1ª vez, 2 doses com 4 semanas de intervalo). */
+  dose("INFLUENZA", 1, "1ª dose (na 1ª vez, são 2 doses com 4 semanas de intervalo)", CRIANCA, { ideal: 6, min: 6, max: 71 }),
   periodica("INFLUENZA", "Dose anual", 12, CRIANCA, { min: 6, max: 71 }),
 
   /* HPV4: 1 dose aos 9 anos; em atraso, vacinar até 14a11m29d. */
@@ -195,10 +207,11 @@ export const ESQUEMA_2026: DoseEsquema[] = [
   /* ---------------- ADOLESCENTE E JOVEM (10 a 24 anos) ---------------- */
 
   dose("DENGUE_DNG4", 1, "1ª dose", ADOLESCENTE, { ideal: ANOS(10), min: ANOS(10), max: ANOS(15) - 1 }),
-  /* O calendário não informa o intervalo; usa-se o que o sistema já tinha (90 dias). */
-  dose("DENGUE_DNG4", 2, "2ª dose", ADOLESCENTE, { intervalo: 90, min: ANOS(10), max: ANOS(15) - 1 }),
+  /* 2ª dose com 12 semanas (84 dias) de intervalo (calendário do Estado de SP, out/2026). */
+  dose("DENGUE_DNG4", 2, "2ª dose", ADOLESCENTE, { intervalo: 84, min: ANOS(10), max: ANOS(15) - 1 }),
 
-  dose("MENINGOCOCICA_ACWY", 1, "Dose única", ADOLESCENTE, { ideal: ANOS(11), min: ANOS(10), max: ANOS(15) - 1 }),
+  /* Vale independentemente da dose de reforço dos 12 meses: só contam doses a partir dos 10 anos. */
+  dose("MENINGOCOCICA_ACWY", 1, "Dose única", ADOLESCENTE, { ideal: ANOS(11), min: ANOS(10), max: ANOS(15) - 1, contaDesde: ANOS(10) }),
 
   dose("DT", 1, "3ª dose de reforço", ADOLESCENTE, { ideal: ANOS(14), min: ANOS(10), max: ANOS(30) - 1 }),
   /* 4ª dose aos 24 anos, e nunca antes de 10 anos da dose anterior. */
@@ -206,16 +219,17 @@ export const ESQUEMA_2026: DoseEsquema[] = [
 
   /* ---------------- CONFORME HISTÓRICO VACINAL (10 anos ou mais) ---------------- */
 
-  /* Hepatite B: 3 doses. O calendário não traz os intervalos; usa-se 30 e 180 dias (regra que o sistema já tinha). */
+  /* Hepatite B: 3 doses. Intervalo mínimo de 4 semanas entre a 1ª e a 2ª; a 3ª pode ser 2 meses após a 2ª,
+     desde que passados 4 meses da 1ª (calendário do Estado de SP, out/2026). */
   dose("HEPATITE_B", 1, "1ª dose", ADOLESCENTE, { min: ANOS(10) }),
-  dose("HEPATITE_B", 2, "2ª dose", ADOLESCENTE, { intervalo: 30, min: ANOS(10) }),
-  dose("HEPATITE_B", 3, "3ª dose", ADOLESCENTE, { intervalo: 180, min: ANOS(10) }),
+  dose("HEPATITE_B", 2, "2ª dose", ADOLESCENTE, { intervalo: 28, min: ANOS(10) }),
+  dose("HEPATITE_B", 3, "3ª dose", ADOLESCENTE, { intervalo: 60, desdePrimeira: 4, min: ANOS(10) }),
 
   dose("FEBRE_AMARELA", 1, "Dose única", ADOLESCENTE, { min: ANOS(10), max: ANOS(60) - 1 }),
 
   /* SCR: até 29 anos, 2 doses; de 30 a 59 anos, 1 dose. */
   dose("TRIPLICE_VIRAL_SCR", 1, "1ª dose", ADOLESCENTE, { min: ANOS(10), max: ANOS(30) - 1 }),
-  dose("TRIPLICE_VIRAL_SCR", 2, "2ª dose", ADOLESCENTE, { min: ANOS(10), max: ANOS(30) - 1 }),
+  dose("TRIPLICE_VIRAL_SCR", 2, "2ª dose", ADOLESCENTE, { intervalo: 28, min: ANOS(10), max: ANOS(30) - 1 }),
   dose("TRIPLICE_VIRAL_SCR", 1, "Dose única", ADULTO, { min: ANOS(30), max: ANOS(60) - 1 }),
 
   /* dT: reforço a cada 10 anos (adulto e idoso), contado da última dose com componente tetânico. */
@@ -224,7 +238,7 @@ export const ESQUEMA_2026: DoseEsquema[] = [
   /* ---------------- GRUPOS ESPECIAIS ---------------- */
 
   dose("TRIPLICE_VIRAL_SCR", 1, "1ª dose", ADULTO, { min: ANOS(10), grupo: "TRABALHADOR_SAUDE" }),
-  dose("TRIPLICE_VIRAL_SCR", 2, "2ª dose", ADULTO, { min: ANOS(10), grupo: "TRABALHADOR_SAUDE" }),
+  dose("TRIPLICE_VIRAL_SCR", 2, "2ª dose", ADULTO, { intervalo: 28, min: ANOS(10), grupo: "TRABALHADOR_SAUDE" }),
 
   ...["TRABALHADOR_SAUDE", "INDIGENA"].flatMap((grupo) => [
     dose("VARICELA", 1, "1ª dose", ADULTO, { min: ANOS(10), grupo }),
@@ -237,15 +251,16 @@ export const ESQUEMA_2026: DoseEsquema[] = [
 
      Valem só para quem está no grupo GESTANTE e tem a gestação em andamento (ver
      proximasDoses.ts). Hepatite B (3 doses) já vem da regra geral de 10 anos ou mais.
-     O calendário não informa intervalos; para o dT usa-se o intervalo habitual de 60 dias
-     (conferir no calendário oficial). Febre amarela só em casos excepcionais, com
-     avaliação do serviço de saúde: por isso não é sugerida. */
+     dT: 2ª dose 2 meses após a 1ª e 3ª dose 4 a 6 meses após a 1ª (calendário do Estado de SP,
+     out/2026). Febre amarela só em casos excepcionais, com avaliação do serviço de saúde: por
+     isso não é sugerida. */
 
   dose("DT", 1, "1ª dose (ao saber da gravidez)", GESTANTE, { min: ANOS(10), grupo: "GESTANTE" }),
   dose("DT", 2, "2ª dose", GESTANTE, { intervalo: 60, min: ANOS(10), grupo: "GESTANTE" }),
-  dose("DT", 3, "3ª dose", GESTANTE, { intervalo: 60, min: ANOS(10), grupo: "GESTANTE" }),
+  dose("DT", 3, "3ª dose", GESTANTE, { intervalo: 60, desdePrimeira: 4, min: ANOS(10), grupo: "GESTANTE" }),
 
-  periodica("INFLUENZA", "1 dose por temporada", 12, GESTANTE, { min: ANOS(10), grupo: "GESTANTE" }),
+  /* Uma dose em qualquer fase de CADA gestação (SP); o Ministério diz "1 dose por temporada". */
+  periodica("INFLUENZA", "1 dose por temporada (em cada gestação)", 12, GESTANTE, { min: ANOS(10), grupo: "GESTANTE", porGestacao: true }),
 
   dose("COVID19", 1, "1 dose a cada gestação", GESTANTE, { min: ANOS(10), grupo: "GESTANTE", porGestacao: true }),
 

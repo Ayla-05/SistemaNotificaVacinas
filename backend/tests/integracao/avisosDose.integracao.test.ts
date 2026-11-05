@@ -47,7 +47,7 @@ afterEach(() => {
 describe("calendario_vacinal atualizado para 2026", () => {
 
   it("troca os dados antigos e registra a versão", async () => {
-    expect(await configuracaoRepository.obterConfiguracao("calendario_versao")).toBe("2026");
+    expect(await configuracaoRepository.obterConfiguracao("calendario_versao")).toBe("2026.1");
 
     const hepB = await vacinaRepository.buscarVacinaPorCodigo("HEPATITE_B") as any;
     const linha = await calendarioVacinalRepository.buscarPorVacinaEFaixa(hepB.id, "CRIANCA") as any;

@@ -50,7 +50,7 @@ describe("calendário por faixa derivado do esquema 2026", () => {
 
   it("descreve as idades em cada dose", () => {
     expect(de("CRIANCA", "PENTAVALENTE")?.observacao)
-      .toBe("1ª dose (aos 2 meses); 2ª dose (aos 4 meses); 3ª dose (aos 6 meses)");
+      .toBe("1ª dose (aos 2 meses, até 7 anos); 2ª dose (aos 4 meses, até 7 anos); 3ª dose (aos 6 meses, até 7 anos)");
     expect(de("CRIANCA", "HPV4")?.observacao).toContain("aos 9 anos");
   });
 

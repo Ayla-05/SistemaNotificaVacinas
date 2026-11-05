@@ -87,7 +87,7 @@ describe("ProximasDosesService (com o banco)", () => {
 
     const depois = await ProximasDosesService.calcular(pessoaId, HOJE);
     expect(depois.find((d) => d.vacinaCodigo === "SCR" || d.vacinaCodigo === "TRIPLICE_VIRAL_SCR"))
-      .toMatchObject({ numeroDose: 2, status: "DISPONIVEL" });
+      .toMatchObject({ numeroDose: 2, dataPrevista: "2015-01-29", status: "ATRASADA" });
   });
 
   it("o resumo do Dashboard só cobra o que já venceu e lista as próximas com data", async () => {

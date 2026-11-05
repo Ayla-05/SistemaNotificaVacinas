@@ -26,7 +26,7 @@ Linhas de grupo especial (trabalhador da saúde, indígenas) ficam
 de fora: não são do calendário "da faixa etária".
 */
 
-export const VERSAO_CALENDARIO = "2026";
+export const VERSAO_CALENDARIO = "2026.1";
 
 export const FAIXAS_CALENDARIO = [
   { faixa: "CRIANCA", minMeses: 0, maxMeses: 119, idadeMinima: 0, idadeMaxima: 9 },

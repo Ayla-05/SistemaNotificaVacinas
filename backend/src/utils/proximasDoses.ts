@@ -303,21 +303,74 @@ export function calcularProximasDoses(
           )
         : lista;
 
-    const proprias = soDestaGestacao(doses[codigo] ?? []);
-    const equivalentes = soDestaGestacao(
+    /* Só contam doses a partir de certa idade (ex.: meningo ACWY dos 11 anos). */
+    const idadeCorte = linhas.reduce(
+      (maior, l) =>
+        l.contaDesdeIdadeMeses !== null
+          ? Math.max(maior, l.contaDesdeIdadeMeses)
+          : maior,
+      0
+    );
+    const dataCorte =
+      idadeCorte > 0
+        ? adicionarMeses(nascimento, idadeCorte)
+        : null;
+
+    const restringir = (lista: DoseRegistrada[]) =>
+      soDestaGestacao(
+        dataCorte !== null
+          ? lista.filter(
+              (d) => d.data === null || d.data >= dataCorte
+            )
+          : lista
+      );
+
+    const proprias = restringir(doses[codigo] ?? []);
+    const equivalentes = restringir(
       (EQUIVALENCIA_DOSES[codigo] ?? [])
         .flatMap((c) => doses[c] ?? [])
     );
 
-    const dosesTomadas = Math.max(
+    /* Data da 1ª dose da série (para regras do tipo "3ª dose >= 4 meses após a 1ª"). */
+    const datasPrimeira = [...proprias, ...equivalentes]
+      .filter((d) => d.numero === 1 && d.data !== null)
+      .map((d) => d.data as string)
+      .sort();
+    const primeiraDose = datasPrimeira[0] ?? null;
+
+    let dosesTomadas = Math.max(
       0,
       ...proprias.map((d) => d.numero),
       ...equivalentes.map((d) => d.numero)
     );
 
+    /*
+    Gestante: 3 ou mais doses de penta, tetravalente, DTP, DT, DTPa, dTpa ou dT
+    (em qualquer época) já completam o esquema; falta só o dTpa a cada gestação
+    (calendário do Estado de SP, out/2026).
+    */
+    if (gestante && codigo === "DT") {
+
+      const dosesComTetano = [
+        "DT",
+        "DTP",
+        "DTPA",
+        "PENTAVALENTE"
+      ].reduce(
+        (total, c) => total + (doses[c] ?? []).length,
+        0
+      );
+
+      dosesTomadas = Math.max(
+        dosesTomadas,
+        dosesComTetano
+      );
+
+    }
+
     const referenciaDatas = [
       ...proprias,
-      ...soDestaGestacao(
+      ...restringir(
         (EQUIVALENCIA_DATAS[codigo] ?? [])
           .flatMap((c) => doses[c] ?? [])
       )
@@ -390,6 +443,19 @@ export function calcularProximasDoses(
           );
         }
 
+      }
+
+      /* Série com "N meses depois da 1ª dose" (hepatite B e dT: 3ª dose >= 4 meses após a 1ª). */
+      if (
+        linha.desdePrimeiraDoseMeses !== null &&
+        primeiraDose !== null
+      ) {
+        candidatas.push(
+          adicionarMeses(
+            primeiraDose,
+            linha.desdePrimeiraDoseMeses
+          )
+        );
       }
 
       /* Dose liberada a partir de uma semana de gestação (ex.: dTpa na 20ª, VSR na 28ª). */
