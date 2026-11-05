@@ -79,6 +79,7 @@ const APELIDOS: Record<string, string[]> = {
   "hepatite b": ["hep b", "hepb"],
   "pentavalente": ["penta"],
   "dtpa": ["dtap"],
+  "vsr": ["vvsr", "virus sincicial respiratorio", "sincicial respiratorio"],
   "dt": [
     "dupla adulto", "dupla tipo adulto",
     "difteria e tetano adulto", "difteria e tetano"

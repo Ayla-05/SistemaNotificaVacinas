@@ -1,4 +1,8 @@
-import { db } from "../database/database";
+import {
+  AGORA_UTC,
+  alterar as executar,
+  consultarUm as buscarUma
+} from "../database/database";
 
 /*
 ==================================================
@@ -9,50 +13,6 @@ Responsabilidades:
 
 - Acesso à tabela redefinicoes_senha (SQL)
 */
-
-function executar(
-  sql: string,
-  params: any[] = []
-): Promise<number> {
-
-  return new Promise((resolve, reject) => {
-
-    db.run(sql, params, function (err) {
-
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(this.changes);
-
-    });
-
-  });
-
-}
-
-function buscarUma(
-  sql: string,
-  params: any[] = []
-): Promise<any> {
-
-  return new Promise((resolve, reject) => {
-
-    db.get(sql, params, (err, row) => {
-
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(row);
-
-    });
-
-  });
-
-}
 
 export async function criarToken(
   usuarioId: number,
@@ -66,7 +26,7 @@ export async function criarToken(
   await executar(
     `
     UPDATE redefinicoes_senha
-    SET usado_em = CURRENT_TIMESTAMP
+    SET usado_em = ${AGORA_UTC}
     WHERE usuario_id = ? AND usado_em IS NULL
     `,
     [usuarioId]
@@ -104,7 +64,7 @@ export async function marcarComoUsado(
   const alteradas = await executar(
     `
     UPDATE redefinicoes_senha
-    SET usado_em = CURRENT_TIMESTAMP
+    SET usado_em = ${AGORA_UTC}
     WHERE id = ? AND usado_em IS NULL
     `,
     [id]

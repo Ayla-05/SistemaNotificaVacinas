@@ -1,4 +1,9 @@
-import { db } from "../database/database";
+import {
+  AGORA_UTC,
+  alterar as executar,
+  consultarUm as buscarUma,
+  consultarTodos as buscarVarias
+} from "../database/database";
 
 /*
 ==================================================
@@ -14,72 +19,6 @@ NÃO é responsável por:
 - Regras de rotação/reuso de refresh token
   (AuthService)
 */
-
-function executar(
-  sql: string,
-  params: any[] = []
-): Promise<number> {
-
-  return new Promise((resolve, reject) => {
-
-    db.run(sql, params, function (err) {
-
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(this.changes);
-
-    });
-
-  });
-
-}
-
-function buscarUma(
-  sql: string,
-  params: any[] = []
-): Promise<any> {
-
-  return new Promise((resolve, reject) => {
-
-    db.get(sql, params, (err, row) => {
-
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(row);
-
-    });
-
-  });
-
-}
-
-function buscarVarias(
-  sql: string,
-  params: any[] = []
-): Promise<any[]> {
-
-  return new Promise((resolve, reject) => {
-
-    db.all(sql, params, (err, rows) => {
-
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(rows || []);
-
-    });
-
-  });
-
-}
 
 export async function criarSessao(sessao: {
   id: string;
@@ -160,8 +99,8 @@ export async function rotacionarRefresh(
     UPDATE sessoes
     SET refresh_hash_anterior = refresh_hash,
         refresh_hash = ?,
-        rotacionado_em = CURRENT_TIMESTAMP,
-        ultimo_uso = CURRENT_TIMESTAMP,
+        rotacionado_em = ${AGORA_UTC},
+        ultimo_uso = ${AGORA_UTC},
         expira_em = ?
     WHERE id = ?
       AND refresh_hash = ?
@@ -182,7 +121,7 @@ export function revogarSessao(
   return executar(
     `
     UPDATE sessoes
-    SET revogada_em = CURRENT_TIMESTAMP
+    SET revogada_em = ${AGORA_UTC}
     WHERE id = ?
       AND revogada_em IS NULL
       ${usuarioId !== undefined ? "AND usuario_id = ?" : ""}
@@ -204,7 +143,7 @@ export function revogarSessoesDoUsuario(
   return executar(
     `
     UPDATE sessoes
-    SET revogada_em = CURRENT_TIMESTAMP
+    SET revogada_em = ${AGORA_UTC}
     WHERE usuario_id = ?
       AND revogada_em IS NULL
       ${manterId ? "AND id <> ?" : ""}
@@ -240,7 +179,7 @@ export function apagarSessoesAntigas(): Promise<number> {
   return executar(
     `
     DELETE FROM sessoes
-    WHERE COALESCE(revogada_em, expira_em) < datetime('now', '-30 days')
+    WHERE COALESCE(revogada_em, expira_em) < to_char(timezone('UTC', now()) - interval '30 days', 'YYYY-MM-DD HH24:MI:SS')
     `
   );
 

@@ -2,7 +2,9 @@ import {
   DoseEsquema,
   ESQUEMA_2026,
   EQUIVALENCIA_DATAS,
-  EQUIVALENCIA_DOSES
+  EQUIVALENCIA_DOSES,
+  VACINAS_FORA_DO_ESQUEMA_DA_GESTANTE,
+  GESTACAO_DURACAO_MAX_DIAS
 } from "../data/esquemaVacinal2026";
 
 /*
@@ -54,6 +56,8 @@ export interface EntradaProximasDoses {
   doses: Record<string, DoseRegistrada[]>;
   /* códigos dos grupos especiais da pessoa (ex.: "TRABALHADOR_SAUDE") */
   grupos: string[];
+  /* início estimado da gestação atual (AAAA-MM-DD), para o grupo GESTANTE */
+  gestacaoInicio?: string | null;
   esquema?: DoseEsquema[];
 }
 
@@ -222,12 +226,43 @@ export function calcularProximasDoses(
     grupos
   } = entrada;
 
+  const inicioGestacao = entrada.gestacaoInicio ?? null;
+
   const esquema = entrada.esquema ?? ESQUEMA_2026;
 
   const idade = idadeEmMeses(nascimento, hoje);
 
+  /*
+  Gestante com gestação em andamento: sem data de início (cadastro antigo) vale o
+  grupo; com data, só até a duração máxima de uma gestação. Depois disso a pessoa
+  volta ao calendário comum.
+  */
+  const gestante =
+    grupos.includes("GESTANTE") &&
+    (
+      inicioGestacao === null ||
+      hoje <= adicionarDias(
+        inicioGestacao,
+        GESTACAO_DURACAO_MAX_DIAS
+      )
+    );
+
   const aplicaveis = esquema.filter(
     (linha) =>
+      !(
+        gestante &&
+        VACINAS_FORA_DO_ESQUEMA_DA_GESTANTE.includes(
+          linha.vacinaCodigo
+        )
+      ) &&
+      /* o dT da gestante (3 doses) substitui o reforço de adulto */
+      !(
+        gestante &&
+        linha.vacinaCodigo === "DT" &&
+        linha.grupo === null
+      ) &&
+      /* regras "a cada gestação" precisam saber quando a gestação começou */
+      !(linha.porGestacao && inicioGestacao === null) &&
       idade >= linha.idadeMinMeses &&
       (
         linha.idadeMaxMeses === null ||
@@ -235,7 +270,11 @@ export function calcularProximasDoses(
       ) &&
       (
         linha.grupo === null ||
-        grupos.includes(linha.grupo)
+        (
+          linha.grupo === "GESTANTE"
+            ? gestante
+            : grupos.includes(linha.grupo)
+        )
       )
   );
 
@@ -254,11 +293,21 @@ export function calcularProximasDoses(
 
   for (const [codigo, linhas] of porVacina) {
 
-    const proprias = doses[codigo] ?? [];
+    /* "A cada gestação": dose aplicada antes do início desta gestação não conta. */
+    const soDestaGestacao = (lista: DoseRegistrada[]) =>
+      gestante &&
+      inicioGestacao !== null &&
+      linhas.some((l) => l.porGestacao)
+        ? lista.filter(
+            (d) => d.data === null || d.data >= inicioGestacao
+          )
+        : lista;
 
-    const equivalentes =
+    const proprias = soDestaGestacao(doses[codigo] ?? []);
+    const equivalentes = soDestaGestacao(
       (EQUIVALENCIA_DOSES[codigo] ?? [])
-        .flatMap((c) => doses[c] ?? []);
+        .flatMap((c) => doses[c] ?? [])
+    );
 
     const dosesTomadas = Math.max(
       0,
@@ -268,8 +317,10 @@ export function calcularProximasDoses(
 
     const referenciaDatas = [
       ...proprias,
-      ...(EQUIVALENCIA_DATAS[codigo] ?? [])
-        .flatMap((c) => doses[c] ?? [])
+      ...soDestaGestacao(
+        (EQUIVALENCIA_DATAS[codigo] ?? [])
+          .flatMap((c) => doses[c] ?? [])
+      )
     ];
 
     const ultimaDose = maiorData(
@@ -341,7 +392,29 @@ export function calcularProximasDoses(
 
       }
 
+      /* Dose liberada a partir de uma semana de gestação (ex.: dTpa na 20ª, VSR na 28ª). */
+      if (
+        linha.semanasGestacao !== null &&
+        inicioGestacao !== null
+      ) {
+        candidatas.push(
+          adicionarDias(
+            inicioGestacao,
+            linha.semanasGestacao * 7
+          )
+        );
+      }
+
       dataPrevista = maiorData(candidatas);
+
+      /* Janela já aberta: pode tomar agora (não é "atraso" de quem passou da 20ª semana). */
+      if (
+        linha.semanasGestacao !== null &&
+        dataPrevista !== null &&
+        dataPrevista <= hoje
+      ) {
+        dataPrevista = null;
+      }
 
       /*
       Reforço sem nenhuma dose anterior registrada (nem de vacina

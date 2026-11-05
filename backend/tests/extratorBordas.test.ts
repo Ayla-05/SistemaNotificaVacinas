@@ -120,10 +120,13 @@ describe("validação de datas (serviço)", () => {
     expect(() => validarDataAplicacao("2005-05-11", "2005-05-12", "2026-10-31")).toThrow();
   });
 
-  it("hojeLocalISO usa a data local (sem deslocar o fuso)", () => {
-    // 23:30 do dia 31 no horário local continua sendo dia 31 (toISOString poderia virar dia 1)
-    expect(hojeLocalISO(new Date(2026, 9, 31, 23, 30))).toBe("2026-10-31");
-    expect(hojeLocalISO(new Date(2026, 0, 1, 0, 5))).toBe("2026-01-01");
+  it("hojeLocalISO usa o dia civil de São Paulo, qualquer que seja o fuso da máquina (COR-26)", () => {
+    // 22h30 de 31/10 em Brasília já é 01h30 de 01/11 em UTC: o dia continua sendo 31
+    expect(hojeLocalISO(new Date("2026-11-01T01:30:00Z"))).toBe("2026-10-31");
+    // 00h05 de 01/01 em Brasília = 03h05 UTC
+    expect(hojeLocalISO(new Date("2026-01-01T03:05:00Z"))).toBe("2026-01-01");
+    // 21h de 31/12 em Brasília ainda é 2026 (em UTC já é 2027)
+    expect(hojeLocalISO(new Date("2027-01-01T00:00:00Z"))).toBe("2026-12-31");
   });
 
 });

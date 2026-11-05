@@ -1,5 +1,7 @@
 // src/pages/CompletarCadastro.jsx
 
+import CampoGestacao from '../components/CampoGestacao';
+import { inicioDaGestacao, semanasValidas } from '../utils/gestacao';
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -88,6 +90,7 @@ export default function CompletarCadastro() {
   const [form, setForm] = useState(DADOS_VAZIOS);
   const [catalogoGrupos, setCatalogoGrupos] = useState([]);
   const [gruposSelecionados, setGruposSelecionados] = useState([]);
+  const [semanasGestacao, setSemanasGestacao] = useState('');
   const [salvandoDados, setSalvandoDados] = useState(false);
   const [erroDados, setErroDados] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -134,7 +137,21 @@ export default function CompletarCadastro() {
 
     try {
       await atualizarPessoa(pessoaAtiva.id, form);
-      await Promise.all(gruposSelecionados.map((grupoId) => vincularGrupoEspecial(pessoaAtiva.id, grupoId)));
+      const idGestante = catalogoGrupos.find((g) => g.nome === 'GESTANTE')?.id;
+
+      if (gruposSelecionados.includes(idGestante) && !semanasValidas(semanasGestacao)) {
+        throw new Error('Informe há quantas semanas está a gestação (de 1 a 42).');
+      }
+
+      await Promise.all(
+        gruposSelecionados.map((grupoId) =>
+          vincularGrupoEspecial(
+            pessoaAtiva.id,
+            grupoId,
+            grupoId === idGestante ? inicioDaGestacao(semanasGestacao) : undefined
+          )
+        )
+      );
       await recarregarPessoas();
       setEtapa('carteirinha');
     } catch (erroCapturado) {
@@ -386,6 +403,11 @@ export default function CompletarCadastro() {
                     </label>
                   ))}
                 </div>
+                {gruposSelecionados.includes(catalogoGrupos.find((g) => g.nome === 'GESTANTE')?.id) && (
+                  <div className="mt-3">
+                    <CampoGestacao semanas={semanasGestacao} onChange={setSemanasGestacao} id="semanas-gestacao-cadastro" />
+                  </div>
+                )}
               </div>
 
               {erroDados && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{erroDados}</p>}

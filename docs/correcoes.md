@@ -64,7 +64,7 @@ gravam uma só (graças aos índices únicos, COR-18), e o cadastro público já
 
 Em 04/11/2026, a branch `feat/interface-mascotes-e-painel-notificacoes` (interface com mascotes, painel de
 notificações, ajustes de OCR e materiais da monografia) foi integrada à `main`. Ela continha correções
-**paralelas** às COR-01 a COR-26 (autorização, validação, tratador de erros e o mesmo defeito de idade em fuso).
+**paralelas** às COR-01 a COR-29 (autorização, validação, tratador de erros e o mesmo defeito de idade em fuso).
 Resolução dos conflitos, arquivo a arquivo:
 
 | Assunto | Decisão |
@@ -87,12 +87,43 @@ progressivo, perfil não escolhido no cadastro, reuso de *refresh token*, SQL *i
 cabeçalhos do helmet, CORS e CSRF). `SEG-11` falhou por erro do **teste** (a API tolera 10 s de corrida entre
 abas antes de tratar reuso como roubo); o teste foi ajustado para envelhecer a rotação.
 
+## 4b. Migração do banco: SQLite → PostgreSQL com Prisma
+
+| Código | Sev. | Problema encontrado | Como foi corrigido | Teste |
+|---|---|---|---|---|
+| COR-27 | Média | Banco embarcado (SQLite): um único escritor, arquivo local (impede replicar a API), estrutura criada por `CREATE TABLE` escritos à mão e migrações por `ALTER TABLE` com tratamento de erro; `schema.prisma` incompleto e sem uso. | Banco migrado para o **PostgreSQL 16**. `prisma/schema.prisma` descreve as 16 tabelas, chaves, índices e regras de remoção; a migração `inicial` foi gerada por `prisma migrate dev` e é aplicada por `npm run db:migrar`. `database.ts` usa `pg` (pool, `consultarTodos`, `consultarUm`, `inserir`, `alterar`, `emTransacao`; `?` vira `$n`); `configurarBanco` só confere a estrutura e roda os *seeds*. `docker-compose.yml`, `.env.example` (`DATABASE_URL`) e scripts `db:migrar`, `db:nova`, `db:status`. O `prisma.config.ts` do repositório era inválido (função inexistente) e foi reescrito. | toda a suíte (558 testes, cada arquivo em um schema PostgreSQL próprio criado das migrações reais); `CEN-24`, `CEN-25` |
+| COR-28 | Média | A cascata de remoção era feita no código (`removerEmCascata`) porque o SQLite não altera chaves estrangeiras. | `ON DELETE CASCADE` declarado no esquema para os dados que pertencem a outro registro (`RESTRICT` nos catálogos). Cada remoção virou um único `DELETE`, atômico. A função `removerEmCascata` foi removida. | funcional "remoção em cascata" (3 testes), `CEN-27` |
+| COR-29 | Média | `CURRENT_TIMESTAMP` gravado em coluna de texto no PostgreSQL produz `2026-11-05 03:14:15.123456+00`; o código, que lê datas como UTC sem fuso, tratava como data inválida (a rotação de *refresh token* devolvia 401 em vez de 409). | Constante `AGORA_UTC` (`to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')`), igual ao formato antigo, usada nos `UPDATE` e nos valores padrão do esquema. O teste de arquitetura `ARQ-09` aceita essa constante (expressão fixa). | `auth.integracao` (rotação e reuso do *refresh token*) |
+
+As correções **COR-16** (`foreign_keys`), **COR-17** (cascata no código), **COR-18** (índices em `indices.ts`), **COR-19**
+(espera fixa na inicialização), **COR-20** (WAL e `busy_timeout`) e **COR-21** (código morto) tratavam de limitações do SQLite
+e foram **superadas** por esta migração: no PostgreSQL, as chaves estrangeiras são sempre aplicadas, a cascata e os 19 índices
+estão no esquema, a estrutura vem das migrações e o pool de conexões substitui os ajustes do arquivo.
+
+## 4c. Achados em aberto (a verificar com a fonte oficial)
+
+Os testes de cenários com 38 pessoas de idades diferentes apontaram dois pontos do **esquema vacinal** que não foram
+alterados, porque são regras de saúde e dependem do Calendário Nacional oficial:
+
+* **A-01 · Pneumocócica 10-valente.** O calendário de 2026 prevê 20-valente aos 2 meses, **10-valente aos 4 meses** e reforço
+  20-valente aos 12 meses (série mista, transcrita fielmente em `esquemaVacinal2026.ts`). Como o esquema trata 10V e 20V como
+  vacinas distintas, a 10V só tem a "2ª dose", e o resumo mostra "0 tomadas, 2 necessárias, falta 1". Não é erro de cálculo, mas
+  pode confundir o usuário; avaliar tratar a série mista como uma só.
+* **A-02 · Rotavírus.** A 2ª dose tem janela até 23 meses e a 1ª, até 11; uma criança de 12 a 23 meses sem nenhuma dose recebe
+  a "2ª dose" como atrasada, sem a 1ª. Conferir as idades máximas de cada dose no calendário oficial.
+
+O teste `CEN-09b` garante o que é seguro: depois da janela, a 1ª dose nunca é sugerida.
+
 ## 5. Pendências conhecidas (não corrigidas)
 
 1. **Histórico do Git** ainda contém `vacinas.db` (COR-24). Trocar senhas administrativas.
 2. **`authService.ts` tem ~980 linhas** (login, sessões, refresh, recuperação de senha, tokens): candidato a divisão
    em serviços menores. Não foi feito para não misturar refatoração grande com correção de segurança.
-3. **Migrações por `ALTER TABLE`** em vez de ferramenta versionada; `schema.prisma` está incompleto e sem uso.
-4. **`npm audit`** (vulnerabilidades de dependências) não foi executado: exige rede.
-5. **Front end** sem testes automatizados; **OCR real** e e-mail real testados só com simulações.
-6. **Limitação do SQLite:** escrita única e arquivo local; para várias instâncias da API, migrar para PostgreSQL.
+3. **Arquivos obsoletos do SQLite a remover:** `backend/src/database/tables/` e `backend/src/database/indices.ts` não são mais
+   usados (estão fora da compilação, em `tsconfig.json`). A remoção foi bloqueada pela verificação de segurança do ambiente e deve
+   ser feita manualmente: `git rm -r backend/src/database/tables backend/src/database/indices.ts`.
+4. **Repositórios ainda usam SQL escrito à mão** (parametrizado); trocar pelo cliente do Prisma e converter as datas de texto em
+   tipos de data do PostgreSQL são melhorias futuras.
+5. **`npm audit`** (vulnerabilidades de dependências) não foi executado: exige rede.
+6. **Front end** sem testes automatizados; **OCR real** e e-mail real testados só com simulações.
+7. Achados **A-01** e **A-02** (seção 4c), a conferir com o calendário oficial.

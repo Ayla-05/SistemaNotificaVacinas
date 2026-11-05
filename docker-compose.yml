@@ -1,0 +1,28 @@
+# PostgreSQL de desenvolvimento do Notifica Vacinas.
+#
+#   docker compose up -d        sobe o banco (porta 5432)
+#   docker compose down         desliga (os dados ficam no volume)
+#   docker compose down -v      desliga e APAGA os dados
+#
+# Depois, em backend/:  cp .env.example .env   e   npm run db:migrar
+services:
+  banco:
+    image: postgres:16
+    container_name: notifica-vacinas-banco
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: notifica
+      POSTGRES_PASSWORD: notifica_dev
+      POSTGRES_DB: notifica_vacinas
+    ports:
+      - "5432:5432"
+    volumes:
+      - dados-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notifica -d notifica_vacinas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  dados-postgres:

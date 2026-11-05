@@ -9,7 +9,8 @@ vi.mock("express-rate-limit", () => ({
 
 import app from "../../src/server";
 import { configurarBanco } from "../../src/database/configurarBanco";
-import { db } from "../../src/database/database";
+import { alterar, consultarUm } from "../../src/database/database";
+import { agoraMenos } from "../_util/sql";
 import {
   CSRF, SENHA, novoUsuario, get, enviar, criarPessoa, cookiesDe, Sessao
 } from "../_util/sessao";
@@ -109,9 +110,7 @@ describe("A07 · Autenticação e sessão", () => {
     const email = `mass${Date.now()}@exemplo.com`;
     await request(app).post("/auth/registrar").set(CSRF)
       .send({ nome: "Mass", email, senha: SENHA, dataNascimento: "1990-01-01", perfil: "ADMIN" });
-    const linha: any = await new Promise((resolve) =>
-      db.get("SELECT perfil FROM usuarios WHERE email = ?", [email], (_e, r) => resolve(r))
-    );
+    const linha: any = await consultarUm("SELECT perfil FROM usuarios WHERE email = ?", [email]);
     expect(linha?.perfil).toBe("USUARIO");
   });
 
@@ -126,7 +125,7 @@ describe("A07 · Autenticação e sessão", () => {
     const novo = await request(app).post("/auth/refresh").set(CSRF).set("Cookie", s.cookies);
     expect(novo.status).toBe(200);
     // fora da janela de tolerância (corrida entre abas), o reuso é tratado como roubo
-    await new Promise<void>((r) => db.run("UPDATE sessoes SET rotacionado_em = datetime('now', '-1 minute')", () => r()));
+    await alterar(`UPDATE sessoes SET rotacionado_em = ${agoraMenos("1 minute")}`);
     const reuso = await request(app).post("/auth/refresh").set(CSRF).set("Cookie", refreshAntigo);
     expect(reuso.status).toBe(401);
     const aindaValido = await request(app).get("/auth/me").set("Cookie", cookiesDe(novo));
@@ -250,7 +249,7 @@ describe("A02/A05 · Exposição de dados e configuração", () => {
 
   it("[SEG-27] erro interno não vaza SQL nem caminho de arquivo", async () => {
     const res = await get(ana, "/carteira/registro/999999999/doses");
-    expect(res.text).not.toMatch(/SQLITE|SELECT |FROM |\/home\/|node_modules/i);
+    expect(res.text).not.toMatch(/SQLITE|violates|syntax error|SELECT |FROM |\/home\/|node_modules/i);
   });
 
   it("[SEG-28] nenhuma resposta de usuário contém hash de senha ou código de verificação", async () => {

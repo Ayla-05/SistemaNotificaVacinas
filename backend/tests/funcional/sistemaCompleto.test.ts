@@ -504,13 +504,9 @@ describe("integridade do banco e remoções em cascata", () => {
   });
 
   it("o banco recusa registro órfão (chaves estrangeiras ativas)", async () => {
-    const { db } = await import("../../src/database/database");
-    const erro = await new Promise<Error | null>((resolve) =>
-      db.run(
-        "INSERT INTO pessoas (usuario_id, nome, data_nascimento) VALUES (999999, 'Orfa', '2000-01-01')",
-        (e) => resolve(e)
-      )
-    );
-    expect(erro?.message).toMatch(/FOREIGN KEY/i);
+    const { alterar } = await import("../../src/database/database");
+    await expect(
+      alterar("INSERT INTO pessoas (usuario_id, nome, data_nascimento) VALUES (999999, 'Orfa', '2000-01-01')")
+    ).rejects.toThrow(/foreign key/i);
   });
 });

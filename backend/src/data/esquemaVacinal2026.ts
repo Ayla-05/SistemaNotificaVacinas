@@ -26,7 +26,7 @@ vacina e diz QUANDO ela é devida:
 - grupo: só vale para quem pertence ao grupo especial.
 
 O que o calendário NÃO diz (e por isso não está aqui):
-gestantes (calendário próprio, não incluído), imunocomprometidos,
+imunocomprometidos,
 acamados, viajantes e áreas de risco. Esses casos precisam de
 avaliação do serviço de saúde.
 
@@ -45,8 +45,32 @@ export interface DoseEsquema {
   repeteMeses: number | null;
   reforco: boolean;
   grupo: string | null;
+  /* só vale a partir desta semana de gestação (ex.: dTpa 20, VSR 28) */
+  semanasGestacao: number | null;
+  /* "em cada gestação": só contam as doses aplicadas depois do início da gestação atual */
+  porGestacao: boolean;
   fonte: string;
 }
+
+/*
+Vacinas de vírus vivo atenuado: não entram no esquema da gestante. O calendário
+da gestante (Ministério da Saúde) só prevê hepatite B, dT, dTpa, influenza,
+COVID-19 e VSR; a febre amarela é permitida apenas em casos excepcionais, com
+avaliação de risco e benefício pelo serviço de saúde (gestante sem esquema
+completo que vive ou vai viajar para área com circulação viral confirmada).
+Por isso o sistema NÃO sugere essas vacinas para quem está no grupo GESTANTE.
+(A contraindicação das demais vacinas vivas — tríplice viral, tetraviral e
+varicela — na gestação deve ser conferida no calendário oficial.)
+*/
+/* Maior duração considerada para uma gestação (dias desde o início): depois disso o grupo deixa de valer. */
+export const GESTACAO_DURACAO_MAX_DIAS = 300;
+
+export const VACINAS_FORA_DO_ESQUEMA_DA_GESTANTE = [
+  "FEBRE_AMARELA",
+  "TRIPLICE_VIRAL_SCR",
+  "TETRAVIRAL",
+  "VARICELA"
+];
 
 const ANOS = (n: number) => n * 12;
 
@@ -54,6 +78,7 @@ const CRIANCA = "Calendário Nacional 2026 — Criança";
 const ADOLESCENTE = "Calendário Nacional 2026 — Adolescente e Jovem";
 const ADULTO = "Calendário Nacional 2026 — Adulto";
 const IDOSO = "Calendário Nacional 2026 — Idoso";
+const GESTANTE = "Calendário Nacional — Gestante";
 
 interface Opcoes {
   ideal?: number;
@@ -62,6 +87,8 @@ interface Opcoes {
   min?: number;
   max?: number | null;
   grupo?: string;
+  semanas?: number;
+  porGestacao?: boolean;
 }
 
 function dose(
@@ -84,6 +111,8 @@ function dose(
     repeteMeses: null,
     reforco: /refor/i.test(rotulo),
     grupo: o.grupo ?? null,
+    semanasGestacao: o.semanas ?? null,
+    porGestacao: o.porGestacao ?? false,
     fonte
   };
 
@@ -203,6 +232,26 @@ export const ESQUEMA_2026: DoseEsquema[] = [
   ]),
 
   dose("PNEUMOCOCICA_20V", 1, "Dose única", ADULTO, { min: ANOS(5), grupo: "INDIGENA" }),
+
+  /* ---------------- GESTANTE (a gestante e o bebê, até o nascimento) ----------------
+
+     Valem só para quem está no grupo GESTANTE e tem a gestação em andamento (ver
+     proximasDoses.ts). Hepatite B (3 doses) já vem da regra geral de 10 anos ou mais.
+     O calendário não informa intervalos; para o dT usa-se o intervalo habitual de 60 dias
+     (conferir no calendário oficial). Febre amarela só em casos excepcionais, com
+     avaliação do serviço de saúde: por isso não é sugerida. */
+
+  dose("DT", 1, "1ª dose (ao saber da gravidez)", GESTANTE, { min: ANOS(10), grupo: "GESTANTE" }),
+  dose("DT", 2, "2ª dose", GESTANTE, { intervalo: 60, min: ANOS(10), grupo: "GESTANTE" }),
+  dose("DT", 3, "3ª dose", GESTANTE, { intervalo: 60, min: ANOS(10), grupo: "GESTANTE" }),
+
+  periodica("INFLUENZA", "1 dose por temporada", 12, GESTANTE, { min: ANOS(10), grupo: "GESTANTE" }),
+
+  dose("COVID19", 1, "1 dose a cada gestação", GESTANTE, { min: ANOS(10), grupo: "GESTANTE", porGestacao: true }),
+
+  dose("DTPA", 1, "1 dose a partir da 20ª semana de gestação", GESTANTE, { min: ANOS(10), grupo: "GESTANTE", semanas: 20, porGestacao: true }),
+
+  dose("VSR", 1, "1 dose a partir da 28ª semana de gestação", GESTANTE, { min: ANOS(10), grupo: "GESTANTE", semanas: 28, porGestacao: true }),
 
   /* ---------------- IDOSO (60 anos ou mais) ---------------- */
 
