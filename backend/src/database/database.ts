@@ -1,65 +1,43 @@
-import sqlite3 from "sqlite3";
-
-const sqlite = sqlite3.verbose();
+import { Pool, PoolClient, types } from "pg";
 
 /*
 ==================================================
-CONEXÃO
+CONEXÃO COM O POSTGRESQL
 ==================================================
 
-Arquivo definido em DATABASE_FILE (":memory:" nos testes).
-A estrutura das tabelas é criada em configurarBanco().
+A conexão vem de DATABASE_URL (ver .env.example). A estrutura das
+tabelas NÃO é criada aqui: ela é definida em prisma/schema.prisma e
+aplicada pelas migrações versionadas (npm run db:migrar).
+
+CORREÇÃO [COR-27]: o sistema migrou do SQLite (arquivo local, escrita
+única, migrações por ALTER TABLE à mão) para o PostgreSQL, com o esquema
+e as migrações a cargo do Prisma.
 */
-const ARQUIVO =
-  process.env.DATABASE_FILE || "./vacinas.db";
-
-export const db = new sqlite.Database(
-  ARQUIVO,
-  (err) => {
-
-    if (err) {
-      console.error(
-        "Erro ao conectar ao banco:",
-        err
-      );
-      return;
-    }
-
-    console.log(
-      "✅ Banco SQLite conectado"
-    );
-
-  }
-);
 
 /*
-==================================================
-AJUSTES DA CONEXÃO (PRAGMAs)
-==================================================
-
-- foreign_keys: o SQLite NÃO aplica chaves estrangeiras
-  por padrão; sem isto era possível gravar registros
-  órfãos (ex.: pessoa de um usuário inexistente).
-- busy_timeout: espera até 5 s por um bloqueio em vez de
-  falhar na hora com SQLITE_BUSY.
-- journal_mode=WAL e synchronous=NORMAL: leituras não
-  bloqueiam a escrita e cada gravação custa menos. Só em
-  banco de arquivo (em memória não há o que ajustar).
+COUNT(*) e SUM() chegam do PostgreSQL como bigint, e o driver os entrega
+como texto para não perder precisão. Os totais do sistema são pequenos,
+então viram número, como os repositórios sempre esperaram.
 */
-/*
-CORREÇÃO [COR-16/20]: o banco rodava com chaves estrangeiras
-desligadas (padrão do SQLite) e sem ajustes de concorrência.
-*/
-db.serialize(() => {
+types.setTypeParser(20, (valor) => Number(valor));
 
-  db.run("PRAGMA foreign_keys = ON");
-  db.run("PRAGMA busy_timeout = 5000");
+const URL_DO_BANCO = process.env.DATABASE_URL;
 
-  if (ARQUIVO !== ":memory:") {
-    db.run("PRAGMA journal_mode = WAL");
-    db.run("PRAGMA synchronous = NORMAL");
-  }
+if (!URL_DO_BANCO) {
+  console.error(
+    "DATABASE_URL não definida. Copie backend/.env.example para backend/.env " +
+    "e suba o PostgreSQL (docker compose up -d)."
+  );
+}
 
+export const pool = new Pool({
+  connectionString: URL_DO_BANCO,
+  max: Number(process.env.DB_POOL_MAX) || 10
+});
+
+/* Erro em conexão ociosa não pode derrubar o processo. */
+pool.on("error", (erro) => {
+  console.error("Erro numa conexão ociosa do banco:", erro.message);
 });
 
 /*
@@ -67,172 +45,146 @@ db.serialize(() => {
 HELPERS DE CONSULTA
 ==================================================
 
-Embrulham o callback do driver em Promise, para os
-repositórios descreverem só o SQL e os parâmetros.
+Os repositórios escrevem o SQL com "?" como marcador de parâmetro (como
+sempre fizeram); aqui ele vira $1, $2... do PostgreSQL. Os valores
+NUNCA são concatenados no texto da consulta.
 */
 type Parametros = unknown[];
 
 /*
-CORREÇÃO [COR-22]: cada repositório repetia ~12 linhas de
-new Promise + callback por consulta (120 vezes). Os quatro
-helpers abaixo concentram isso; os repositórios caíram de 4478
-para ~3100 linhas, só com SQL e parâmetros.
+Data e hora atuais em UTC, no formato de texto que o sistema sempre usou
+("AAAA-MM-DD HH:MM:SS"). Use no lugar de CURRENT_TIMESTAMP em colunas de
+texto: no PostgreSQL, CURRENT_TIMESTAMP viraria "2026-11-05 03:14:15.123456+00",
+que o código não sabe ler (CORREÇÃO COR-27).
 */
+export const AGORA_UTC =
+  "to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')";
+
+/* Troca cada "?" fora de aspas simples por $1, $2... */
+export function numerarParametros(sql: string): string {
+
+  let saida = "";
+  let n = 0;
+  let dentroDeTexto = false;
+
+  for (const caractere of sql) {
+
+    if (caractere === "'") {
+      dentroDeTexto = !dentroDeTexto;
+    }
+
+    saida +=
+      caractere === "?" && !dentroDeTexto
+        ? `$${++n}`
+        : caractere;
+
+  }
+
+  return saida;
+
+}
+
+type Executor = Pick<Pool | PoolClient, "query">;
+
+async function executar(
+  executor: Executor,
+  sql: string,
+  parametros: Parametros
+) {
+  return executor.query(numerarParametros(sql), parametros as any[]);
+}
 
 /* SELECT que devolve várias linhas (lista vazia se não houver). */
-export function consultarTodos<T = any>(
+export async function consultarTodos<T = any>(
   sql: string,
   parametros: Parametros = []
 ): Promise<T[]> {
-
-  return new Promise((resolve, reject) => {
-
-    db.all(sql, parametros, (err, linhas) => {
-
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve((linhas || []) as T[]);
-
-    });
-
-  });
-
+  return (await executar(pool, sql, parametros)).rows as T[];
 }
 
 /* SELECT que devolve uma linha (undefined se não houver). */
-export function consultarUm<T = any>(
+export async function consultarUm<T = any>(
   sql: string,
   parametros: Parametros = []
 ): Promise<T> {
-
-  return new Promise((resolve, reject) => {
-
-    db.get(sql, parametros, (err, linha) => {
-
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(linha as T);
-
-    });
-
-  });
-
+  return (await executar(pool, sql, parametros)).rows[0] as T;
 }
 
-/* INSERT: devolve o id da linha criada. */
-export function inserir(
+/* INSERT: devolve o id da linha criada (a tabela precisa ter coluna "id"). */
+export async function inserir(
   sql: string,
   parametros: Parametros = []
 ): Promise<number> {
 
-  return new Promise((resolve, reject) => {
+  const comRetorno = /\bRETURNING\b/i.test(sql)
+    ? sql
+    : `${sql.trim().replace(/;$/, "")} RETURNING id`;
 
-    db.run(sql, parametros, function (err) {
+  const resultado = await executar(pool, comRetorno, parametros);
 
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(this.lastID);
-
-    });
-
-  });
+  return Number(resultado.rows[0]?.id ?? 0);
 
 }
 
-/* UPDATE/DELETE: devolve quantas linhas foram afetadas. */
-export function alterar(
+/* UPDATE/DELETE/INSERT sem retorno: devolve quantas linhas foram afetadas. */
+export async function alterar(
   sql: string,
   parametros: Parametros = []
 ): Promise<number> {
-
-  return new Promise((resolve, reject) => {
-
-    db.run(sql, parametros, function (err) {
-
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(this.changes);
-
-    });
-
-  });
-
+  return (await executar(pool, sql, parametros)).rowCount ?? 0;
 }
 
 /*
 ==================================================
-REMOÇÃO EM CASCATA (ATÔMICA)
+TRANSAÇÃO
 ==================================================
 
-As tabelas foram criadas sem ON DELETE CASCADE e o SQLite
-não altera chaves estrangeiras depois de criadas. Por isso,
-apagar um registro "pai" exige apagar antes os filhos, tudo
-dentro de uma única transação (db.exec roda de forma
-exclusiva na conexão, sem outras consultas no meio).
-
-Cada comando usa $ID, trocado pelo id já validado como
-inteiro (exec não aceita parâmetros).
-
-Devolve 1 se o registro existia e foi removido, 0 se não.
+Roda os passos em uma única conexão, com BEGIN/COMMIT e ROLLBACK em
+caso de erro. Dentro de "passos" use o objeto recebido (e não os
+helpers acima), para tudo ficar na mesma transação.
 */
-/* CORREÇÃO [COR-17]: ver explicação acima. */
-export async function removerEmCascata(
-  tabela: string,
-  id: number,
-  comandosDosFilhos: string[]
-): Promise<number> {
+export async function emTransacao<T>(
+  passos: (tx: {
+    consultarTodos: <R = any>(sql: string, p?: Parametros) => Promise<R[]>;
+    consultarUm: <R = any>(sql: string, p?: Parametros) => Promise<R>;
+    alterar: (sql: string, p?: Parametros) => Promise<number>;
+  }) => Promise<T>
+): Promise<T> {
 
-  if (!Number.isInteger(id)) {
-    throw new Error("ID inválido.");
+  const cliente = await pool.connect();
+
+  try {
+
+    await cliente.query("BEGIN");
+
+    const resultado = await passos({
+      consultarTodos: async (sql, p = []) =>
+        (await executar(cliente, sql, p)).rows,
+      consultarUm: async (sql, p = []) =>
+        (await executar(cliente, sql, p)).rows[0],
+      alterar: async (sql, p = []) =>
+        (await executar(cliente, sql, p)).rowCount ?? 0
+    });
+
+    await cliente.query("COMMIT");
+
+    return resultado;
+
+  } catch (erro) {
+
+    await cliente.query("ROLLBACK").catch(() => undefined);
+
+    throw erro;
+
+  } finally {
+
+    cliente.release();
+
   }
 
-  const existente = await consultarUm(
-    `SELECT 1 AS achou FROM ${tabela} WHERE id = ?`,
-    [id]
-  );
+}
 
-  if (!existente) {
-    return 0;
-  }
-
-  const comandos = [
-    ...comandosDosFilhos,
-    `DELETE FROM ${tabela} WHERE id = $ID`
-  ]
-    .map((sql) => sql.replace(/\$ID/g, String(id)))
-    .join(";\n");
-
-  await new Promise<void>((resolve, reject) => {
-
-    db.exec(
-      `BEGIN IMMEDIATE;\n${comandos};\nCOMMIT;`,
-      (err) => {
-
-        if (!err) {
-          resolve();
-          return;
-        }
-
-        /* desfaz o que já tinha rodado; o erro original é o que importa */
-        db.exec("ROLLBACK", () => reject(err));
-
-      }
-    );
-
-  });
-
-  return 1;
-
+/* Encerra o pool (testes e desligamento do servidor). */
+export async function fecharBanco(): Promise<void> {
+  await pool.end();
 }

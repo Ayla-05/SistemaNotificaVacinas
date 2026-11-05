@@ -4,7 +4,8 @@ import cookieParser from "cookie-parser";
 import request from "supertest";
 import bcrypt from "bcryptjs";
 
-import { db } from "../../src/database/database";
+import { alterar } from "../../src/database/database";
+import { agoraMenos } from "../_util/sql";
 import { configurarBanco } from "../../src/database/configurarBanco";
 import authRoutes from "../../src/routes/authRoutes";
 import { exigirCabecalhoCsrf } from "../../src/middlewares/csrfMiddleware";
@@ -57,10 +58,8 @@ function valorDoCookie(cookies: string[], nome: string) {
   return cookies.find((c) => c.startsWith(`${nome}=`));
 }
 
-function sql(consulta: string, params: any[] = []) {
-  return new Promise<void>((resolve, reject) =>
-    db.run(consulta, params, (e) => (e ? reject(e) : resolve()))
-  );
+async function sql(consulta: string, params: any[] = []) {
+  await alterar(consulta, params);
 }
 
 async function login(email: string, senha = SENHA) {
@@ -136,7 +135,7 @@ describe("sessões", () => {
     expect(aindaValido.status).toBe(200);
 
     // Reuso depois da janela de tolerância = token copiado: revoga a sessão inteira.
-    await sql("UPDATE sessoes SET rotacionado_em = datetime('now', '-1 minute')");
+    await sql(`UPDATE sessoes SET rotacionado_em = ${agoraMenos("1 minute")}`);
 
     const roubo = await request(app).post("/auth/refresh").set(CSRF).set("Cookie", inicial);
     expect(roubo.status).toBe(401);

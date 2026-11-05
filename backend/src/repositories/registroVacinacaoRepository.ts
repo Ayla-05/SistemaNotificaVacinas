@@ -1,4 +1,4 @@
-import { removerEmCascata, alterar, consultarTodos, consultarUm, inserir } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -108,12 +108,10 @@ export function removerRegistroVacinacao(
   id: number
 ): Promise<number> {
 
-  return removerEmCascata(
-    "registros_vacinacao",
-    id,
-    [
-      "DELETE FROM doses_vacina WHERE registro_vacinacao_id = $ID"
-    ]
+  /* CORREÇÃO [COR-28]: o ON DELETE CASCADE do esquema apaga os dependentes. */
+  return alterar(
+    `DELETE FROM registros_vacinacao WHERE id = ?`,
+    [id]
   );
 
 }

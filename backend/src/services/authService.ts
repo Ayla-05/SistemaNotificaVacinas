@@ -89,7 +89,7 @@ export interface ContextoRequisicao {
   userAgent: string | null;
 }
 
-/* Data do SQLite (CURRENT_TIMESTAMP) vem como "AAAA-MM-DD HH:MM:SS" em UTC. */
+/* Datas gravadas pelo banco (AGORA_UTC) vêm como "AAAA-MM-DD HH:MM:SS" em UTC. */
 function lerDataSqlite(valor: string): number {
   return new Date(
     valor.includes("T") ? valor : valor.replace(" ", "T") + "Z"

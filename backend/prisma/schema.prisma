@@ -1,0 +1,291 @@
+// Esquema do banco de dados do Notifica Vacinas (PostgreSQL).
+//
+// Fonte única da estrutura: as migrações em prisma/migrations são geradas a partir
+// deste arquivo (npm run db:nova) e aplicadas por npm run db:migrar.
+//
+// Decisões:
+// - Datas guardadas como texto ISO (AAAA-MM-DD ou AAAA-MM-DD HH:MM:SS, em UTC), como o
+//   código sempre fez; os valores "booleanos" são inteiros 0/1.
+// - ON DELETE CASCADE nos dados que pertencem a outro registro (ex.: as doses de um
+//   registro, as sessões de um usuário): remover o "pai" nunca deixa órfãos.
+// - Vacinas e grupos especiais NÃO são apagados em cascata (RESTRICT): são catálogos.
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- acesso e sistema
+
+model Usuario {
+  id                        Int      @id @default(autoincrement())
+  nome                      String
+  email                     String   @unique
+  senha                     String
+  perfil                    String   @default("USUARIO")
+  ativo                     Int?     @default(1)
+  email_verificado          Int?     @default(0)
+  codigo_verificacao        String?
+  codigo_verificacao_expira String?
+  tentativas_falhas         Int?     @default(0)
+  bloqueado_ate             String?
+  criado_em                 String?  @default(dbgenerated("to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')"))
+
+  pessoas            Pessoa[]
+  sessoes            Sessao[]
+  redefinicoes_senha RedefinicaoSenha[]
+
+  @@map("usuarios")
+}
+
+model Sessao {
+  id                    String  @id
+  usuario_id            Int
+  refresh_hash          String  @unique
+  refresh_hash_anterior String?
+  rotacionado_em        String?
+  user_agent            String?
+  ip                    String?
+  criado_em             String? @default(dbgenerated("to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')"))
+  ultimo_uso            String? @default(dbgenerated("to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')"))
+  expira_em             String
+  revogada_em           String?
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([usuario_id], map: "idx_sessoes_usuario")
+  @@index([refresh_hash_anterior], map: "idx_sessoes_refresh_anterior")
+  @@map("sessoes")
+}
+
+model RedefinicaoSenha {
+  id         Int     @id @default(autoincrement())
+  usuario_id Int
+  token_hash String  @unique
+  criado_em  String? @default(dbgenerated("to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')"))
+  expira_em  String
+  usado_em   String?
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([usuario_id], map: "idx_redefinicoes_usuario")
+  @@map("redefinicoes_senha")
+}
+
+model Configuracao {
+  chave String @id
+  valor String
+
+  @@map("configuracoes")
+}
+
+// ---------------------------------------------------------------- pessoas
+
+model Pessoa {
+  id               Int     @id @default(autoincrement())
+  usuario_id       Int
+  nome             String
+  email            String?
+  telefone         String?
+  data_nascimento  String
+  cep              String?
+  logradouro       String?
+  numero           String?
+  complemento      String?
+  bairro           String?
+  cidade           String?
+  estado           String?
+  foto_perfil      String?
+  receber_email    Int?    @default(1)
+  receber_whatsapp Int?    @default(1)
+  frequencia_aviso String? @default("UMA_VEZ")
+  ultimo_resumo_em String?
+  criado_em        String? @default(dbgenerated("to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')"))
+
+  usuario               Usuario               @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  como_responsavel      Dependente[]          @relation("responsavel")
+  como_dependente       Dependente[]          @relation("dependente")
+  grupos_especiais      PessoaGrupoEspecial[]
+  registros_vacinacao   RegistroVacinacao[]
+  agendamentos_vacina   AgendamentoVacina[]
+  avisos_dose           AvisoDose[]
+
+  @@index([usuario_id], map: "idx_pessoas_usuario")
+  @@map("pessoas")
+}
+
+model Dependente {
+  id             Int    @id @default(autoincrement())
+  responsavel_id Int
+  dependente_id  Int
+  parentesco     String
+
+  responsavel Pessoa @relation("responsavel", fields: [responsavel_id], references: [id], onDelete: Cascade)
+  dependente  Pessoa @relation("dependente", fields: [dependente_id], references: [id], onDelete: Cascade)
+
+  @@index([responsavel_id], map: "idx_dependentes_responsavel")
+  @@index([dependente_id], map: "idx_dependentes_dependente")
+  @@map("dependentes")
+}
+
+model GrupoEspecial {
+  id        Int     @id @default(autoincrement())
+  nome      String  @unique
+  descricao String?
+
+  pessoas PessoaGrupoEspecial[]
+  regras  RegraVacinal[]
+
+  @@map("grupos_especiais")
+}
+
+model PessoaGrupoEspecial {
+  id                Int     @id @default(autoincrement())
+  pessoa_id         Int
+  grupo_especial_id Int
+  gestacao_inicio   String?
+
+  pessoa Pessoa        @relation(fields: [pessoa_id], references: [id], onDelete: Cascade)
+  grupo  GrupoEspecial @relation(fields: [grupo_especial_id], references: [id], onDelete: Restrict)
+
+  @@unique([pessoa_id, grupo_especial_id], map: "ux_pessoa_grupo")
+  @@index([grupo_especial_id], map: "idx_pessoa_grupo_grupo")
+  @@map("pessoa_grupo_especial")
+}
+
+// ---------------------------------------------------------------- catálogo vacinal
+
+model Vacina {
+  id               Int     @id @default(autoincrement())
+  codigo           String  @unique
+  nome             String  @unique
+  descricao        String?
+  doencas_evitadas String?
+  ativa            Int?    @default(1)
+
+  calendario   CalendarioVacinal[]
+  regras       RegraVacinal[]
+  campanhas    CampanhaVacinal[]
+  registros    RegistroVacinacao[]
+  agendamentos AgendamentoVacina[]
+
+  @@map("vacinas")
+}
+
+model CalendarioVacinal {
+  id           Int     @id @default(autoincrement())
+  vacina_id    Int
+  faixa_etaria String
+  idade_minima Int?
+  idade_maxima Int?
+  doses        Int?
+  reforcos     Int?
+  observacao   String?
+
+  vacina Vacina @relation(fields: [vacina_id], references: [id], onDelete: Restrict)
+
+  @@index([vacina_id], map: "idx_calendario_vacina")
+  @@index([faixa_etaria], map: "idx_calendario_faixa")
+  @@map("calendario_vacinal")
+}
+
+model RegraVacinal {
+  id                     Int     @id @default(autoincrement())
+  vacina_id              Int
+  grupo_especial_id      Int?
+  intervalo_dose_1_2     Int?
+  intervalo_dose_2_3     Int?
+  intervalo_dose_3_4     Int?
+  intervalo_dose_reforco Int?
+  reforco_anos           Int?
+  campanha_anual         Int?    @default(0)
+  observacao             String?
+
+  vacina Vacina         @relation(fields: [vacina_id], references: [id], onDelete: Restrict)
+  grupo  GrupoEspecial? @relation(fields: [grupo_especial_id], references: [id], onDelete: Restrict)
+
+  @@index([vacina_id, grupo_especial_id], map: "idx_regras_vacina")
+  @@index([grupo_especial_id], map: "idx_regras_grupo")
+  @@map("regras_vacinais")
+}
+
+model CampanhaVacinal {
+  id                 Int     @id @default(autoincrement())
+  vacina_id          Int
+  nome               String
+  data_inicio        String?
+  data_fim           String?
+  publico_alvo       String?
+  ativa              Int?    @default(1)
+  fonte              String?
+  ultima_atualizacao String?
+
+  vacina Vacina @relation(fields: [vacina_id], references: [id], onDelete: Restrict)
+
+  @@index([vacina_id], map: "idx_campanhas_vacina")
+  @@map("campanhas_vacinais")
+}
+
+// ---------------------------------------------------------------- carteira e avisos
+
+model RegistroVacinacao {
+  id            Int     @id @default(autoincrement())
+  pessoa_id     Int
+  vacina_id     Int
+  data_registro String? @default(dbgenerated("to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')"))
+
+  pessoa Pessoa        @relation(fields: [pessoa_id], references: [id], onDelete: Cascade)
+  vacina Vacina        @relation(fields: [vacina_id], references: [id], onDelete: Restrict)
+  doses  DoseVacina[]
+
+  @@unique([pessoa_id, vacina_id], map: "ux_registro_pessoa_vacina")
+  @@index([vacina_id], map: "idx_registro_vacina")
+  @@map("registros_vacinacao")
+}
+
+model DoseVacina {
+  id                    Int     @id @default(autoincrement())
+  registro_vacinacao_id Int
+  numero_dose           Int
+  tipo                  String?
+  data_aplicacao        String?
+  lote                  String?
+  fabricante            String?
+  observacao            String?
+
+  registro RegistroVacinacao @relation(fields: [registro_vacinacao_id], references: [id], onDelete: Cascade)
+
+  @@unique([registro_vacinacao_id, numero_dose], map: "ux_dose_registro_numero")
+  @@map("doses_vacina")
+}
+
+model AgendamentoVacina {
+  id            Int     @id @default(autoincrement())
+  pessoa_id     Int
+  vacina_id     Int
+  numero_dose   Int
+  data_prevista String
+  status        String? @default("PENDENTE")
+  observacao    String?
+
+  pessoa Pessoa @relation(fields: [pessoa_id], references: [id], onDelete: Cascade)
+  vacina Vacina @relation(fields: [vacina_id], references: [id], onDelete: Restrict)
+
+  @@index([pessoa_id, data_prevista], map: "idx_agendamento_pessoa_data")
+  @@index([vacina_id], map: "idx_agendamento_vacina")
+  @@index([status, data_prevista], map: "idx_agendamento_status_data")
+  @@map("agendamentos_vacina")
+}
+
+model AvisoDose {
+  id            Int     @id @default(autoincrement())
+  pessoa_id     Int
+  vacina_codigo String
+  numero_dose   Int
+  data_prevista String
+  enviado_em    String? @default(dbgenerated("to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')"))
+
+  pessoa Pessoa @relation(fields: [pessoa_id], references: [id], onDelete: Cascade)
+
+  @@unique([pessoa_id, vacina_codigo, numero_dose, data_prevista])
+  @@map("avisos_dose")
+}

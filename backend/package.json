@@ -5,14 +5,17 @@
   "main": "dist/server.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "npm run db:migrar && ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "npm run db:migrar && node dist/server.js",
     "test": "vitest run",
     "test:relatorio": "node tests/relatorio/gerarRelatorio.mjs",
     "test:seguranca": "vitest run tests/seguranca",
     "test:arquitetura": "vitest run tests/arquitetura",
-    "test:logica": "vitest run tests/logica"
+    "test:logica": "vitest run tests/logica",
+    "db:migrar": "prisma migrate deploy",
+    "db:nova": "prisma migrate dev",
+    "db:status": "prisma migrate status"
   },
   "keywords": [
     "vacina",
@@ -22,7 +25,6 @@
   "author": "Ayla Pedroga Rossi",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^7.10.0",
     "@types/nodemailer": "^8.0.2",
     "axios": "^1.20.0",
     "bcryptjs": "^3.0.3",
@@ -35,7 +37,7 @@
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.6.0",
     "nodemailer": "^10.1.0",
-    "sqlite3": "^6.0.1"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -45,7 +47,9 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.4.0",
     "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "prisma": "^7.10.1",
     "supertest": "^7.3.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3",
