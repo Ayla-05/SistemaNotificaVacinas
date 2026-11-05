@@ -15,7 +15,8 @@
     "test:logica": "vitest run tests/logica",
     "db:migrar": "prisma migrate deploy",
     "db:nova": "prisma migrate dev",
-    "db:status": "prisma migrate status"
+    "db:status": "prisma migrate status",
+    "test:cenarios": "vitest run tests/cenarios"
   },
   "keywords": [
     "vacina",

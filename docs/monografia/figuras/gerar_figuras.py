@@ -378,8 +378,8 @@ def figura_arquitetura():
     out.append(f'<rect x="505" y="372" width="390" height="44" rx="7" fill="#fff7e0" stroke="#c9a227" stroke-width="1.5"/>'
                f'<text x="700" y="400" text-anchor="middle" font-size="14" fill="{COR_TXT}">Tarefa agendada diária (node-cron, 8h)</text>')
     # banco
-    out.append(caixa(505, 540, 390, 120, "SQLite (arquivo)", "#6b7a8f",
-                     ["16 tabelas, chaves estrangeiras ativas", "19 índices, modo WAL"], "#f1f3f6"))
+    out.append(caixa(505, 540, 390, 120, "PostgreSQL 16", "#336791",
+                     ["16 tabelas, ON DELETE CASCADE, 19 índices", "esquema e migrações do Prisma"], "#eef3f8"))
     # externos
     out.append(caixa(1040, 30, 240, 160, "Serviço de OCR (interno)", "#b5651d",
                      ["Python + FastAPI", "Docling + EasyOCR", "texto em Markdown"], "#fbf2e8"))

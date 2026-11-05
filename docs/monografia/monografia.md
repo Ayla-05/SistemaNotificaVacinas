@@ -23,7 +23,7 @@ Guarulhos, 2026
 
 # RESUMO
 
-A imunização é uma das intervenções de saúde pública com melhor relação entre custo e benefício já registradas, e o Brasil construiu, por meio do Programa Nacional de Imunizações (PNI), um dos maiores programas públicos de vacinação do mundo. Apesar disso, a última década foi marcada pela queda das coberturas vacinais, pelo retorno de doenças que estavam sob controle e por um problema cotidiano e pouco discutido: o cidadão não sabe, com precisão, quais vacinas e quais doses estão em atraso para si e para seus dependentes, pois o controle ainda depende de cadernetas de papel, frequentemente extraviadas ou ilegíveis. Este trabalho apresenta o *Notifica Vacinas*, um sistema web que permite ao usuário manter a carteira vacinal própria e a de seus dependentes, comparar essa carteira com o calendário vacinal por faixa etária e por grupo especial, e receber notificações por e-mail sobre doses pendentes e agendamentos próximos. O sistema foi desenvolvido com uma arquitetura cliente-servidor em camadas: interface em React, interface de programação (API) REST em Node.js com Express e TypeScript, persistência em SQLite e um *job* agendado para o envio das notificações. Como diferencial, a carteirinha física pode ser fotografada e seus dados são extraídos por reconhecimento óptico de caracteres (OCR) com a biblioteca Docling, em um serviço próprio, sendo sempre submetidos à confirmação do usuário antes de serem gravados. O trabalho descreve o referencial teórico, os requisitos, o projeto, a implementação, as decisões de segurança e de proteção de dados pessoais de saúde (LGPD), as limitações da versão atual e as melhorias futuras, entre as quais a integração com o Meu SUS Digital e com convênios e hospitais para atualização automática da carteira.
+A imunização é uma das intervenções de saúde pública com melhor relação entre custo e benefício já registradas, e o Brasil construiu, por meio do Programa Nacional de Imunizações (PNI), um dos maiores programas públicos de vacinação do mundo. Apesar disso, a última década foi marcada pela queda das coberturas vacinais, pelo retorno de doenças que estavam sob controle e por um problema cotidiano e pouco discutido: o cidadão não sabe, com precisão, quais vacinas e quais doses estão em atraso para si e para seus dependentes, pois o controle ainda depende de cadernetas de papel, frequentemente extraviadas ou ilegíveis. Este trabalho apresenta o *Notifica Vacinas*, um sistema web que permite ao usuário manter a carteira vacinal própria e a de seus dependentes, comparar essa carteira com o calendário vacinal por faixa etária e por grupo especial, e receber notificações por e-mail sobre doses pendentes e agendamentos próximos. O sistema foi desenvolvido com uma arquitetura cliente-servidor em camadas: interface em React, interface de programação (API) REST em Node.js com Express e TypeScript, persistência em PostgreSQL (com esquema e migrações do Prisma) e um *job* agendado para o envio das notificações. Como diferencial, a carteirinha física pode ser fotografada e seus dados são extraídos por reconhecimento óptico de caracteres (OCR) com a biblioteca Docling, em um serviço próprio, sendo sempre submetidos à confirmação do usuário antes de serem gravados. O trabalho descreve o referencial teórico, os requisitos, o projeto, a implementação, as decisões de segurança e de proteção de dados pessoais de saúde (LGPD), as limitações da versão atual e as melhorias futuras, entre as quais a integração com o Meu SUS Digital e com convênios e hospitais para atualização automática da carteira.
 
 **Palavras-chave:** vacinação; Programa Nacional de Imunizações; carteira vacinal; notificações; engenharia de software; LGPD.
 
@@ -31,7 +31,7 @@ A imunização é uma das intervenções de saúde pública com melhor relação
 
 # ABSTRACT
 
-Immunization is among the most cost-effective public health interventions ever recorded, and Brazil built, through its National Immunization Program (PNI), one of the largest public vaccination programs in the world. Even so, the last decade saw falling vaccination coverage, the return of diseases that were under control, and an everyday problem that receives little attention: citizens often cannot tell precisely which vaccines and doses are overdue for themselves and their dependents, because record keeping still relies on paper booklets that are lost or illegible. This work presents *Notifica Vacinas*, a web system that lets users keep their own vaccination record and that of their dependents, compare it with the vaccination schedule by age group and special group, and receive e-mail notifications about pending doses and upcoming appointments. The system follows a layered client-server architecture: a React front end, a REST API in Node.js with Express and TypeScript, SQLite persistence and a scheduled job for notifications. As a differentiator, the physical vaccination card can be photographed and its data extracted by optical character recognition (OCR) with the Docling library, in a self-hosted service, always subject to user confirmation before being saved. The work describes the theoretical background, requirements, design, implementation, security and personal health data protection decisions (LGPD), limitations of the current version and future work, including integration with Meu SUS Digital and with health insurers and hospitals for automatic record updates.
+Immunization is among the most cost-effective public health interventions ever recorded, and Brazil built, through its National Immunization Program (PNI), one of the largest public vaccination programs in the world. Even so, the last decade saw falling vaccination coverage, the return of diseases that were under control, and an everyday problem that receives little attention: citizens often cannot tell precisely which vaccines and doses are overdue for themselves and their dependents, because record keeping still relies on paper booklets that are lost or illegible. This work presents *Notifica Vacinas*, a web system that lets users keep their own vaccination record and that of their dependents, compare it with the vaccination schedule by age group and special group, and receive e-mail notifications about pending doses and upcoming appointments. The system follows a layered client-server architecture: a React front end, a REST API in Node.js with Express and TypeScript, PostgreSQL persistence (schema and migrations managed by Prisma) and a scheduled job for notifications. As a differentiator, the physical vaccination card can be photographed and its data extracted by optical character recognition (OCR) with the Docling library, in a self-hosted service, always subject to user confirmation before being saved. The work describes the theoretical background, requirements, design, implementation, security and personal health data protection decisions (LGPD), limitations of the current version and future work, including integration with Meu SUS Digital and with health insurers and hospitals for automatic record updates.
 
 **Keywords:** vaccination; National Immunization Program; vaccination record; notifications; software engineering; data protection.
 
@@ -166,7 +166,7 @@ REST é um estilo arquitetural proposto por Fielding (2000) que organiza a inter
 
 ### 2.2.5 Persistência e modelagem relacional
 
-O modelo relacional (CODD, 1970), implementado em SQL, garante integridade por meio de chaves primárias, estrangeiras e restrições de unicidade (no SQLite, as chaves estrangeiras precisam ser ativadas explicitamente em cada conexão, o que o sistema faz, conforme a Seção 4.3). A escolha do SQLite, banco embarcado e baseado em arquivo, atende ao escopo acadêmico por dispensar servidor dedicado, e a camada *Repository* permite substituí-lo por PostgreSQL ou MySQL sem alterar as regras de negócio.
+O modelo relacional (CODD, 1970), implementado em SQL, garante integridade por meio de chaves primárias, estrangeiras e restrições de unicidade. Adotou-se o PostgreSQL, sistema gerenciador de banco de dados relacional de código aberto, de arquitetura cliente-servidor, com transações ACID e controle de concorrência multiversão (MVCC), adequado a vários acessos simultâneos e à replicação horizontal da API. O esquema e suas migrações são descritos no Prisma, que é a fonte única da estrutura do banco, e a camada *Repository*, com SQL parametrizado, isola as regras de negócio do banco. A versão inicial do sistema usou o SQLite, banco embarcado em arquivo, que dispensa servidor; a migração para o PostgreSQL é descrita na Seção 4.3.
 
 ## 2.3 Sistemas distribuídos e integração
 
@@ -284,7 +284,7 @@ O *Notifica Vacinas* segue uma arquitetura **cliente-servidor em três camadas l
                                           +--------------------+         +-------------------+
                                           v                                                  v
                                 +------------------+                     +----------------------------+
-                                |  SQLite (arquivo)|                     | Serviços externos          |
+                                |  PostgreSQL      |                     | Serviços externos          |
                                 +------------------+                     |  - SMTP (e-mail)           |
                                                                          |  - Serviço de OCR (Docling) |
                                                                                                          +----------------------------+
@@ -342,27 +342,35 @@ A separação entre `registros_vacinacao` (a vacina que a pessoa tem na carteira
 
 Os catálogos (vacinas, grupos especiais, calendário e regras) são carregados por *seeds* idempotentes na inicialização. O catálogo inicial contempla vacinas como BCG, hepatites A e B, pentavalente, poliomielite (VIP e VOP), rotavírus, febre amarela, tríplice viral, varicela, HPV, influenza, COVID-19, meningocócicas, pneumocócicas e dengue. O calendário inicial foi baseado nas cartilhas do PNI.
 
-### 4.3.1 Integridade referencial
+### 4.3.1 PostgreSQL e Prisma
 
-O SQLite, por padrão, **não aplica** chaves estrangeiras: elas podem ser declaradas no `CREATE TABLE` e mesmo assim ignoradas. Em teste durante esta revisão, uma pessoa ligada a um usuário inexistente foi gravada sem erro, o que permitiria registros órfãos. A conexão passou a executar `PRAGMA foreign_keys = ON` ao abrir o banco, e há um teste automatizado que tenta inserir um registro órfão e verifica a recusa.
+O sistema nasceu com o SQLite, que atendeu à fase inicial por não exigir servidor, mas apresentava limites que a revisão do trabalho tornou claros: um único escritor por vez, dados em arquivo local (o que impede replicar a API), chaves estrangeiras desligadas por padrão, estrutura criada por comandos `CREATE TABLE` escritos à mão e migrações por `ALTER TABLE` com tratamento de erro. O banco foi migrado para o **PostgreSQL 16**, e a descrição da estrutura passou ao **Prisma**: o arquivo `prisma/schema.prisma` define as 16 tabelas, as chaves, os índices e as regras de remoção, e as **migrações versionadas** (`prisma/migrations`), geradas a partir dele, são aplicadas com um comando (`npm run db:migrar`) antes de o servidor iniciar. Assim, a estrutura do banco passa a ter histórico, é a mesma em qualquer ambiente e deixa de depender de código executado na inicialização.
 
-Como as tabelas foram criadas sem `ON DELETE CASCADE`, e o SQLite não altera chaves estrangeiras de tabelas existentes, a remoção de um registro com filhos passou a ser feita por uma função de remoção em cascata (`removerEmCascata`). Ela apaga os registros dependentes e, por último, o registro principal, **dentro de uma única transação** (`BEGIN IMMEDIATE ... COMMIT`, com `ROLLBACK` em caso de erro). Assim, remover uma vacina da carteira apaga suas doses; remover uma pessoa apaga carteira, agendamentos, avisos, grupos e vínculos de dependência; e remover um usuário apaga também suas sessões e seus pedidos de redefinição de senha. Uma remoção nunca fica pela metade.
+O acesso aos dados continua sendo feito por **SQL parametrizado** nos repositórios, agora por meio do driver `pg` e de um conjunto pequeno de funções auxiliares (`consultarTodos`, `consultarUm`, `inserir`, `alterar` e `emTransacao`) que numeram os parâmetros (`$1`, `$2`, ...) e nunca concatenam valores ao texto da consulta. Optou-se por não trocar todos os repositórios pelo cliente de consultas do Prisma nesta etapa, para limitar o risco de regressão em 16 módulos já cobertos por testes; essa troca é uma melhoria futura. Para manter o comportamento do sistema, as datas continuam guardadas como texto ISO em UTC (`AAAA-MM-DD` ou `AAAA-MM-DD HH:MM:SS`), e as colunas de situação como inteiros 0 e 1; a data e a hora atuais são geradas por uma expressão fixa (`AGORA_UTC`), porque o `CURRENT_TIMESTAMP` do PostgreSQL, gravado em coluna de texto, produziria um formato com fuso que o código não sabe ler.
 
-### 4.3.2 Índices e desempenho
+### 4.3.2 Integridade referencial
 
-O SQLite cria índice automaticamente apenas para chaves primárias e restrições `UNIQUE`; colunas de chave estrangeira não são indexadas. Sem índices, consultas como "os agendamentos desta pessoa" ou "as doses deste registro" percorrem a tabela inteira, e o mesmo ocorre na verificação de chave estrangeira ao apagar um registro. Foram criados 19 índices (arquivo `database/indices.ts`) sobre as colunas de relacionamento e de filtro mais usadas, entre eles:
+No PostgreSQL, as chaves estrangeiras são sempre aplicadas, e o esquema define a regra de remoção de cada uma. Os dados que pertencem a outro registro são removidos **em cascata pelo próprio banco** (`ON DELETE CASCADE`): remover uma vacina da carteira apaga suas doses; remover uma pessoa apaga carteira, agendamentos, avisos, grupos e vínculos de dependência; e remover um usuário apaga também suas sessões e seus pedidos de redefinição de senha. Já os catálogos (vacinas e grupos especiais) são protegidos por `RESTRICT`: não é possível apagar uma vacina que esteja em uso. Cada remoção é uma única instrução, atômica por natureza, e nenhuma deixa registros órfãos. Essa solução substituiu a função de remoção em cascata escrita no código na versão com SQLite, que existia porque aquele banco não permite alterar chaves estrangeiras de tabelas já criadas.
+
+### 4.3.3 Índices e desempenho
+
+O PostgreSQL cria índice automaticamente apenas para chaves primárias e restrições de unicidade; as colunas de chave estrangeira não são indexadas. Sem índices, consultas como "os agendamentos desta pessoa" percorrem a tabela inteira, e o mesmo ocorre na verificação de chave estrangeira ao apagar um registro. O esquema declara 19 índices sobre as colunas de relacionamento e de filtro mais usadas, entre eles:
 
 * `agendamentos_vacina (pessoa_id, data_prevista)` e `(status, data_prevista)`, para a agenda da pessoa e a rotina diária de lembretes;
-* `registros_vacinacao (pessoa_id, vacina_id)`, `doses_vacina (registro_vacinacao_id, numero_dose)` e `pessoa_grupo_especial (pessoa_id, grupo_especial_id)`, **únicos**, que passam a garantir no banco o que o código já pressupunha (uma vacina por pessoa na carteira, uma dose de cada número por registro, um grupo especial por pessoa);
+* `registros_vacinacao (pessoa_id, vacina_id)`, `doses_vacina (registro_vacinacao_id, numero_dose)` e `pessoa_grupo_especial (pessoa_id, grupo_especial_id)`, **únicos**, que garantem no banco o que o código já pressupunha (uma vacina por pessoa na carteira, uma dose de cada número por registro, um grupo especial por pessoa);
 * índices simples nas demais chaves estrangeiras (`pessoas.usuario_id`, `dependentes`, `calendario_vacinal`, `regras_vacinais`, `campanhas_vacinais`, `redefinicoes_senha`).
 
-Se uma base antiga já contiver duplicatas, o índice único não é criado: o erro é registrado e um índice comum equivalente é usado, de modo que a atualização nunca impede o sistema de subir. O uso dos índices foi conferido com `EXPLAIN QUERY PLAN`, que passou a mostrar buscas do tipo `SEARCH agendamentos_vacina USING INDEX idx_agendamento_pessoa_data (pessoa_id=?)` no lugar da varredura completa. Não foi feita medição de desempenho com grande volume de dados; o ganho é esperado, mas não quantificado neste trabalho.
+Os índices únicos protegem a consistência sob concorrência: em teste, oito requisições simultâneas para registrar a mesma dose resultaram em uma única linha gravada. Não foi feita medição de desempenho com grande volume de dados; o ganho é esperado, mas não quantificado neste trabalho.
 
-### 4.3.3 Configuração da conexão e criação da estrutura
+### 4.3.4 Conexão, transações e carga inicial
 
-Além das chaves estrangeiras, a conexão define `busy_timeout = 5000` (espera até 5 segundos por um bloqueio, em vez de falhar na hora com `SQLITE_BUSY`) e, em banco de arquivo, `journal_mode = WAL` e `synchronous = NORMAL`. No modo WAL, leituras não bloqueiam a escrita, e cada gravação custa menos, o que combina com a rotina diária de notificações lendo o banco enquanto a API atende requisições.
+A API acessa o banco por um *pool* de conexões (até 10 por padrão, configurável por `DB_POOL_MAX`), o que permite atender requisições simultâneas, e as operações que precisam de atomicidade entre várias instruções usam a função `emTransacao`, que executa os passos em uma única conexão, com `BEGIN`, `COMMIT` e `ROLLBACK` em caso de erro. Na inicialização, o sistema apenas confere se as tabelas existem, falhando com uma mensagem que indica a providência (subir o banco e aplicar as migrações), e carrega os catálogos (vacinas, grupos especiais, calendário e regras) por *seeds* idempotentes, o que permite reiniciar o sistema sem duplicar dados. Para o desenvolvimento, o repositório traz um arquivo `docker-compose.yml` que sobe um PostgreSQL local com um comando.
 
-A estrutura é criada em `configurarBanco`, em ordem serial, e uma consulta final sinaliza que tudo terminou antes de executar as *seeds*. Antes, o código aguardava um segundo fixo, o que atrasava toda inicialização e podia falhar em máquina lenta. A evolução do esquema é feita por migrações aditivas (`ALTER TABLE ... ADD COLUMN`, com tratamento de coluna já existente), e o arquivo do banco é definido por `DATABASE_FILE`; nos testes automatizados usa-se o banco em memória (`:memory:`), o que isola cada execução. O arquivo `.db` não é versionado.
+Nos testes automatizados, **cada arquivo de teste recebe um schema PostgreSQL próprio e isolado**, criado a partir das migrações reais do Prisma e descartado ao final. Os testes rodam em paralelo sem se misturar, e o esquema verificado é exatamente o de produção. Uma verificação adicional consulta o catálogo do próprio PostgreSQL (`information_schema` e `pg_indexes`) para confirmar que as 16 tabelas, as regras `ON DELETE CASCADE` e os índices esperados existem.
+
+### 4.3.5 Segurança dos dados no banco
+
+Senhas são armazenadas apenas como *hash* (bcrypt); os *tokens* de sessão e de redefinição de senha são guardados apenas como *hash*, de modo que o vazamento do banco não permite reutilizá-los; e as respostas da API nunca incluem o *hash* da senha nem o código de verificação. Todas as consultas usam parâmetros vinculados, e um teste de arquitetura impede a concatenação de valores em instruções SQL. As credenciais de conexão ficam em variável de ambiente (`DATABASE_URL`), fora do código e do controle de versão.
 
 Do ponto de vista de código, os 16 repositórios repetiam, em cada consulta, o mesmo bloco de criação de `Promise` e tratamento do *callback* do driver (cerca de 120 repetições). Esse trecho foi concentrado em quatro funções (`consultarTodos`, `consultarUm`, `inserir` e `alterar`), de modo que cada repositório descreve apenas o SQL e seus parâmetros, e o volume de código dessa camada caiu de 4.478 para cerca de 3.100 linhas, sem mudança de comportamento (verificada pela suíte de testes).
 
@@ -429,7 +437,7 @@ O *front end* foi construído como SPA em React 19 com roteamento por React Rout
 |---|---|---|
 | Front end | React 19, Vite, React Router, Tailwind CSS, Axios | Ecossistema maduro, componentização, desenvolvimento rápido. |
 | Back end | Node.js, Express 5, TypeScript | Mesma linguagem nas duas pontas; tipagem estática reduz erros. |
-| Banco | SQLite (driver `sqlite3`) | Zero configuração; adequado ao escopo acadêmico. |
+| Banco | PostgreSQL 16 (driver `pg`) e Prisma (esquema e migrações) | Banco cliente-servidor, com transações e concorrência; estrutura versionada e igual em todos os ambientes. |
 | Autenticação | `bcryptjs`, `jsonwebtoken`, `cookie-parser` | Padrões consolidados. |
 | Segurança | `cors`, `helmet`, `express-rate-limit` | Controle de origem, cabeçalhos de segurança e abuso. |
 | Notificações | `nodemailer`, `node-cron` | E-mail por SMTP e agendamento. |
@@ -517,14 +525,15 @@ A história do projeto registra uma decisão pertinente: o envio foi trocado ent
 
 ## 5.6 Qualidade e testes
 
-A verificação do sistema combina arquivos `.http` versionados (`backend/tests/`), que documentam e reproduzem os fluxos de cada módulo, testes manuais na interface e uma suíte automatizada (Vitest e Supertest) organizada em seis categorias, executada com `npm test` no diretório `backend`. A suíte tem 375 testes na data de fechamento desta versão:
+A verificação do sistema combina arquivos `.http` versionados (`backend/tests/`), que documentam e reproduzem os fluxos de cada módulo, testes manuais na interface e uma suíte automatizada (Vitest e Supertest) organizada em sete categorias, executada com `npm test` no diretório `backend`. A suíte tem 558 testes na data de fechamento desta versão:
 
 | Categoria | Testes | O que verifica |
 |---|---:|---|
-| Unitários | 75 | Funções puras: extrator da carteirinha, faixa etária, próximas doses, frequência de aviso, utilitários de segurança. |
-| Integração | 38 | Módulos com banco em memória: autenticação e sessões, avisos de dose, leitura por OCR (com o serviço simulado). |
+| Unitários | 87 | Funções puras: extrator da carteirinha, faixa etária, próximas doses, frequência de aviso, utilitários de segurança. |
+| Integração | 38 | Módulos, cada arquivo em um schema PostgreSQL próprio: autenticação e sessões, avisos de dose, leitura por OCR (com o serviço simulado). |
 | Funcional (ponta a ponta) | 63 | O aplicativo completo, com CSRF, login e perfis: usuários, pessoas, vacinas, calendário, carteira, agendamentos, dependentes, grupos especiais, remoção em cascata e integridade do banco. |
-| Lógica de negócio | 135 | Validação de entradas, idade e datas-limite (fuso do Brasil, ano bissexto, véspera de aniversário), pendências e próximas doses conforme as doses registradas, concorrência (a mesma dose enviada várias vezes ao mesmo tempo é gravada uma só vez). |
+| Lógica de negócio | 142 | Validação de entradas, idade e datas-limite (fuso do Brasil, ano bissexto, véspera de aniversário), pendências e próximas doses conforme as doses registradas, concorrência (a mesma dose enviada várias vezes ao mesmo tempo é gravada uma só vez). |
+| Cenários e jornadas | 139 | 38 pessoas de idades, grupos especiais (inclusive gestantes) e históricos de dose diferentes, cobrindo as fronteiras do calendário (2 meses, 10, 15, 25, 30 e 60 anos); verifica regras gerais válidas para todas, o isolamento entre contas e a remoção em cascata no PostgreSQL; e 12 jornadas completas de usuário, do cadastro público ao aviso automático. |
 | Segurança | 47 | Itens do OWASP Top 10: sessão e JWT forjado, controle de acesso (IDOR e escalada de privilégio), injeção de SQL, exposição de dados, cabeçalhos, CORS, tratamento de erros. |
 | Arquitetura | 17 | Regras de camadas, ausência de ciclos de dependência, SQL parametrizado, ausência de segredos no código e varredura de **todas** as rotas declaradas (exigem login, perfil e cabeçalho anti-CSRF). |
 
@@ -560,7 +569,7 @@ Reconhece-se que a cobertura ainda tem lacunas: o *front end* não tem testes au
 | Troca do algoritmo de assinatura do token (`alg: none`) | Assinatura e verificação do JWT fixadas em HS256. |
 | Sistema sem administrador | Um administrador não remove, desativa nem rebaixa a si mesmo, nem o último administrador ativo. |
 | Conta desativada que continua em uso | Desativar a conta revoga as sessões abertas. |
-| Registros órfãos e remoções pela metade | Chaves estrangeiras ativas e remoção em cascata dentro de transação (Seção 4.3). |
+| Registros órfãos e remoções pela metade | Chaves estrangeiras do PostgreSQL com `ON DELETE CASCADE` no esquema: cada remoção é uma única instrução atômica (Seção 4.3). |
 | Conta falsa ou e-mail de terceiros | Verificação de e-mail por código com expiração. |
 
 ## 6.2 Conformidade com a LGPD
@@ -573,7 +582,7 @@ Analisando o sistema pelas propriedades clássicas:
 
 * **Transparência de acesso e de localização:** o cliente conhece apenas a URL da API; a troca de banco ou de provedor de e-mail é invisível a ele.
 * **Tolerância a falhas parciais:** erros de SMTP ou do serviço de OCR geram mensagens de erro tratadas, e a rotina diária isola as falhas em `try/catch`.
-* **Escalabilidade:** a API é *stateless* (a sessão está no JWT), o que permite replicá-la atrás de um balanceador de carga. Contudo, o SQLite em arquivo local e o agendador no mesmo processo impedem a replicação horizontal imediata: com duas instâncias, o *job* rodaria duas vezes e os usuários receberiam e-mails duplicados. A solução é mover o banco para um SGBD cliente-servidor e executar o agendador em um único *worker* dedicado ou com *lock* distribuído.
+* **Escalabilidade:** a API é *stateless* (a sessão está no JWT) e o banco é cliente-servidor, de modo que várias instâncias da API podem compartilhá-lo atrás de um balanceador de carga. Resta o agendador no mesmo processo: com duas instâncias, o *job* rodaria duas vezes e os usuários poderiam receber e-mails duplicados; a tabela `avisos_dose`, de chave única, já impede o aviso repetido de uma mesma dose, mas a solução completa é executar o agendador em um único *worker* dedicado ou com *lock* distribuído (por exemplo, os *advisory locks* do próprio PostgreSQL).
 * **Consistência:** o registro da dose e o envio da confirmação não são atômicos. O desenho aceita **consistência eventual** para a notificação, as remoções em cascata já ocorrem em transação (Seção 4.3), mas a gravação da dose e de seu registro pai ainda são operações separadas e deveriam ocorrer em uma única transação para evitar linhas órfãs.
 * **Idempotência:** o envio de lembretes deve guardar a data do último disparo por agendamento para evitar duplicidade em reexecuções. É uma melhoria listada no Capítulo 8.
 * **Observabilidade:** o sistema usa `console.log`; a evolução natural é *logging* estruturado, métricas e rastreamento.
@@ -603,12 +612,12 @@ O *Notifica Vacinas* **não substitui** o registro oficial; atua como camada de 
 
 1. **Fonte de dados manual.** A confiabilidade da carteira depende do que o usuário lança. Não há validação cruzada com o SI-PNI.
 2. **Cobertura do calendário.** O cálculo usa o Calendário Nacional 2026 (idade, intervalo e grupo especial), mas não modela gestantes (o calendário próprio não foi incluído), imunocomprometidos, acamados, viajantes e áreas de risco, que dependem de avaliação do serviço de saúde. Onde o calendário não informa o intervalo entre doses (hepatite B e dengue), foram mantidos os valores que o sistema já utilizava.
-3. **Cobertura de testes parcial.** O *back end* tem 375 testes automatizados (Seção 5.6), mas o *front end* não tem nenhum, a leitura real por OCR e o envio de e-mail só são testados com simulações, e não há integração contínua executando a suíte nem teste de carga.
-4. **Banco embarcado e agendador no mesmo processo** (Seção 6.3).
+3. **Cobertura de testes parcial.** O *back end* tem 558 testes automatizados (Seção 5.6), mas o *front end* não tem nenhum, a leitura real por OCR e o envio de e-mail só são testados com simulações, e não há integração contínua executando a suíte nem teste de carga.
+4. **Agendador no mesmo processo da API** (Seção 6.3).
 5. **Canal único de notificação e ausência de segundo fator.** SMS não foi implementado, e e-mails podem cair em *spam* ou não ser lidos. O login depende apenas de e-mail e senha; autenticação em dois fatores (TOTP) permanece como melhoria futura, e deveria ser obrigatória para administradores.
 6. **Conformidade com a LGPD incompleta** (Seção 6.2).
 7. **Limites do OCR.** A leitura é boa para texto impresso ou digital, mas letra manuscrita e carimbos borrados saem com erros; a revisão do usuário é obrigatória. O extrator por regras também reconhece apenas o registro mais recente por envio e depende de o nome da vacina estar no catálogo. O serviço de OCR exige mais memória (carrega modelos de aprendizado de máquina) e precisa ser implantado e monitorado à parte.
-8. **Escrita manual de tabelas SQL** e migrações por `ALTER TABLE` com tratamento de erro, em vez de ferramenta de migração versionada. O esquema Prisma no repositório está incompleto em relação às tabelas reais, o que gera inconsistência de manutenção.
+8. **Consultas em SQL escrito à mão.** O Prisma é a fonte do esquema e das migrações, mas os repositórios ainda montam as consultas em SQL parametrizado, em vez de usar o cliente de consultas do Prisma; as datas continuam guardadas como texto ISO, e não como tipos de data do PostgreSQL. Executar o sistema exige um PostgreSQL disponível (o repositório traz um `docker-compose.yml` para isso).
 9. **Ausência de avaliação com usuários.** Não houve teste de usabilidade com público-alvo, em especial idosos e pessoas de baixa familiaridade digital.
 
 \newpage
@@ -656,7 +665,7 @@ O *Notifica Vacinas* **não substitui** o registro oficial; atua como camada de 
 
 | Tema | Melhoria |
 |---|---|
-| Banco | Migrar de SQLite para PostgreSQL, com ferramenta de migração versionada (como o Prisma Migrate) e transações. |
+| Banco | Trocar o SQL escrito à mão nos repositórios pelo cliente do Prisma (consultas tipadas), converter as datas de texto em tipos de data do PostgreSQL, e adicionar *backup* automatizado e réplica de leitura. |
 | Testes | Testes unitários (Vitest/Jest) para pendências e faixa etária; testes de integração da API; testes ponta a ponta (Playwright); pipeline de CI. |
 | Notificação | Fila de tarefas, controle de idempotência por agendamento, *push* web/PWA, WhatsApp e SMS, preferência por canal e horário. |
 | Observabilidade | *Logs* estruturados, métricas, rastreamento e alertas. |
@@ -739,7 +748,9 @@ UNIVERSIDADE DE SÃO PAULO. [Estudos sobre cobertura vacinal e hesitação vacin
 | `PORT` | Porta do servidor Express. |
 | `FRONTEND_URL` | Origem permitida pelo CORS. |
 | `JWT_SECRET` | Segredo de assinatura dos tokens (obrigatório). |
-| `DATABASE_FILE` | Caminho do arquivo SQLite (padrão `./vacinas.db`; `:memory:` nos testes). |
+| `DATABASE_URL` | Conexão com o PostgreSQL (`postgresql://usuario:senha@servidor:5432/banco`). |
+| `DB_POOL_MAX` | Máximo de conexões simultâneas com o banco (padrão 10). |
+| `TEST_DATABASE_URL` | Banco usado pelos testes automatizados (padrão: o do `docker-compose.yml`). |
 | `ADMIN_EMAIL`, `ADMIN_SENHA` | Criação do administrador inicial. |
 | `OCR_SERVICE_URL` | URL do serviço de OCR (Docling). |
 | `OCR_TIMEOUT_MS` | Tempo máximo de uma leitura de OCR (padrão 120000). |
@@ -751,13 +762,27 @@ UNIVERSIDADE DE SÃO PAULO. [Estudos sobre cobertura vacinal e hesitação vacin
 
 # APÊNDICE B — INSTRUÇÕES DE EXECUÇÃO
 
+Banco de dados (PostgreSQL), na raiz do projeto:
+
+```bash
+docker compose up -d
+```
+
 Back end:
 
 ```bash
 cd backend
 cp .env.example .env   # preencher JWT_SECRET e demais valores
 npm install
+npm run db:migrar      # aplica as migrações do Prisma
 npm run dev
+```
+
+Testes (com o PostgreSQL de pé):
+
+```bash
+npm test               # toda a suíte
+npm run test:relatorio # suíte + relatório em docs/relatorio-testes.md
 ```
 
 Front end:

@@ -55,7 +55,7 @@ type Parametros = unknown[];
 Data e hora atuais em UTC, no formato de texto que o sistema sempre usou
 ("AAAA-MM-DD HH:MM:SS"). Use no lugar de CURRENT_TIMESTAMP em colunas de
 texto: no PostgreSQL, CURRENT_TIMESTAMP viraria "2026-11-05 03:14:15.123456+00",
-que o código não sabe ler (CORREÇÃO COR-27).
+que o código não sabe ler (CORREÇÃO COR-29).
 */
 export const AGORA_UTC =
   "to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS')";

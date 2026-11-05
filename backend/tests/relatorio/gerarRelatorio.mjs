@@ -19,9 +19,10 @@ const DESTINO = resolve(BACKEND, "../docs/relatorio-testes.md");
 
 const CATEGORIAS = {
   unitarios: ["Unitários", "Funções puras: extrator da carteirinha, faixa etária, próximas doses, frequência de aviso."],
-  integracao: ["Integração", "Módulos isolados com banco em memória: autenticação/sessões, avisos de dose, leitura (scan)."],
-  funcional: ["Funcional (ponta a ponta)", "App completo (CSRF, login, perfis, posse): usuários, pessoas, vacinas, carteira, agendamentos, dependentes, cascata e integridade do banco."],
+  integracao: ["Integração", "Módulos isolados, cada arquivo em um schema PostgreSQL próprio: autenticação/sessões, avisos de dose, leitura (scan)."],
+  funcional: ["Funcional (ponta a ponta)", "App completo (CSRF, login, perfis, posse): usuários, pessoas, vacinas, carteira, agendamentos, dependentes, cascata e integridade do banco (PostgreSQL)."],
   logica: ["Lógica de negócio", "Validação de entradas, idade e datas-limite (fuso, ano bissexto), pendências e próximas doses conforme as doses registradas, concorrência e idempotência."],
+  cenarios: ["Cenários e jornadas", "38 pessoas de idades, grupos e históricos diferentes (fronteiras do calendário, gestantes) e 12 jornadas completas de usuário, do cadastro ao aviso automático."],
   seguranca: ["Segurança", "OWASP Top 10: sessão/JWT, controle de acesso, injeção, exposição de dados, cabeçalhos, CORS, erros."],
   arquitetura: ["Arquitetura", "Camadas, ciclos, SQL parametrizado, segredos e varredura de TODAS as rotas (login, perfil, CSRF)."]
 };
