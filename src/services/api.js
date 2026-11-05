@@ -396,11 +396,12 @@ export async function obterGruposDaPessoa(idPessoa) {
 /**
  * Vincula a pessoa a um grupo especial.
  */
-export async function vincularGrupoEspecial(idPessoa, grupoEspecialId) {
+export async function vincularGrupoEspecial(idPessoa, grupoEspecialId, gestacaoInicio) {
   const response = await chamarApi(`/grupos-especiais/pessoa/${idPessoa}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ grupoEspecialId })
+    // gestacaoInicio (AAAA-MM-DD) é obrigatório para o grupo GESTANTE
+    body: JSON.stringify({ grupoEspecialId, gestacaoInicio })
   });
 
   return tratarResposta(response);

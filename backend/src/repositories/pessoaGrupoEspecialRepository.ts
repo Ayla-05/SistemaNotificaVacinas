@@ -17,7 +17,9 @@ export function listarGruposDaPessoa(
 
         ge.nome,
 
-        ge.descricao
+        ge.descricao,
+
+        pge.gestacao_inicio
 
       FROM pessoa_grupo_especial pge
 
@@ -40,7 +42,8 @@ ADICIONAR GRUPO A UMA PESSOA
 */
 export function adicionarGrupoPessoa(
   pessoaId: number,
-  grupoEspecialId: number
+  grupoEspecialId: number,
+  gestacaoInicio: string | null = null
 ): Promise<number> {
 
   return inserir(
@@ -48,15 +51,15 @@ export function adicionarGrupoPessoa(
       INSERT INTO pessoa_grupo_especial (
 
         pessoa_id,
-
-        grupo_especial_id
-
+        grupo_especial_id,
+        gestacao_inicio
       )
-      VALUES (?, ?)
+      VALUES (?, ?, ?)
       `,
     [
         pessoaId,
-        grupoEspecialId
+        grupoEspecialId,
+        gestacaoInicio
       ]
   );
 
@@ -132,4 +135,29 @@ export function removerTodosOsGruposPessoa(
     [pessoaId]
   );
 
+}
+
+/*
+==================================================
+ATUALIZAR INÍCIO DA GESTAÇÃO
+==================================================
+*/
+export function atualizarGestacaoInicio(
+  pessoaId: number,
+  grupoEspecialId: number,
+  gestacaoInicio: string
+): Promise<number> {
+  return alterar(
+    `
+      UPDATE pessoa_grupo_especial
+      SET gestacao_inicio = ?
+      WHERE pessoa_id = ?
+        AND grupo_especial_id = ?
+      `,
+    [
+        gestacaoInicio,
+        pessoaId,
+        grupoEspecialId
+      ]
+  );
 }

@@ -1,3 +1,6 @@
+import { dataIsoExiste, hojeLocalISO } from "../utils/validacao";
+import { adicionarDias } from "../utils/proximasDoses";
+import { GESTACAO_DURACAO_MAX_DIAS } from "../data/esquemaVacinal2026";
 import * as grupoEspecialRepository from "../repositories/grupoEspecialRepository";
 import * as pessoaGrupoEspecialRepository from "../repositories/pessoaGrupoEspecialRepository";
 import * as pessoaRepository from "../repositories/pessoaRepository";
@@ -66,7 +69,8 @@ export class PessoaGrupoEspecialService {
   */
   static async vincular(
     pessoaId: number,
-    grupoEspecialId: number
+    grupoEspecialId: number,
+    gestacaoInicio?: string | null
   ) {
 
     const pessoa =
@@ -92,6 +96,15 @@ export class PessoaGrupoEspecialService {
       );
     }
 
+    /*
+    Gestante precisa do início da gestação: dTpa (20ª semana), VSR (28ª semana)
+    e "uma dose a cada gestação" dependem dele.
+    */
+    const inicio =
+      grupo.nome === "GESTANTE"
+        ? this.validarInicioGestacao(gestacaoInicio)
+        : null;
+
     const jaVinculado =
       await pessoaGrupoEspecialRepository
         .existeGrupoNaPessoa(
@@ -100,14 +113,66 @@ export class PessoaGrupoEspecialService {
         );
 
     if (jaVinculado) {
+
+      /* Vincular de novo a gestante atualiza o início (ex.: correção das semanas). */
+      if (inicio) {
+        await pessoaGrupoEspecialRepository
+          .atualizarGestacaoInicio(
+            pessoaId,
+            grupoEspecialId,
+            inicio
+          );
+      }
+
       return jaVinculado.id;
+
     }
 
     return await pessoaGrupoEspecialRepository
       .adicionarGrupoPessoa(
         pessoaId,
-        grupoEspecialId
+        grupoEspecialId,
+        inicio
       );
+
+  }
+
+  /*
+  Início da gestação: data existente, não futura e de no máximo
+  GESTACAO_DURACAO_MAX_DIAS atrás.
+  */
+  static validarInicioGestacao(
+    valor: unknown
+  ): string {
+
+    if (valor === undefined || valor === null || valor === "") {
+      throw new Error(
+        "Informe há quantas semanas está a gestação."
+      );
+    }
+
+    if (!dataIsoExiste(valor)) {
+      throw new Error(
+        "Início da gestação inválido. Use o formato AAAA-MM-DD."
+      );
+    }
+
+    const data = valor.trim();
+    const hoje = hojeLocalISO();
+
+    if (data > hoje) {
+      throw new Error(
+        "O início da gestação não pode estar no futuro."
+      );
+    }
+
+    if (data < adicionarDias(hoje, -GESTACAO_DURACAO_MAX_DIAS)) {
+      throw new Error(
+        "A gestação informada passou de 42 semanas. Confira as semanas."
+      );
+    }
+
+    return data;
 
   }
 

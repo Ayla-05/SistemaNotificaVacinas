@@ -82,6 +82,14 @@ export const vacinasPadrao = [
   },
 
   {
+    codigo: "VSR",
+    nome: "VSR",
+    descricao: "Vacina contra o vírus sincicial respiratório (VSR), na gestação",
+    doencas_evitadas: "Bronquiolite, pneumonia e outras complicações",
+    ativa: 1
+  },
+
+  {
     codigo: "POLIO_VIP",
     nome: "Poliomielite VIP",
     descricao: "Vacina inativada contra poliomielite",
