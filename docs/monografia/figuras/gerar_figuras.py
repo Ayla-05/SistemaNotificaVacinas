@@ -3,6 +3,7 @@ Gera os diagramas da monografia em SVG (somente biblioteca padrão):
 
   figura-modelo-er.svg   Modelo de dados (16 tabelas do SQLite)
   figura-fluxo-ocr.svg   Fluxo da leitura da carteirinha por OCR
+  figura-casos-de-uso.svg Diagrama de casos de uso
 
 Uso: python3 gerar_figuras.py
 Os PNG usados no .docx são renderizados a partir dos SVG (ver README da pasta).
@@ -243,7 +244,366 @@ def figura_ocr():
             f'<rect width="100%" height="100%" fill="#ffffff"/>{defs}{"".join(out)}</svg>')
 
 
+# ----------------------------------------------------------------------------
+# DIAGRAMA DE CASOS DE USO
+# ----------------------------------------------------------------------------
+def figura_casos_de_uso():
+    L, A = 1400, 1010
+    out = []
+    OVAL_W, OVAL_H = 232, 62
+
+    def oval(cx, cy, codigo, linhas):
+        t = "".join(
+            f'<tspan x="{cx}" dy="{(-8 if len(linhas) > 1 else 5) if i == 0 else 16}">{escape(l)}</tspan>'
+            for i, l in enumerate(linhas))
+        return (f'<ellipse cx="{cx}" cy="{cy}" rx="{OVAL_W/2}" ry="{OVAL_H/2}" fill="#fff" stroke="{COR_BORDA}" stroke-width="1.5"/>'
+                f'<text x="{cx}" y="{cy}" text-anchor="middle" font-size="12.5" fill="{COR_TXT}">'
+                f'<tspan font-weight="bold" x="{cx}" dy="{-16 if len(linhas) > 1 else -8}">{codigo}</tspan>'
+                + "".join(f'<tspan x="{cx}" dy="{16 if i == 0 else 15}">{escape(l)}</tspan>' for i, l in enumerate(linhas))
+                + '</text>')
+
+    def pacote(x, y, w, h, titulo, cor, ovais, colunas):
+        s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{cor}" fill-opacity="0.10" stroke="{cor}" stroke-width="1.8"/>',
+             f'<text x="{x+14}" y="{y+24}" font-size="14.5" font-weight="bold" fill="{cor}">{escape(titulo)}</text>']
+        for i, (cod, linhas) in enumerate(ovais):
+            col, lin = i % colunas, i // colunas
+            cx = x + w / (colunas * 2) * (2 * col + 1)
+            cy = y + 62 + lin * 82
+            s.append(oval(cx, cy, cod, linhas))
+        return "\n".join(s)
+
+    def ator(cx, cy, nome, cor="#1f3a5f"):
+        return (f'<g stroke="{cor}" stroke-width="2.2" fill="none">'
+                f'<circle cx="{cx}" cy="{cy-34}" r="12"/><path d="M{cx},{cy-22} V{cy+14} M{cx-22},{cy-8} H{cx+22} M{cx},{cy+14} L{cx-18},{cy+42} M{cx},{cy+14} L{cx+18},{cy+42}"/></g>'
+                f'<text x="{cx}" y="{cy+62}" text-anchor="middle" font-size="13.5" font-weight="bold" fill="{cor}">{escape(nome)}</text>')
+
+    def liga(x1, y1, x2, y2, tracejada=False, rotulo=None):
+        d = ' stroke-dasharray="6,4"' if tracejada else ""
+        r = (f'<text x="{(x1+x2)/2}" y="{(y1+y2)/2-6}" text-anchor="middle" font-size="11.5" fill="#444">{rotulo}</text>' if rotulo else "")
+        return f'<path d="M{x1},{y1} L{x2},{y2}" stroke="#444" stroke-width="1.4"{d}/>{r}'
+
+    # fronteira do sistema
+    out.append(f'<rect x="170" y="14" width="1060" height="{A-28}" rx="14" fill="none" stroke="{COR_BORDA}" stroke-width="2.2"/>')
+    out.append(f'<text x="200" y="44" font-size="17" font-weight="bold" fill="{COR_BORDA}">Notifica Vacinas</text>')
+
+    XA, WA = 195, 520
+    p1 = (XA, 66, WA, 236)
+    p2 = (XA, 322, WA, 322)
+    p3 = (XA, 664, WA, 322)
+    out.append(pacote(*p1, "Conta e acesso", "#6b7a8f", [
+        ("UC01", ["Cadastrar-se e confirmar e-mail"]), ("UC02", ["Entrar (login e sessão)"]),
+        ("UC03", ["Recuperar senha"]), ("UC04", ["Sair e gerenciar dispositivos"])], 2))
+    out.append(pacote(*p2, "Pessoas e carteira", "#2e7d6b", [
+        ("UC05", ["Concluir cadastro inicial"]), ("UC06", ["Cadastrar e remover dependentes"]),
+        ("UC07", ["Informar grupos especiais"]), ("UC08", ["Registrar dose manualmente"]),
+        ("UC09", ["Registrar dose por foto/PDF"])], 2))
+    out.append(pacote(*p3, "Situação, calendário e avisos", "#b5651d", [
+        ("UC10", ["Consultar situação vacinal"]), ("UC11", ["Consultar calendário", "e agendar vacina"]),
+        ("UC12", ["Confirmar vacina tomada"]), ("UC13", ["Ver notificações no painel"]),
+        ("UC14", ["Definir preferências de aviso"])], 2))
+
+    XB, WB = 905, 300
+    p4 = (XB, 66, WB, 292)
+    p5 = (XB, 700, WB, 210)
+    out.append(pacote(*p4, "Administração (somente ADMIN)", "#7a4fa0", [
+        ("UC15", ["Gerir usuários"]), ("UC16", ["Gerir vacinas"]), ("UC17", ["Gerir calendário e regras"])], 1))
+    out.append(pacote(*p5, "Automático (agendador diário)", "#c0392b", [
+        ("UC18", ["Verificar pendências", "e enviar avisos"]), ("UC19", ["Enviar lembrete", "de agendamento"])], 1))
+
+    # atores e ligações
+    out.append(ator(85, 470, "Usuário"))
+    for (x, y, w, h) in (p1, p2, p3):
+        out.append(liga(112, 470, x, y + h / 2))
+    out.append(ator(1310, 210, "Administrador", "#7a4fa0"))
+    out.append(liga(1288, 210, XB + WB, 210))
+    out.append(ator(1310, 810, "Agendador", "#c0392b"))
+    out.append(liga(1288, 810, XB + WB, 810))
+    # serviço de OCR (ator secundário) ligado ao UC09
+    out.append(ator(1310, 530, "Serviço de OCR", "#b5651d"))
+    uc09 = (XA + WA / 4 * 1, 322 + 62 + 2 * 82)
+    out.append(f'<path d="M1288,540 H{XB-20} V{uc09[1]} H{uc09[0]+OVAL_W/2}" fill="none" stroke="#444" stroke-width="1.4" stroke-dasharray="6,4"/>')
+    out.append(f'<text x="{XB-12}" y="{uc09[1]-8}" font-size="11.5" fill="#444">«usa»</text>')
+    # admin herda tudo do usuário (generalização, só texto)
+    out.append(f'<text x="1310" y="296" text-anchor="middle" font-size="11" fill="#555">também executa</text>'
+               f'<text x="1310" y="310" text-anchor="middle" font-size="11" fill="#555">UC01 a UC14</text>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{L}" height="{A}" viewBox="0 0 {L} {A}" font-family="{FONTE}">'
+            f'<rect width="100%" height="100%" fill="#ffffff"/>{"".join(out)}</svg>')
+
+
+# ----------------------------------------------------------------------------
+# ARQUITETURA
+# ----------------------------------------------------------------------------
+def figura_arquitetura():
+    L, A = 1310, 700
+    out = []
+
+    def caixa(x, y, w, h, titulo, cor, linhas=(), fundo="#ffffff", dash=False):
+        d = ' stroke-dasharray="7,4"' if dash else ""
+        t = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{fundo}" stroke="{cor}" stroke-width="2"{d}/>',
+             f'<text x="{x+w/2}" y="{y+28}" text-anchor="middle" font-size="16" font-weight="bold" fill="{cor}">{escape(titulo)}</text>']
+        for i, l in enumerate(linhas):
+            t.append(f'<text x="{x+w/2}" y="{y+54+i*22}" text-anchor="middle" font-size="14" fill="{COR_TXT}">{escape(l)}</text>')
+        return "\n".join(t)
+
+    def seta(x1, y1, x2, y2, rot=None, ambos=False, dx=0, dy=-8, anc="middle", dash=False):
+        d = ' stroke-dasharray="7,4"' if dash else ""
+        ini = ' marker-start="url(#ponta-i)"' if ambos else ""
+        r = (f'<text x="{(x1+x2)/2+dx}" y="{(y1+y2)/2+dy}" text-anchor="{anc}" font-size="13" fill="#333">{escape(rot)}</text>'
+             if rot else "")
+        return (f'<path d="M{x1},{y1} L{x2},{y2}" stroke="#333" stroke-width="2" fill="none"{d}'
+                f'{ini} marker-end="url(#ponta)"/>{r}')
+
+    defs = ('<defs><marker id="ponta" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">'
+            '<path d="M0,0 L10,4 L0,8 Z" fill="#333"/></marker>'
+            '<marker id="ponta-i" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto-start-reverse">'
+            '<path d="M0,0 L10,4 L0,8 Z" fill="#333"/></marker></defs>')
+
+    # navegador
+    out.append(caixa(30, 70, 250, 160, "Navegador (SPA)", "#2e7d6b",
+                     ["React 19 + Vite", "React Router, Axios", "Tailwind CSS"], "#eef7f4"))
+    # servidor de aplicação
+    out.append(caixa(480, 30, 440, 400, "Servidor de aplicação (Node.js)", "#1f3a5f",
+                     ["Express 5 + TypeScript"], "#eef2f8"))
+    camadas = [("Rotas e middlewares", "autenticação, CSRF, posse, limites"),
+               ("Controllers", "recebem a requisição HTTP"),
+               ("Services", "regras de negócio e validação"),
+               ("Repositories", "SQL parametrizado")]
+    for i, (n, d) in enumerate(camadas):
+        y = 100 + i * 66
+        out.append(f'<rect x="505" y="{y}" width="390" height="50" rx="7" fill="#fff" stroke="#1f3a5f" stroke-width="1.5"/>'
+                   f'<text x="700" y="{y+22}" text-anchor="middle" font-size="14.5" font-weight="bold" fill="{COR_TXT}">{escape(n)}</text>'
+                   f'<text x="700" y="{y+40}" text-anchor="middle" font-size="12.5" fill="#444">{escape(d)}</text>')
+        if i < 3:
+            out.append(seta(700, y + 50, 700, y + 66))
+    out.append(f'<rect x="505" y="372" width="390" height="44" rx="7" fill="#fff7e0" stroke="#c9a227" stroke-width="1.5"/>'
+               f'<text x="700" y="400" text-anchor="middle" font-size="14" fill="{COR_TXT}">Tarefa agendada diária (node-cron, 8h)</text>')
+    # banco
+    out.append(caixa(505, 540, 390, 120, "SQLite (arquivo)", "#6b7a8f",
+                     ["16 tabelas, chaves estrangeiras ativas", "19 índices, modo WAL"], "#f1f3f6"))
+    # externos
+    out.append(caixa(1040, 30, 240, 160, "Serviço de OCR (interno)", "#b5651d",
+                     ["Python + FastAPI", "Docling + EasyOCR", "texto em Markdown"], "#fbf2e8"))
+    out.append(caixa(1040, 250, 240, 130, "Provedor de e-mail", "#7a4fa0",
+                     ["SMTP (Nodemailer)", "códigos e avisos"], "#f4eef8"))
+    out.append(caixa(30, 350, 250, 130, "ViaCEP", "#6b7a8f",
+                     ["serviço público de CEP", "(consultado pelo navegador)"], "#f1f3f6", dash=True))
+    # ligações
+    out.append(f'<text x="375" y="136" text-anchor="middle" font-size="13" fill="#333">HTTPS / JSON</text>')
+    out.append(seta(280, 150, 480, 150, None, ambos=True))
+    out.append(f'<text x="375" y="176" text-anchor="middle" font-size="12" fill="#333">cookie httpOnly (JWT)</text>')
+    out.append(seta(700, 440, 700, 540, "consultas SQL", dx=14, dy=4, anc="start"))
+    out.append(seta(920, 110, 1040, 110, "HTTP interno", ambos=True, dy=-10))
+    out.append(seta(920, 330, 1040, 320, "SMTP", dy=-10))
+    out.append(seta(155, 230, 155, 350, "consulta de CEP", dash=True, dx=12, dy=4, anc="start"))
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{L}" height="{A}" viewBox="0 0 {L} {A}" font-family="{FONTE}">'
+            f'<rect width="100%" height="100%" fill="#ffffff"/>{defs}{"".join(out)}</svg>')
+
+
+# ----------------------------------------------------------------------------
+# DIAGRAMA DE CASOS DE USO
+# ----------------------------------------------------------------------------
+def figura_casos_de_uso():
+    L, A = 1400, 1010
+    out = []
+    OVAL_W, OVAL_H = 232, 62
+
+    def oval(cx, cy, codigo, linhas):
+        t = "".join(
+            f'<tspan x="{cx}" dy="{(-8 if len(linhas) > 1 else 5) if i == 0 else 16}">{escape(l)}</tspan>'
+            for i, l in enumerate(linhas))
+        return (f'<ellipse cx="{cx}" cy="{cy}" rx="{OVAL_W/2}" ry="{OVAL_H/2}" fill="#fff" stroke="{COR_BORDA}" stroke-width="1.5"/>'
+                f'<text x="{cx}" y="{cy}" text-anchor="middle" font-size="12.5" fill="{COR_TXT}">'
+                f'<tspan font-weight="bold" x="{cx}" dy="{-16 if len(linhas) > 1 else -8}">{codigo}</tspan>'
+                + "".join(f'<tspan x="{cx}" dy="{16 if i == 0 else 15}">{escape(l)}</tspan>' for i, l in enumerate(linhas))
+                + '</text>')
+
+    def pacote(x, y, w, h, titulo, cor, ovais, colunas):
+        s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{cor}" fill-opacity="0.10" stroke="{cor}" stroke-width="1.8"/>',
+             f'<text x="{x+14}" y="{y+24}" font-size="14.5" font-weight="bold" fill="{cor}">{escape(titulo)}</text>']
+        for i, (cod, linhas) in enumerate(ovais):
+            col, lin = i % colunas, i // colunas
+            cx = x + w / (colunas * 2) * (2 * col + 1)
+            cy = y + 62 + lin * 82
+            s.append(oval(cx, cy, cod, linhas))
+        return "\n".join(s)
+
+    def ator(cx, cy, nome, cor="#1f3a5f"):
+        return (f'<g stroke="{cor}" stroke-width="2.2" fill="none">'
+                f'<circle cx="{cx}" cy="{cy-34}" r="12"/><path d="M{cx},{cy-22} V{cy+14} M{cx-22},{cy-8} H{cx+22} M{cx},{cy+14} L{cx-18},{cy+42} M{cx},{cy+14} L{cx+18},{cy+42}"/></g>'
+                f'<text x="{cx}" y="{cy+62}" text-anchor="middle" font-size="13.5" font-weight="bold" fill="{cor}">{escape(nome)}</text>')
+
+    def liga(x1, y1, x2, y2, tracejada=False, rotulo=None):
+        d = ' stroke-dasharray="6,4"' if tracejada else ""
+        r = (f'<text x="{(x1+x2)/2}" y="{(y1+y2)/2-6}" text-anchor="middle" font-size="11.5" fill="#444">{rotulo}</text>' if rotulo else "")
+        return f'<path d="M{x1},{y1} L{x2},{y2}" stroke="#444" stroke-width="1.4"{d}/>{r}'
+
+    # fronteira do sistema
+    out.append(f'<rect x="170" y="14" width="1060" height="{A-28}" rx="14" fill="none" stroke="{COR_BORDA}" stroke-width="2.2"/>')
+    out.append(f'<text x="200" y="44" font-size="17" font-weight="bold" fill="{COR_BORDA}">Notifica Vacinas</text>')
+
+    XA, WA = 195, 520
+    p1 = (XA, 66, WA, 236)
+    p2 = (XA, 322, WA, 322)
+    p3 = (XA, 664, WA, 322)
+    out.append(pacote(*p1, "Conta e acesso", "#6b7a8f", [
+        ("UC01", ["Cadastrar-se e confirmar e-mail"]), ("UC02", ["Entrar (login e sessão)"]),
+        ("UC03", ["Recuperar senha"]), ("UC04", ["Sair e gerenciar dispositivos"])], 2))
+    out.append(pacote(*p2, "Pessoas e carteira", "#2e7d6b", [
+        ("UC05", ["Concluir cadastro inicial"]), ("UC06", ["Cadastrar e remover dependentes"]),
+        ("UC07", ["Informar grupos especiais"]), ("UC08", ["Registrar dose manualmente"]),
+        ("UC09", ["Registrar dose por foto/PDF"])], 2))
+    out.append(pacote(*p3, "Situação, calendário e avisos", "#b5651d", [
+        ("UC10", ["Consultar situação vacinal"]), ("UC11", ["Consultar calendário", "e agendar vacina"]),
+        ("UC12", ["Confirmar vacina tomada"]), ("UC13", ["Ver notificações no painel"]),
+        ("UC14", ["Definir preferências de aviso"])], 2))
+
+    XB, WB = 905, 300
+    p4 = (XB, 66, WB, 292)
+    p5 = (XB, 700, WB, 210)
+    out.append(pacote(*p4, "Administração (somente ADMIN)", "#7a4fa0", [
+        ("UC15", ["Gerir usuários"]), ("UC16", ["Gerir vacinas"]), ("UC17", ["Gerir calendário e regras"])], 1))
+    out.append(pacote(*p5, "Automático (agendador diário)", "#c0392b", [
+        ("UC18", ["Verificar pendências", "e enviar avisos"]), ("UC19", ["Enviar lembrete", "de agendamento"])], 1))
+
+    # atores e ligações
+    out.append(ator(85, 470, "Usuário"))
+    for (x, y, w, h) in (p1, p2, p3):
+        out.append(liga(112, 470, x, y + h / 2))
+    out.append(ator(1310, 210, "Administrador", "#7a4fa0"))
+    out.append(liga(1288, 210, XB + WB, 210))
+    out.append(ator(1310, 810, "Agendador", "#c0392b"))
+    out.append(liga(1288, 810, XB + WB, 810))
+    # serviço de OCR (ator secundário) ligado ao UC09
+    out.append(ator(1310, 530, "Serviço de OCR", "#b5651d"))
+    uc09 = (XA + WA / 4 * 1, 322 + 62 + 2 * 82)
+    out.append(f'<path d="M1288,540 H{XB-20} V{uc09[1]} H{uc09[0]+OVAL_W/2}" fill="none" stroke="#444" stroke-width="1.4" stroke-dasharray="6,4"/>')
+    out.append(f'<text x="{XB-12}" y="{uc09[1]-8}" font-size="11.5" fill="#444">«usa»</text>')
+    # admin herda tudo do usuário (generalização, só texto)
+    out.append(f'<text x="1310" y="296" text-anchor="middle" font-size="11" fill="#555">também executa</text>'
+               f'<text x="1310" y="310" text-anchor="middle" font-size="11" fill="#555">UC01 a UC14</text>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{L}" height="{A}" viewBox="0 0 {L} {A}" font-family="{FONTE}">'
+            f'<rect width="100%" height="100%" fill="#ffffff"/>{"".join(out)}</svg>')
+
+
+
+# ----------------------------------------------------------------------------
+# FLUXO DO CÁLCULO DE PENDÊNCIAS
+# ----------------------------------------------------------------------------
+_DEFS_SETA = ('<defs><marker id="pt" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">'
+              '<path d="M0,0 L10,4 L0,8 Z" fill="#333"/></marker></defs>')
+
+
+def _caixa_p(x, y, w, h, titulo, linhas, cor, fundo="#ffffff", cab=True, tam=13.5):
+    s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="9" fill="{fundo}" stroke="{cor}" stroke-width="2"/>']
+    ty = y + 24
+    if titulo:
+        s.append(f'<text x="{x+w/2}" y="{ty}" text-anchor="middle" font-size="15" font-weight="bold" fill="{cor}">{escape(titulo)}</text>')
+        ty += 22
+    for l in linhas:
+        s.append(f'<text x="{x+w/2}" y="{ty}" text-anchor="middle" font-size="{tam}" fill="{COR_TXT}">{escape(l)}</text>')
+        ty += 19
+    return "\n".join(s)
+
+
+def _seta_p(x1, y1, x2, y2, rot=None):
+    r = f'<text x="{(x1+x2)/2+8}" y="{(y1+y2)/2+4}" font-size="12.5" fill="#333">{escape(rot)}</text>' if rot else ""
+    return f'<path d="M{x1},{y1} L{x2},{y2}" stroke="#333" stroke-width="2" fill="none" marker-end="url(#pt)"/>{r}'
+
+
+def _linha_p(x1, y1, x2, y2):
+    return f'<path d="M{x1},{y1} L{x2},{y2}" stroke="#333" stroke-width="2" fill="none"/>'
+
+
+def figura_pendencias():
+    """Fluxo atual: cálculo orientado a datas sobre o Calendário Nacional 2026."""
+    L, A = 1100, 930
+    o = []
+    o.append(_caixa_p(430, 16, 240, 44, None, ["pessoaId"], "#1f3a5f", "#eef2f8", tam=15))
+    o.append(_seta_p(550, 60, 550, 88))
+    o.append(_caixa_p(270, 88, 560, 66, "Obter a pessoa e calcular a idade", [
+        "idade em anos completos no dia civil de São Paulo → faixa etária"], "#2e7d6b", "#eef7f4"))
+    o.append(_seta_p(550, 154, 550, 182))
+    fontes = [("Carteira da pessoa", ["registros e doses", "com data de aplicação"], "#b5651d", "#fbf2e8"),
+              ("Grupos especiais", ["gestante, idoso etc.", "(com o início da gestação)"], "#7a4fa0", "#f4eef8"),
+              ("Esquema vacinal 2026", ["doses, idades e intervalos", "por grupo; campanhas ativas"], "#6b7a8f", "#f1f3f6")]
+    xs = [27, 385, 743]
+    for x, (t, ls, c, f) in zip(xs, fontes):
+        o.append(_caixa_p(x, 182, 330, 92, t, ls, c, f))
+        o.append(_linha_p(x + 165, 274, x + 165, 296))
+    o.append(_linha_p(xs[0] + 165, 296, xs[2] + 165, 296))
+    o.append(_seta_p(550, 296, 550, 322))
+    # função pura
+    o.append(f'<rect x="100" y="322" width="900" height="352" rx="12" fill="#fffaf0" stroke="#c9a227" stroke-width="2"/>')
+    o.append(f'<text x="550" y="350" text-anchor="middle" font-size="16" font-weight="bold" fill="#8a6d0b">calcularProximasDoses (função pura)</text>')
+    passos = [
+        ("1", ["Filtrar as doses que valem para a pessoa: idade e janela de idade,", "grupo especial (regras da gestante; vacinas vivas fora do esquema)"]),
+        ("2", ["Em cada vacina, achar a próxima dose ainda não cumprida", "(equivalências entre vacinas; doses \"a cada gestação\")"]),
+        ("3", ["data prevista = maior entre (nascimento + idade recomendada)", "e (data da última dose + intervalo mínimo)"]),
+        ("4", ["Classificar: ATRASADA · DISPONÍVEL (sem data) ·", "PRÓXIMA (vence em até 30 dias) · FUTURA"]),
+    ]
+    y = 368
+    for n, ls in passos:
+        o.append(f'<rect x="130" y="{y}" width="840" height="62" rx="8" fill="#fff" stroke="#c9a227" stroke-width="1.4"/>'
+                 f'<circle cx="162" cy="{y+31}" r="14" fill="#c9a227"/>'
+                 f'<text x="162" y="{y+36}" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">{n}</text>'
+                 + "".join(f'<text x="190" y="{y+26+i*19}" font-size="13.5" fill="{COR_TXT}">{escape(l)}</text>' for i, l in enumerate(ls)))
+        if n != "4":
+            o.append(_seta_p(550, y + 62, 550, y + 74))
+        y += 74
+    # saídas
+    saidas = [("Pendentes", ["ATRASADA + DISPONÍVEL", "(faltam doses)"], "#c0392b", "#fbeeec", 27),
+              ("Próximas doses", ["PRÓXIMA + FUTURA", "com data prevista"], "#b5651d", "#fbf2e8", 385),
+              ("Em dia", ["vacinas sem dose", "pendente"], "#2e7d6b", "#eef7f4", 743)]
+    for t, ls, c, f, x in saidas:
+        o.append(_seta_p(x + 165 if x != 385 else 550, 674, x + 165, 706))
+        o.append(_caixa_p(x, 706, 330, 82, t, ls, c, f))
+        o.append(_seta_p(x + 165, 788, x + 165 if x != 385 else 550, 818))
+    o.append(_caixa_p(60, 818, 980, 92, "Resposta da API", [
+        "GET /pendencias/:pessoaId  →  { pessoa, faixa_etaria, idade, em_dia[], pendentes[] }",
+        "GET /pendencias/:pessoaId/proximas-doses  →  próximas doses com data prevista e status"],
+        "#1f3a5f", "#eef2f8", tam=13.5))
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{L}" height="{A}" viewBox="0 0 {L} {A}" font-family="{FONTE}">'
+            f'<rect width="100%" height="100%" fill="#ffffff"/>{_DEFS_SETA}{"".join(o)}</svg>')
+
+
+def figura_pendencias_v1():
+    """Fluxo da primeira versão (compara o maior nº de dose com as doses exigidas da faixa)."""
+    L, A = 1000, 900
+    o = []
+    for i, (t, x) in enumerate([("pessoaId", 60), ("obter pessoa", 290), ("calcular idade", 520), ("obterFaixaEtaria(idade)", 750)]):
+        w = 200 if i < 3 else 215
+        o.append(_caixa_p(x, 30, w, 50, None, [t], "#1f3a5f", "#eef2f8", tam=14))
+        if i < 3:
+            o.append(_seta_p(x + w, 55, x + 230, 55))
+    o.append(_seta_p(857, 80, 857, 130))
+    o.append(_seta_p(160, 80, 160, 130))
+    o.append(_caixa_p(60, 130, 330, 90, "Carteira da pessoa", ["(registros + maior número de dose)"], "#b5651d", "#fbf2e8"))
+    o.append(_caixa_p(560, 130, 380, 90, "Calendário da faixa etária", ["(vacina, doses exigidas)"], "#7a4fa0", "#f4eef8"))
+    o.append(_linha_p(225, 220, 225, 262)); o.append(_linha_p(750, 220, 750, 262))
+    o.append(_linha_p(225, 262, 750, 262)); o.append(_seta_p(488, 262, 488, 292))
+    o.append(f'<rect x="90" y="292" width="800" height="300" rx="12" fill="#fffaf0" stroke="#c9a227" stroke-width="2"/>')
+    o.append(f'<text x="490" y="322" text-anchor="middle" font-size="16" font-weight="bold" fill="#8a6d0b">para cada vacina do calendário</text>')
+    regras = [("sem registro", "pendente (faltam = doses exigidas)", "#c0392b"),
+              ("maior dose < exigidas", "pendente (faltam = exigidas − maior dose)", "#c0392b"),
+              ("maior dose ≥ exigidas", "em dia", "#2e7d6b")]
+    y = 346
+    for a, b, c in regras:
+        o.append(f'<rect x="130" y="{y}" width="720" height="64" rx="8" fill="#fff" stroke="{c}" stroke-width="1.6"/>'
+                 f'<text x="160" y="{y+38}" font-size="15" font-weight="bold" fill="{COR_TXT}">{escape(a)}</text>'
+                 f'<path d="M370,{y+32} L420,{y+32}" stroke="#333" stroke-width="2" marker-end="url(#pt)"/>'
+                 f'<text x="435" y="{y+38}" font-size="15" fill="{c}" font-weight="bold">{escape(b)}</text>')
+        y += 76
+    o.append(_seta_p(490, 592, 490, 640))
+    o.append(_caixa_p(160, 640, 660, 80, "Resumo", ["{ pessoa, faixa, idade, em_dia[], pendentes[] }"], "#1f3a5f", "#eef2f8", tam=15))
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{L}" height="{A-130}" viewBox="0 0 {L} {A-130}" font-family="{FONTE}">'
+            f'<rect width="100%" height="100%" fill="#ffffff"/>{_DEFS_SETA}{"".join(o)}</svg>')
+
+
 if __name__ == "__main__":
     (DESTINO / "figura-modelo-er.svg").write_text(figura_er(), encoding="utf-8")
     (DESTINO / "figura-fluxo-ocr.svg").write_text(figura_ocr(), encoding="utf-8")
+    (DESTINO / "figura-casos-de-uso.svg").write_text(figura_casos_de_uso(), encoding="utf-8")
+    (DESTINO / "figura-arquitetura.svg").write_text(figura_arquitetura(), encoding="utf-8")
+    (DESTINO / "figura-fluxo-pendencias.svg").write_text(figura_pendencias(), encoding="utf-8")
+    (DESTINO / "figura-fluxo-pendencias-v1.svg").write_text(figura_pendencias_v1(), encoding="utf-8")
     print("SVG gerados em", DESTINO)
