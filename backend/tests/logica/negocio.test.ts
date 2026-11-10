@@ -206,7 +206,7 @@ describe("validação de dados pela API (COR-25)", () => {
     const r = await enviar("post", u, "/carteira/dose", { registroVacinacaoId: reg, numeroDose: n, tipo: "DOSE" });
     expect(r.status).toBe(400);
     expect(r.body.erro).toMatch(/número da dose inválido/i);
-    expect(r.text).not.toMatch(/SQLITE|constraint/i);
+    expect(r.text).not.toMatch(/SQLITE|constraint|violates|syntax error/i);
   });
 
   it("[LOG-15] nenhuma dose inválida foi gravada", async () => {

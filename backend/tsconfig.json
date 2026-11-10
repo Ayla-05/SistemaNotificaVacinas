@@ -2,33 +2,26 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
-   "moduleResolution": "nodenext",
-
+    "moduleResolution": "nodenext",
     "rootDir": "./src",
     "outDir": "./dist",
-
     "strict": true,
-
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-
     "resolveJsonModule": true,
-
     "forceConsistentCasingInFileNames": true,
-
     "skipLibCheck": true,
-
     "types": [
       "node"
     ]
   },
-
   "include": [
     "src/**/*"
   ],
-
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/database/tables",
+    "src/database/indices.ts"
   ]
 }

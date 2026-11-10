@@ -1,4 +1,4 @@
-import { removerEmCascata, alterar, consultarTodos, consultarUm, inserir } from "../database/database";
+import { alterar, consultarTodos, consultarUm, inserir } from "../database/database";
 
 /*
 ==================================================
@@ -329,20 +329,10 @@ export function removerUsuario(
   id: number
 ): Promise<number> {
 
-  return removerEmCascata(
-    "usuarios",
-    id,
-    [
-    "DELETE FROM doses_vacina WHERE registro_vacinacao_id IN (SELECT id FROM registros_vacinacao WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID))",
-    "DELETE FROM registros_vacinacao WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
-    "DELETE FROM agendamentos_vacina WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
-    "DELETE FROM avisos_dose WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
-    "DELETE FROM pessoa_grupo_especial WHERE pessoa_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
-    "DELETE FROM dependentes WHERE responsavel_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID) OR dependente_id IN (SELECT id FROM pessoas WHERE usuario_id = $ID)",
-    "DELETE FROM pessoas WHERE usuario_id = $ID",
-    "DELETE FROM sessoes WHERE usuario_id = $ID",
-    "DELETE FROM redefinicoes_senha WHERE usuario_id = $ID"
-    ]
+  /* CORREÇÃO [COR-28]: o ON DELETE CASCADE do esquema apaga os dependentes. */
+  return alterar(
+    `DELETE FROM usuarios WHERE id = ?`,
+    [id]
   );
 
 }

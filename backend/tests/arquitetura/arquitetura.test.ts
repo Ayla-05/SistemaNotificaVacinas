@@ -70,10 +70,10 @@ describe("Camadas (rotas → controllers → serviços → repositórios → ban
     expect(violacoes(camada("utils"), /repositories|database|services|controllers|^express$/)).toEqual([]);
   });
 
-  it("[ARQ-06] só repositórios, banco e seeds falam com o driver SQLite", () => {
+  it("[ARQ-06] só repositórios e o módulo de banco falam com o driver do PostgreSQL", () => {
     const fora = TODOS.filter((f) => {
       const c = relative(SRC, f).split("/")[0];
-      return !["repositories", "database"].includes(c) && /from ["']sqlite3["']|\bdb\.(run|get|all|exec)\(/.test(fonte(f));
+      return !["repositories", "database"].includes(c) && /from ["']pg["']|\bpool\.(query|connect)\(/.test(fonte(f));
     });
     expect(fora.map((f) => relative(SRC, f))).toEqual([]);
   });
@@ -111,12 +111,11 @@ describe("SQL e segredos", () => {
       [...fonte(f).matchAll(/`([^`]*\b(?:SELECT|INSERT|UPDATE|DELETE)\b[^`]*)`/gi)]
         .filter((m) => /\$\{/.test(m[1]))
         // permitido: trechos fixos escolhidos por código (ternário de literais), lista de "?"
-        // e, em removerEmCascata, nome de tabela/ids validados como inteiros
+        // e a constante AGORA_UTC (expressão fixa de data, sem dado do usuário)
         .filter((m) => [...m[1].matchAll(/\$\{([^}]*)\}/g)].some((x) =>
           !(/^[^"]*"[^"]*"\s*:\s*"[^"]*"$/.test(x[1].trim()) ||
             /\.map\(\(\) => "\?"\)/.test(x[1]) ||
-            (posix(f).endsWith("database/database.ts") && /^(tabela|comandos)$/.test(x[1].trim())) ||
-            posix(f).endsWith("database/indices.ts"))))
+            /^AGORA_UTC$/.test(x[1].trim()))))
         .map((m) => `${relative(SRC, f)}: ${m[1].trim().slice(0, 60)}`)
     );
     expect(suspeitos).toEqual([]);

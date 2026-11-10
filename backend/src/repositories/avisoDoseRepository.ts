@@ -13,7 +13,7 @@ Responsabilidades:
 /*
 Tenta registrar o aviso. Devolve true se foi a PRIMEIRA vez
 (pode enviar) e false se já existia (não envia de novo).
-O INSERT OR IGNORE sobre a chave única faz o papel de trava,
+O ON CONFLICT DO NOTHING sobre a chave única faz o papel de trava,
 mesmo com duas verificações rodando ao mesmo tempo.
 */
 export function registrarAviso(
@@ -25,10 +25,11 @@ export function registrarAviso(
 
   return alterar(
     `
-      INSERT OR IGNORE INTO avisos_dose (
+      INSERT INTO avisos_dose (
         pessoa_id, vacina_codigo, numero_dose, data_prevista
       )
       VALUES (?, ?, ?, ?)
+      ON CONFLICT DO NOTHING
       `,
     [pessoaId, vacinaCodigo, numeroDose, dataPrevista]
   ).then((changes) => changes === 1);
