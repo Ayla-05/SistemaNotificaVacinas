@@ -143,7 +143,13 @@ export class ProximasDosesService {
       nascimento: String(pessoa.data_nascimento).slice(0, 10),
       hoje: dataHoje,
       doses,
-      grupos: grupos.map((g) => g.nome)
+      grupos: grupos.map((g) => g.nome),
+      gestacaoInicio: (() => {
+        const g = grupos.find((x) => x.nome === "GESTANTE");
+        return g?.gestacao_inicio
+          ? String(g.gestacao_inicio).slice(0, 10)
+          : null;
+      })()
     }).map((dose) => ({
       ...dose,
       vacina: nomes.get(dose.vacinaCodigo) ?? dose.vacinaCodigo,
